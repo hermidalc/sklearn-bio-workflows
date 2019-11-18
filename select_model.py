@@ -48,7 +48,6 @@ from tabulate import tabulate
 
 numpy2ri.activate()
 pandas2ri.activate()
-sys.path.insert(1, sys.path[0] + '/lib/python3')
 
 from sklearn_extensions.base import (
     TransformerMixin as ExtendedTransformerMixin)

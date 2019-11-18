@@ -1,0 +1,3 @@
+[submodule "sklearn_extensions"]
+    path = sklearn_extensions
+    url = git@github.com:hermidalc/sklearn-extensions.git

@@ -88,92 +88,92 @@ parser.add_argument('--dataset-te', '--eset-te', type=str, nargs='+',
                     help='dataset te')
 parser.add_argument('--trf-mms-fr', type=int_list,
                     nargs='+', help='trf mms fr')
-parser.add_argument('--sel-col-names', type=str_list,
-                    nargs='+', help='sel feature names')
-parser.add_argument('--sel-vrt-thres', type=float,
-                    nargs='+', help='sel vrt threshold')
-parser.add_argument('--sel-mi-n', type=int, nargs='+',
-                    help='sel mi n neighbors')
-parser.add_argument('--sel-skb-k', type=int,
-                    nargs='+', help='sel skb k select')
-parser.add_argument('--sel-skb-k-min', type=int,
-                    default=1, help='sel skb k min')
-parser.add_argument('--sel-skb-k-max', type=int,
-                    help='sel skb k max')
-parser.add_argument('--sel-skb-k-step', type=int,
-                    default=1, help='sel skb k step')
-parser.add_argument('--sel-sfp-p', type=float, nargs='+',
-                    help='sel sfp fpr')
-parser.add_argument('--sel-sfm-svm-thres', type=float,
-                    nargs='+', help='sel sfm svm threshold')
-parser.add_argument('--sel-sfm-svm-c', type=float,
-                    nargs='+', help='sel sfm svm c')
-parser.add_argument('--sel-sfm-svm-cw', type=str,
-                    nargs='+', help='sel sfm svm class weight')
-parser.add_argument('--sel-sfm-rf-thres', type=float,
-                    nargs='+', help='sel sfm rf threshold')
-parser.add_argument('--sel-sfm-rf-e', type=int,
-                    nargs='+', help='sel sfm rf n estimators')
-parser.add_argument('--sel-sfm-rf-d', type=str,
-                    nargs='+', help='sel sfm rf max depth')
-parser.add_argument('--sel-sfm-rf-f', type=str,
-                    nargs='+', help='sel sfm rf max features')
-parser.add_argument('--sel-sfm-rf-cw', type=str,
-                    nargs='+', help='sel sfm rf class weight')
-parser.add_argument('--sel-sfm-ext-thres', type=float,
-                    nargs='+', help='sel sfm ext threshold')
-parser.add_argument('--sel-sfm-ext-e', type=int,
-                    nargs='+', help='sel sfm ext n estimators')
-parser.add_argument('--sel-sfm-ext-d', type=str,
-                    nargs='+', help='sel sfm ext max depth')
-parser.add_argument('--sel-sfm-ext-f', type=str,
-                    nargs='+', help='sel sfm ext max features')
-parser.add_argument('--sel-sfm-ext-cw', type=str,
-                    nargs='+', help='sel sfm ext class weight')
-parser.add_argument('--sel-sfm-grb-e', type=int,
-                    nargs='+', help='sel sfm grb n estimators')
-parser.add_argument('--sel-sfm-grb-d', type=int,
-                    nargs='+', help='sel sfm grb max depth')
-parser.add_argument('--sel-sfm-grb-f', type=str,
-                    nargs='+', help='sel sfm grb max features')
-parser.add_argument('--sel-rfe-svm-c', type=float,
-                    nargs='+', help='sel rfe svm c')
-parser.add_argument('--sel-rfe-svm-cw', type=str,
-                    nargs='+', help='sel rfe svm class weight')
-parser.add_argument('--sel-rfe-rf-e', type=int,
-                    nargs='+', help='sel rfe rf n estimators')
-parser.add_argument('--sel-rfe-rf-d', type=str,
-                    nargs='+', help='sel rfe rf max depth')
-parser.add_argument('--sel-rfe-rf-f', type=str,
-                    nargs='+', help='sel rfe rf max features')
-parser.add_argument('--sel-rfe-rf-cw', type=str,
-                    nargs='+', help='sel rfe rf class weight')
-parser.add_argument('--sel-rfe-ext-e', type=int,
-                    nargs='+', help='sel rfe ext n estimators')
-parser.add_argument('--sel-rfe-ext-d', type=str,
-                    nargs='+', help='sel rfe ext max depth')
-parser.add_argument('--sel-rfe-ext-f', type=str,
-                    nargs='+', help='sel rfe ext max features')
-parser.add_argument('--sel-rfe-ext-cw', type=str,
-                    nargs='+', help='sel rfe ext class weight')
-parser.add_argument('--sel-rfe-grb-e', type=int,
-                    nargs='+', help='sel rfe grb n estimators')
-parser.add_argument('--sel-rfe-grb-d', type=int,
-                    nargs='+', help='sel rfe grb max depth')
-parser.add_argument('--sel-rfe-grb-f', type=str,
-                    nargs='+', help='sel rfe grb max features')
-parser.add_argument('--sel-rfe-step', type=float,
-                    nargs='+', help='sel rfe step')
-parser.add_argument('--sel-rfe-tune-step-at', type=int,
-                    default=None, help='sel rfe tune step at')
-parser.add_argument('--sel-rfe-reducing-step', default=False,
-                    action='store_true', help='sel rfe reducing step')
-parser.add_argument('--sel-rfe-verbose', type=int,
-                    default=0, help='sel rfe verbosity')
-parser.add_argument('--sel-rlf-n', type=int, nargs='+',
-                    help='sel rlf n neighbors')
-parser.add_argument('--sel-rlf-s', type=int, nargs='+',
-                    help='sel rlf sample size')
+parser.add_argument('--slr-col-names', type=str_list,
+                    nargs='+', help='slr feature names')
+parser.add_argument('--slr-vrt-thres', type=float,
+                    nargs='+', help='slr vrt threshold')
+parser.add_argument('--slr-mi-n', type=int, nargs='+',
+                    help='slr mi n neighbors')
+parser.add_argument('--slr-skb-k', type=int,
+                    nargs='+', help='slr skb k')
+parser.add_argument('--slr-skb-k-min', type=int,
+                    default=1, help='slr skb k min')
+parser.add_argument('--slr-skb-k-max', type=int,
+                    help='slr skb k max')
+parser.add_argument('--slr-skb-k-step', type=int,
+                    default=1, help='slr skb k step')
+parser.add_argument('--slr-sfp-p', type=float, nargs='+',
+                    help='slr sfp fpr')
+parser.add_argument('--slr-sfm-svm-thres', type=float,
+                    nargs='+', help='slr sfm svm threshold')
+parser.add_argument('--slr-sfm-svm-c', type=float,
+                    nargs='+', help='slr sfm svm c')
+parser.add_argument('--slr-sfm-svm-cw', type=str,
+                    nargs='+', help='slr sfm svm class weight')
+parser.add_argument('--slr-sfm-rf-thres', type=float,
+                    nargs='+', help='slr sfm rf threshold')
+parser.add_argument('--slr-sfm-rf-e', type=int,
+                    nargs='+', help='slr sfm rf n estimators')
+parser.add_argument('--slr-sfm-rf-d', type=str,
+                    nargs='+', help='slr sfm rf max depth')
+parser.add_argument('--slr-sfm-rf-f', type=str,
+                    nargs='+', help='slr sfm rf max features')
+parser.add_argument('--slr-sfm-rf-cw', type=str,
+                    nargs='+', help='slr sfm rf class weight')
+parser.add_argument('--slr-sfm-ext-thres', type=float,
+                    nargs='+', help='slr sfm ext threshold')
+parser.add_argument('--slr-sfm-ext-e', type=int,
+                    nargs='+', help='slr sfm ext n estimators')
+parser.add_argument('--slr-sfm-ext-d', type=str,
+                    nargs='+', help='slr sfm ext max depth')
+parser.add_argument('--slr-sfm-ext-f', type=str,
+                    nargs='+', help='slr sfm ext max features')
+parser.add_argument('--slr-sfm-ext-cw', type=str,
+                    nargs='+', help='slr sfm ext class weight')
+parser.add_argument('--slr-sfm-grb-e', type=int,
+                    nargs='+', help='slr sfm grb n estimators')
+parser.add_argument('--slr-sfm-grb-d', type=int,
+                    nargs='+', help='slr sfm grb max depth')
+parser.add_argument('--slr-sfm-grb-f', type=str,
+                    nargs='+', help='slr sfm grb max features')
+parser.add_argument('--slr-rfe-svm-c', type=float,
+                    nargs='+', help='slr rfe svm c')
+parser.add_argument('--slr-rfe-svm-cw', type=str,
+                    nargs='+', help='slr rfe svm class weight')
+parser.add_argument('--slr-rfe-rf-e', type=int,
+                    nargs='+', help='slr rfe rf n estimators')
+parser.add_argument('--slr-rfe-rf-d', type=str,
+                    nargs='+', help='slr rfe rf max depth')
+parser.add_argument('--slr-rfe-rf-f', type=str,
+                    nargs='+', help='slr rfe rf max features')
+parser.add_argument('--slr-rfe-rf-cw', type=str,
+                    nargs='+', help='slr rfe rf class weight')
+parser.add_argument('--slr-rfe-ext-e', type=int,
+                    nargs='+', help='slr rfe ext n estimators')
+parser.add_argument('--slr-rfe-ext-d', type=str,
+                    nargs='+', help='slr rfe ext max depth')
+parser.add_argument('--slr-rfe-ext-f', type=str,
+                    nargs='+', help='slr rfe ext max features')
+parser.add_argument('--slr-rfe-ext-cw', type=str,
+                    nargs='+', help='slr rfe ext class weight')
+parser.add_argument('--slr-rfe-grb-e', type=int,
+                    nargs='+', help='slr rfe grb n estimators')
+parser.add_argument('--slr-rfe-grb-d', type=int,
+                    nargs='+', help='slr rfe grb max depth')
+parser.add_argument('--slr-rfe-grb-f', type=str,
+                    nargs='+', help='slr rfe grb max features')
+parser.add_argument('--slr-rfe-step', type=float,
+                    nargs='+', help='slr rfe step')
+parser.add_argument('--slr-rfe-tune-step-at', type=int,
+                    default=None, help='slr rfe tune step at')
+parser.add_argument('--slr-rfe-reducing-step', default=False,
+                    action='store_true', help='slr rfe reducing step')
+parser.add_argument('--slr-rfe-verbose', type=int,
+                    default=0, help='slr rfe verbosity')
+parser.add_argument('--slr-rlf-n', type=int, nargs='+',
+                    help='slr rlf n neighbors')
+parser.add_argument('--slr-rlf-s', type=int, nargs='+',
+                    help='slr rlf sample size')
 parser.add_argument('--clf-svm-c', type=float, nargs='+',
                     help='clf svm c')
 parser.add_argument('--clf-svm-cw', type=str, nargs='+',
@@ -348,165 +348,165 @@ robjects.r('options(\'java.parameters\'="-Xmx' + str(args.jvm_heap_size)
 if args.pipe_memory:
     cachedir = mkdtemp(dir=args.cache_dir)
     memory = Memory(location=cachedir, verbose=0)
-    sel_anova_scorer = CachedANOVAFScorerClassification(memory=memory)
-    sel_chi2_scorer = CachedChi2Scorer(memory=memory)
-    sel_limma_scorer = CachedLimmaScorerClassification(memory=memory)
-    sel_mi_scorer = CachedMutualInfoScorerClassification(
+    slr_anova_scorer = CachedANOVAFScorerClassification(memory=memory)
+    slr_chi2_scorer = CachedChi2Scorer(memory=memory)
+    slr_limma_scorer = CachedLimmaScorerClassification(memory=memory)
+    slr_mi_scorer = CachedMutualInfoScorerClassification(
         memory=memory, random_state=args.random_seed)
-    sel_svm_estimator = CachedLinearSVC(
+    slr_svm_estimator = CachedLinearSVC(
         memory=memory, random_state=args.random_seed, tol=args.clf_svm_tol)
-    sel_svm_sfm_estimator = CachedLinearSVC(
+    slr_svm_sfm_estimator = CachedLinearSVC(
         memory=memory, penalty='l1', dual=False,
         random_state=args.random_seed, tol=args.clf_svm_tol)
-    sel_rf_estimator = CachedRandomForestClassifier(
+    slr_rf_estimator = CachedRandomForestClassifier(
         memory=memory, random_state=args.random_seed)
-    sel_ext_estimator = CachedExtraTreesClassifier(
+    slr_ext_estimator = CachedExtraTreesClassifier(
         memory=memory, random_state=args.random_seed)
-    sel_grb_estimator = CachedGradientBoostingClassifier(
+    slr_grb_estimator = CachedGradientBoostingClassifier(
         memory=memory, random_state=args.random_seed)
 else:
     memory = None
-    sel_anova_scorer = ANOVAFScorerClassification()
-    sel_chi2_scorer = Chi2Scorer()
-    sel_limma_scorer = LimmaScorerClassification()
-    sel_mi_scorer = MutualInfoScorerClassification(
+    slr_anova_scorer = ANOVAFScorerClassification()
+    slr_chi2_scorer = Chi2Scorer()
+    slr_limma_scorer = LimmaScorerClassification()
+    slr_mi_scorer = MutualInfoScorerClassification(
         random_state=args.random_seed)
-    sel_svm_estimator = LinearSVC(
+    slr_svm_estimator = LinearSVC(
         random_state=args.random_seed, tol=args.clf_svm_tol)
-    sel_svm_sfm_estimator = LinearSVC(
+    slr_svm_sfm_estimator = LinearSVC(
         penalty='l1', dual=False, random_state=args.random_seed,
         tol=args.clf_svm_tol)
-    sel_rf_estimator = RandomForestClassifier(
+    slr_rf_estimator = RandomForestClassifier(
         random_state=args.random_seed)
-    sel_ext_estimator = ExtraTreesClassifier(
+    slr_ext_estimator = ExtraTreesClassifier(
         random_state=args.random_seed)
-    sel_grb_estimator = GradientBoostingClassifier(
+    slr_grb_estimator = GradientBoostingClassifier(
         random_state=args.random_seed)
 
 # specify params in sort order
 # (needed by code dealing with *SearchCV cv_results_)
 cv_params = {k: v for k, v in vars(args).items()
-             if k.startswith(('trf', 'sel', 'clf', 'rgr'))}
+             if k.startswith(('trf', 'slr', 'clf', 'rgr'))}
 if args.trf_mms_fr:
     cv_params['trf_mms_fr'] = sorted(tuple(x) for x in args.trf_mms_fr)
-if args.sel_col_names:
-    cv_params['sel_col_names'] = sorted(args.sel_col_names)
-if args.sel_vrt_thres:
-    cv_params['sel_vrt_thres'] = sorted(args.sel_vrt_thres)
-if args.sel_mi_n:
-    cv_params['sel_mi_n'] = sorted(args.sel_mi_n)
-if args.sel_skb_k:
-    cv_params['sel_skb_k'] = sorted(args.sel_skb_k)
-elif args.sel_skb_k_max:
-    if args.sel_skb_k_min == 1 and args.sel_skb_k_step > 1:
-        cv_params['sel_skb_k'] = [1] + list(range(
-            0, args.sel_skb_k_max + args.sel_skb_k_step, args.sel_skb_k_step
+if args.slr_col_names:
+    cv_params['slr_col_names'] = sorted(args.slr_col_names)
+if args.slr_vrt_thres:
+    cv_params['slr_vrt_thres'] = sorted(args.slr_vrt_thres)
+if args.slr_mi_n:
+    cv_params['slr_mi_n'] = sorted(args.slr_mi_n)
+if args.slr_skb_k:
+    cv_params['slr_skb_k'] = sorted(args.slr_skb_k)
+elif args.slr_skb_k_max:
+    if args.slr_skb_k_min == 1 and args.slr_skb_k_step > 1:
+        cv_params['slr_skb_k'] = [1] + list(range(
+            0, args.slr_skb_k_max + args.slr_skb_k_step, args.slr_skb_k_step
         ))[1:]
     else:
-        cv_params['sel_skb_k'] = list(range(
-            args.sel_skb_k_min, args.sel_skb_k_max + args.sel_skb_k_step,
-            args.sel_skb_k_step))
-if args.sel_sfp_p:
-    cv_params['sel_sfp_p'] = sorted(args.sel_sfp_p)
-if args.sel_sfm_svm_thres:
-    cv_params['sel_sfm_svm_thres'] = sorted(args.sel_sfm_svm_thres)
-if args.sel_sfm_svm_c:
-    cv_params['sel_sfm_svm_c'] = sorted(args.sel_sfm_svm_c)
-if args.sel_sfm_svm_cw:
-    cv_params['sel_sfm_svm_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_sfm_svm_cw],
+        cv_params['slr_skb_k'] = list(range(
+            args.slr_skb_k_min, args.slr_skb_k_max + args.slr_skb_k_step,
+            args.slr_skb_k_step))
+if args.slr_sfp_p:
+    cv_params['slr_sfp_p'] = sorted(args.slr_sfp_p)
+if args.slr_sfm_svm_thres:
+    cv_params['slr_sfm_svm_thres'] = sorted(args.slr_sfm_svm_thres)
+if args.slr_sfm_svm_c:
+    cv_params['slr_sfm_svm_c'] = sorted(args.slr_sfm_svm_c)
+if args.slr_sfm_svm_cw:
+    cv_params['slr_sfm_svm_cw'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_sfm_svm_cw],
         key=lambda x: (x is not None, x))
-if args.sel_sfm_rf_thres:
-    cv_params['sel_sfm_rf_thres'] = sorted(args.sel_sfm_rf_thres)
-if args.sel_sfm_rf_e:
-    cv_params['sel_sfm_rf_e'] = sorted(args.sel_sfm_rf_e)
-if args.sel_sfm_rf_d:
-    cv_params['sel_sfm_rf_d'] = sorted(
+if args.slr_sfm_rf_thres:
+    cv_params['slr_sfm_rf_thres'] = sorted(args.slr_sfm_rf_thres)
+if args.slr_sfm_rf_e:
+    cv_params['slr_sfm_rf_e'] = sorted(args.slr_sfm_rf_e)
+if args.slr_sfm_rf_d:
+    cv_params['slr_sfm_rf_d'] = sorted(
         [None if a in ('None', 'none') else int(a)
-         for a in args.sel_sfm_rf_d], key=lambda x: (x is not None, x))
-if args.sel_sfm_rf_f:
-    cv_params['sel_sfm_rf_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_sfm_rf_f],
+         for a in args.slr_sfm_rf_d], key=lambda x: (x is not None, x))
+if args.slr_sfm_rf_f:
+    cv_params['slr_sfm_rf_f'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_sfm_rf_f],
         key=lambda x: (x is not None, x))
-if args.sel_sfm_rf_cw:
-    cv_params['sel_sfm_rf_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_sfm_rf_cw],
+if args.slr_sfm_rf_cw:
+    cv_params['slr_sfm_rf_cw'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_sfm_rf_cw],
         key=lambda x: (x is not None, x))
-if args.sel_sfm_ext_thres:
-    cv_params['sel_sfm_ext_thres'] = sorted(args.sel_sfm_ext_thres)
-if args.sel_sfm_ext_e:
-    cv_params['sel_sfm_ext_e'] = sorted(args.sel_sfm_ext_e)
-if args.sel_sfm_ext_d:
-    cv_params['sel_sfm_ext_d'] = sorted(
+if args.slr_sfm_ext_thres:
+    cv_params['slr_sfm_ext_thres'] = sorted(args.slr_sfm_ext_thres)
+if args.slr_sfm_ext_e:
+    cv_params['slr_sfm_ext_e'] = sorted(args.slr_sfm_ext_e)
+if args.slr_sfm_ext_d:
+    cv_params['slr_sfm_ext_d'] = sorted(
         [None if a in ('None', 'none')
-         else int(a) for a in args.sel_sfm_ext_d],
+         else int(a) for a in args.slr_sfm_ext_d],
         key=lambda x: (x is not None, x))
-if args.sel_sfm_ext_f:
-    cv_params['sel_sfm_ext_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_sfm_ext_f],
+if args.slr_sfm_ext_f:
+    cv_params['slr_sfm_ext_f'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_sfm_ext_f],
         key=lambda x: (x is not None, x))
-if args.sel_sfm_ext_cw:
-    cv_params['sel_sfm_ext_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_sfm_ext_cw],
+if args.slr_sfm_ext_cw:
+    cv_params['slr_sfm_ext_cw'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_sfm_ext_cw],
         key=lambda x: (x is not None, x))
-if args.sel_sfm_grb_e:
-    cv_params['sel_sfm_grb_e'] = sorted(args.sel_sfm_grb_e)
-if args.sel_sfm_grb_d:
-    cv_params['sel_sfm_grb_d'] = sorted(args.sel_sfm_grb_d)
-if args.sel_sfm_grb_f:
-    cv_params['sel_sfm_grb_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_sfm_grb_f],
+if args.slr_sfm_grb_e:
+    cv_params['slr_sfm_grb_e'] = sorted(args.slr_sfm_grb_e)
+if args.slr_sfm_grb_d:
+    cv_params['slr_sfm_grb_d'] = sorted(args.slr_sfm_grb_d)
+if args.slr_sfm_grb_f:
+    cv_params['slr_sfm_grb_f'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_sfm_grb_f],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_svm_c:
-    cv_params['sel_rfe_svm_c'] = sorted(args.sel_rfe_svm_c)
-if args.sel_rfe_svm_cw:
-    cv_params['sel_rfe_svm_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_rfe_svm_cw],
+if args.slr_rfe_svm_c:
+    cv_params['slr_rfe_svm_c'] = sorted(args.slr_rfe_svm_c)
+if args.slr_rfe_svm_cw:
+    cv_params['slr_rfe_svm_cw'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_rfe_svm_cw],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_rf_e:
-    cv_params['sel_rfe_rf_e'] = sorted(args.sel_rfe_rf_e)
-if args.sel_rfe_rf_d:
-    cv_params['sel_rfe_rf_d'] = sorted(
+if args.slr_rfe_rf_e:
+    cv_params['slr_rfe_rf_e'] = sorted(args.slr_rfe_rf_e)
+if args.slr_rfe_rf_d:
+    cv_params['slr_rfe_rf_d'] = sorted(
         [None if a in ('None', 'none')
-         else int(a) for a in args.sel_rfe_rf_d],
+         else int(a) for a in args.slr_rfe_rf_d],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_rf_f:
-    cv_params['sel_rfe_rf_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_rfe_rf_f],
+if args.slr_rfe_rf_f:
+    cv_params['slr_rfe_rf_f'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_rfe_rf_f],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_rf_cw:
-    cv_params['sel_rfe_rf_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_rfe_rf_cw],
+if args.slr_rfe_rf_cw:
+    cv_params['slr_rfe_rf_cw'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_rfe_rf_cw],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_ext_e:
-    cv_params['sel_rfe_ext_e'] = sorted(args.sel_rfe_ext_e)
-if args.sel_rfe_ext_d:
-    cv_params['sel_rfe_ext_d'] = sorted(
+if args.slr_rfe_ext_e:
+    cv_params['slr_rfe_ext_e'] = sorted(args.slr_rfe_ext_e)
+if args.slr_rfe_ext_d:
+    cv_params['slr_rfe_ext_d'] = sorted(
         [None if a in ('None', 'none')
-         else int(a) for a in args.sel_rfe_ext_d],
+         else int(a) for a in args.slr_rfe_ext_d],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_ext_f:
-    cv_params['sel_rfe_ext_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_rfe_ext_f],
+if args.slr_rfe_ext_f:
+    cv_params['slr_rfe_ext_f'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_rfe_ext_f],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_ext_cw:
-    cv_params['sel_rfe_ext_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_rfe_ext_cw],
+if args.slr_rfe_ext_cw:
+    cv_params['slr_rfe_ext_cw'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_rfe_ext_cw],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_grb_e:
-    cv_params['sel_rfe_grb_e'] = sorted(args.sel_rfe_grb_e)
-if args.sel_rfe_grb_d:
-    cv_params['sel_rfe_grb_d'] = sorted(args.sel_rfe_grb_d)
-if args.sel_rfe_grb_f:
-    cv_params['sel_rfe_grb_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.sel_rfe_grb_f],
+if args.slr_rfe_grb_e:
+    cv_params['slr_rfe_grb_e'] = sorted(args.slr_rfe_grb_e)
+if args.slr_rfe_grb_d:
+    cv_params['slr_rfe_grb_d'] = sorted(args.slr_rfe_grb_d)
+if args.slr_rfe_grb_f:
+    cv_params['slr_rfe_grb_f'] = sorted(
+        [None if a in ('None', 'none') else a for a in args.slr_rfe_grb_f],
         key=lambda x: (x is not None, x))
-if args.sel_rfe_step:
-    cv_params['sel_rfe_step'] = sorted(args.sel_rfe_step)
-if args.sel_rlf_n:
-    cv_params['sel_rlf_n'] = sorted(args.sel_rlf_n)
-if args.sel_rlf_s:
-    cv_params['sel_rlf_s'] = sorted(args.sel_rlf_s)
+if args.slr_rfe_step:
+    cv_params['slr_rfe_step'] = sorted(args.slr_rfe_step)
+if args.slr_rlf_n:
+    cv_params['slr_rlf_n'] = sorted(args.slr_rlf_n)
+if args.slr_rlf_s:
+    cv_params['slr_rlf_s'] = sorted(args.slr_rlf_s)
 if args.clf_svm_c:
     cv_params['clf_svm_c'] = sorted(args.clf_svm_c)
 if args.clf_svm_cw:
@@ -618,103 +618,103 @@ pipe_config = {
     'ColumnSelector': {
         'estimator': ColumnSelector(),
         'param_grid': {
-            'cols': cv_params['sel_col_names']},
+            'cols': cv_params['slr_col_names']},
         'param_routing': ['feature_meta']},
     'VarianceThreshold': {
         'estimator':  VarianceThreshold(),
         'param_grid': {
-            'threshold': cv_params['sel_vrt_thres']}},
+            'threshold': cv_params['slr_vrt_thres']}},
     'ANOVA-KBest': {
-        'estimator': SelectKBest(sel_anova_scorer),
+        'estimator': SelectKBest(slr_anova_scorer),
         'param_grid': {
-            'k': cv_params['sel_skb_k']}},
+            'k': cv_params['slr_skb_k']}},
     'Chi2-KBest': {
-        'estimator': SelectKBest(sel_chi2_scorer),
+        'estimator': SelectKBest(slr_chi2_scorer),
         'param_grid': {
-            'k': cv_params['sel_skb_k']}},
+            'k': cv_params['slr_skb_k']}},
     'Limma-KBest': {
-        'estimator': SelectKBest(sel_limma_scorer),
+        'estimator': SelectKBest(slr_limma_scorer),
         'param_grid': {
-            'k': cv_params['sel_skb_k']}},
+            'k': cv_params['slr_skb_k']}},
     'MI-KBest': {
-        'estimator': SelectKBest(sel_mi_scorer),
+        'estimator': SelectKBest(slr_mi_scorer),
         'param_grid': {
-            'k': cv_params['sel_skb_k'],
-            'score_func__n_neighbors': cv_params['sel_mi_n']}},
+            'k': cv_params['slr_skb_k'],
+            'score_func__n_neighbors': cv_params['slr_mi_n']}},
     'SVM-SFM-KBest': {
-        'estimator': SelectFromModel(sel_svm_sfm_estimator),
+        'estimator': SelectFromModel(slr_svm_sfm_estimator),
         'param_grid': {
-            'estimator__C': cv_params['sel_sfm_svm_c'],
-            'estimator__class_weight': cv_params['sel_sfm_svm_cw'],
-            'k': cv_params['sel_skb_k']}},
+            'estimator__C': cv_params['slr_sfm_svm_c'],
+            'estimator__class_weight': cv_params['slr_sfm_svm_cw'],
+            'k': cv_params['slr_skb_k']}},
     'RF-SFM-KBest': {
-        'estimator': SelectFromModel(sel_rf_estimator),
+        'estimator': SelectFromModel(slr_rf_estimator),
         'param_grid': {
-            'estimator__n_estimators': cv_params['sel_sfm_rf_e'],
-            'estimator__max_depth': cv_params['sel_sfm_rf_d'],
-            'estimator__max_features': cv_params['sel_sfm_rf_f'],
-            'estimator__class_weight': cv_params['sel_sfm_rf_cw'],
-            'k': cv_params['sel_skb_k']}},
+            'estimator__n_estimators': cv_params['slr_sfm_rf_e'],
+            'estimator__max_depth': cv_params['slr_sfm_rf_d'],
+            'estimator__max_features': cv_params['slr_sfm_rf_f'],
+            'estimator__class_weight': cv_params['slr_sfm_rf_cw'],
+            'k': cv_params['slr_skb_k']}},
     'EXT-SFM-KBest': {
-        'estimator': SelectFromModel(sel_ext_estimator),
+        'estimator': SelectFromModel(slr_ext_estimator),
         'param_grid': {
-            'estimator__n_estimators': cv_params['sel_sfm_ext_e'],
-            'estimator__max_depth': cv_params['sel_sfm_ext_d'],
-            'estimator__max_features': cv_params['sel_sfm_ext_f'],
-            'estimator__class_weight': cv_params['sel_sfm_ext_cw'],
-            'k': cv_params['sel_skb_k']}},
+            'estimator__n_estimators': cv_params['slr_sfm_ext_e'],
+            'estimator__max_depth': cv_params['slr_sfm_ext_d'],
+            'estimator__max_features': cv_params['slr_sfm_ext_f'],
+            'estimator__class_weight': cv_params['slr_sfm_ext_cw'],
+            'k': cv_params['slr_skb_k']}},
     'GRB-SFM-KBest': {
-        'estimator': SelectFromModel(sel_grb_estimator),
+        'estimator': SelectFromModel(slr_grb_estimator),
         'param_grid': {
-            'estimator__n_estimators': cv_params['sel_sfm_grb_e'],
-            'estimator__max_depth': cv_params['sel_sfm_grb_d'],
-            'estimator__max_features': cv_params['sel_sfm_grb_f'],
-            'k': cv_params['sel_skb_k']}},
+            'estimator__n_estimators': cv_params['slr_sfm_grb_e'],
+            'estimator__max_depth': cv_params['slr_sfm_grb_d'],
+            'estimator__max_features': cv_params['slr_sfm_grb_f'],
+            'k': cv_params['slr_skb_k']}},
     'SVM-RFE': {
-        'estimator': RFE(sel_svm_estimator,
-                         tune_step_at=args.sel_rfe_tune_step_at,
-                         reducing_step=args.sel_rfe_reducing_step,
-                         verbose=args.sel_rfe_verbose),
+        'estimator': RFE(slr_svm_estimator,
+                         tune_step_at=args.slr_rfe_tune_step_at,
+                         reducing_step=args.slr_rfe_reducing_step,
+                         verbose=args.slr_rfe_verbose),
         'param_grid': {
-            'estimator__C': cv_params['sel_rfe_svm_c'],
-            'estimator__class_weight': cv_params['sel_rfe_svm_cw'],
-            'step': cv_params['sel_rfe_step'],
-            'n_features_to_select': cv_params['sel_skb_k']}},
+            'estimator__C': cv_params['slr_rfe_svm_c'],
+            'estimator__class_weight': cv_params['slr_rfe_svm_cw'],
+            'step': cv_params['slr_rfe_step'],
+            'n_features_to_select': cv_params['slr_skb_k']}},
     'RF-RFE': {
-        'estimator': RFE(sel_rf_estimator,
-                         tune_step_at=args.sel_rfe_tune_step_at,
-                         reducing_step=args.sel_rfe_reducing_step,
-                         verbose=args.sel_rfe_verbose),
+        'estimator': RFE(slr_rf_estimator,
+                         tune_step_at=args.slr_rfe_tune_step_at,
+                         reducing_step=args.slr_rfe_reducing_step,
+                         verbose=args.slr_rfe_verbose),
         'param_grid': {
-            'estimator__n_estimators': cv_params['sel_rfe_rf_e'],
-            'estimator__max_depth': cv_params['sel_rfe_rf_d'],
-            'estimator__max_features': cv_params['sel_rfe_rf_f'],
-            'estimator__class_weight': cv_params['sel_rfe_rf_cw'],
-            'step': cv_params['sel_rfe_step'],
-            'k': cv_params['sel_skb_k']}},
+            'estimator__n_estimators': cv_params['slr_rfe_rf_e'],
+            'estimator__max_depth': cv_params['slr_rfe_rf_d'],
+            'estimator__max_features': cv_params['slr_rfe_rf_f'],
+            'estimator__class_weight': cv_params['slr_rfe_rf_cw'],
+            'step': cv_params['slr_rfe_step'],
+            'n_features_to_select': cv_params['slr_skb_k']}},
     'EXT-RFE': {
-        'estimator': RFE(sel_ext_estimator,
-                         tune_step_at=args.sel_rfe_tune_step_at,
-                         reducing_step=args.sel_rfe_reducing_step,
-                         verbose=args.sel_rfe_verbose),
+        'estimator': RFE(slr_ext_estimator,
+                         tune_step_at=args.slr_rfe_tune_step_at,
+                         reducing_step=args.slr_rfe_reducing_step,
+                         verbose=args.slr_rfe_verbose),
         'param_grid': {
-            'estimator__n_estimators': cv_params['sel_rfe_ext_e'],
-            'estimator__max_depth': cv_params['sel_rfe_ext_d'],
-            'estimator__max_features': cv_params['sel_rfe_ext_f'],
-            'estimator__class_weight': cv_params['sel_rfe_ext_cw'],
-            'step': cv_params['sel_rfe_step'],
-            'k': cv_params['sel_skb_k']}},
+            'estimator__n_estimators': cv_params['slr_rfe_ext_e'],
+            'estimator__max_depth': cv_params['slr_rfe_ext_d'],
+            'estimator__max_features': cv_params['slr_rfe_ext_f'],
+            'estimator__class_weight': cv_params['slr_rfe_ext_cw'],
+            'step': cv_params['slr_rfe_step'],
+            'n_features_to_select': cv_params['slr_skb_k']}},
     'GRB-RFE': {
-        'estimator': RFE(sel_grb_estimator,
-                         tune_step_at=args.sel_rfe_tune_step_at,
-                         reducing_step=args.sel_rfe_reducing_step,
-                         verbose=args.sel_rfe_verbose),
+        'estimator': RFE(slr_grb_estimator,
+                         tune_step_at=args.slr_rfe_tune_step_at,
+                         reducing_step=args.slr_rfe_reducing_step,
+                         verbose=args.slr_rfe_verbose),
         'param_grid': {
-            'estimator__n_estimators': cv_params['sel_rfe_grb_e'],
-            'estimator__max_depth': cv_params['sel_rfe_grb_d'],
-            'estimator__max_features': cv_params['sel_rfe_grb_f'],
-            'step': cv_params['sel_rfe_step'],
-            'k': cv_params['sel_skb_k']}},
+            'estimator__n_estimators': cv_params['slr_rfe_grb_e'],
+            'estimator__max_depth': cv_params['slr_rfe_grb_d'],
+            'estimator__max_features': cv_params['slr_rfe_grb_f'],
+            'step': cv_params['slr_rfe_step'],
+            'n_features_to_select': cv_params['slr_skb_k']}},
     'EdgeRFilterByExpr': {
         'estimator': EdgeRFilterByExpr(),
         'param_grid': {},
@@ -722,33 +722,33 @@ pipe_config = {
     'DESeq2': {
         'estimator': DESeq2(memory=memory),
         'param_grid': {
-            'k': cv_params['sel_skb_k']},
+            'k': cv_params['slr_skb_k']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'EdgeR': {
         'estimator': EdgeR(memory=memory),
         'param_grid': {
-            'k': cv_params['sel_skb_k']},
+            'k': cv_params['slr_skb_k']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'LimmaVoom': {
         'estimator': LimmaVoom(memory=memory),
         'param_grid': {
-            'k': cv_params['sel_skb_k']},
+            'k': cv_params['slr_skb_k']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'DreamVoom': {
         'estimator': DreamVoom(memory=memory),
         'param_grid': {
-            'k': cv_params['sel_skb_k']},
+            'k': cv_params['slr_skb_k']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'FCBF': {
         'estimator': FCBF(memory=memory),
         'param_grid': {
-            'k': cv_params['sel_skb_k']}},
+            'k': cv_params['slr_skb_k']}},
     'ReliefF': {
         'estimator': ReliefF(memory=memory),
         'param_grid': {
-            'k': cv_params['sel_skb_k'],
-            'n_neighbors': cv_params['sel_rlf_n'],
-            'sample_size': cv_params['sel_rlf_s']}},
+            'k': cv_params['slr_skb_k'],
+            'n_neighbors': cv_params['slr_rlf_n'],
+            'sample_size': cv_params['slr_rlf_s']}},
     'CFS': {
         'estimator': CFS()},
     # classifiers
@@ -826,25 +826,25 @@ pipe_config = {
             'learning_rate': cv_params['clf_mlp_lr']}}}
 
 params_num_xticks = [
-    'sel__k',
-    'sel__score_func__n_neighbors',
-    'sel__estimator__n_estimators',
-    'sel__n_neighbors',
-    'sel__sample_size',
-    'sel__n_features_to_select',
+    'slr__k',
+    'slr__score_func__n_neighbors',
+    'slr__estimator__n_estimators',
+    'slr__n_neighbors',
+    'slr__sample_size',
+    'slr__n_features_to_select',
     'clf__degree',
     'clf__n_neighbors',
     'clf__n_estimators']
 params_fixed_xticks = [
+    'slr',
+    'slr__cols',
+    'slr__alpha',
+    'slr__estimator__C',
+    'slr__estimator__class_weight',
+    'slr__estimator__max_depth',
+    'slr__estimator__max_features',
+    'slr__threshold',
     'trf',
-    'sel',
-    'sel__cols',
-    'sel__alpha',
-    'sel__estimator__C',
-    'sel__estimator__class_weight',
-    'sel__estimator__max_depth',
-    'sel__estimator__max_features',
-    'sel__threshold',
     'clf',
     'clf__C',
     'clf__class_weight',
@@ -887,7 +887,7 @@ def setup_pipe_and_param_grid():
                                      .format(step_key))
                 if isinstance(estimator, (SelectorMixin,
                                           ExtendedSelectorMixin)):
-                    step_type = 'sel'
+                    step_type = 'slr'
                     pipe_props['has_selector'] = True
                 elif isinstance(estimator, (TransformerMixin,
                                             ExtendedTransformerMixin)):
@@ -1245,17 +1245,17 @@ def run_model_selection():
                               param_scores_cv)
         # plot top-ranked selected features vs test performance metrics
         if np.any(feature_weights):
-            _, ax_sel = plt.subplots()
-            ax_sel.set_title(('{}\n{}\nEffect of Number of Top-Ranked Features'
+            _, ax_slr = plt.subplots()
+            ax_slr.set_title(('{}\n{}\nEffect of Number of Top-Ranked Features'
                               'Selected on Test Performance Metrics').format(
                                   dataset_name, pipe_name),
                              fontsize=args.title_font_size)
-            ax_sel.set_xlabel('Number of top-ranked features selected',
+            ax_slr.set_xlabel('Number of top-ranked features selected',
                               fontsize=args.axis_font_size)
-            ax_sel.set_ylabel('Test Score', fontsize=args.axis_font_size)
+            ax_slr.set_ylabel('Test Score', fontsize=args.axis_font_size)
             x_axis = range(1, feature_idxs.size + 1)
-            ax_sel.set_xlim([min(x_axis), max(x_axis)])
-            ax_sel.set_xticks(x_axis)
+            ax_slr.set_xlim([min(x_axis), max(x_axis)])
+            ax_slr.set_xticks(x_axis)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
             _, ax_roc = plt.subplots()
@@ -1298,10 +1298,10 @@ def run_model_selection():
                 print()
             if np.any(feature_weights):
                 tf_pipe_steps = pipe_steps[:-1]
-                tf_pipe_steps.append(('selc', ColumnSelector()))
+                tf_pipe_steps.append(('slrc', ColumnSelector()))
                 tf_pipe_steps.append(pipe_steps[-1])
                 tf_pipe_param_routing = pipe_param_routing
-                tf_pipe_param_routing['selc'] = (
+                tf_pipe_param_routing['slrc'] = (
                     pipe_config['ColumnSelector']['param_routing'])
                 tf_name_sets = []
                 for feature_name in selected_feature_meta.sort_values(
@@ -1316,7 +1316,7 @@ def run_model_selection():
                         delayed(fit_pipeline)(
                             X, y, tf_pipe_steps, tf_pipe_param_routing,
                             {**search.best_params_,
-                             'selc__cols': feature_names}, pipe_fit_params)
+                             'slrc__cols': feature_names}, pipe_fit_params)
                         for feature_names in tf_name_sets)
                 tf_scores_te = {}
                 for tf_pipe in tf_pipes:
@@ -1329,13 +1329,13 @@ def run_model_selection():
                                 tf_scores_te[metric] = []
                             tf_scores_te[metric].append(scores_te[metric])
                 for me_idx, metric in enumerate(tf_scores_te):
-                    ax_sel.plot(x_axis, tf_scores_te[metric], alpha=0.8, lw=2,
+                    ax_slr.plot(x_axis, tf_scores_te[metric], alpha=0.8, lw=2,
                                 color=metric_colors_te[te_idx + me_idx],
                                 label='{} {}'.format(dataset_name_te,
                                                      metric_label[metric]))
-                ax_sel.legend(loc='lower right', fontsize='small')
-                ax_sel.tick_params(labelsize=args.axis_font_size)
-                ax_sel.grid(True, alpha=0.3)
+                ax_slr.legend(loc='lower right', fontsize='small')
+                ax_slr.tick_params(labelsize=args.axis_font_size)
+                ax_slr.grid(True, alpha=0.3)
             if 'roc_auc' in args.scv_scoring:
                 ax_roc.plot(scores_te['fpr'], scores_te['tpr'], alpha=0.8,
                             lw=3, color=metric_colors_te[

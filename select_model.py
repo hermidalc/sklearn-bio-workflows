@@ -1146,7 +1146,7 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
             dataset_name, pipe_name, param), fontsize=args.title_font_size)
         plt.xlabel(param, fontsize=args.axis_font_size)
         plt.ylabel('CV Score', fontsize=args.axis_font_size)
-        for me_idx, metric in enumerate(args.scv_scoring):
+        for metric_idx, metric in enumerate(args.scv_scoring):
             plt.plot(x_axis, mean_scores_cv[metric], lw=2, alpha=0.8,
                      label='Mean {}'.format(metric_label[metric]))
             plt.fill_between(x_axis,
@@ -1155,9 +1155,9 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                              [m + s for m, s in zip(mean_scores_cv[metric],
                                                     std_scores_cv[metric])],
                              alpha=0.2, color='grey', label=(
-                                 r'$\pm$ 1 std. dev.' if me_idx == 0
+                                 r'$\pm$ 1 std. dev.' if metric_idx == 0
                                  else None))
-        plt.legend(loc='lower right', fontsize='small')
+        plt.legend(loc='lower right', fontsize='medium')
         plt.tick_params(labelsize=args.axis_font_size)
         plt.grid(True, alpha=0.3)
 
@@ -1333,7 +1333,7 @@ def run_model_selection():
                                 color=metric_colors_te[te_idx + me_idx],
                                 label='{} {}'.format(dataset_name_te,
                                                      metric_label[metric]))
-                ax_slr.legend(loc='lower right', fontsize='small')
+                ax_slr.legend(loc='lower right', fontsize='medium')
                 ax_slr.tick_params(labelsize=args.axis_font_size)
                 ax_slr.grid(True, alpha=0.3)
             if 'roc_auc' in args.scv_scoring:
@@ -1344,7 +1344,7 @@ def run_model_selection():
                                 dataset_name_te, scores_te['roc_auc']))
                 ax_roc.plot([0, 1], [0, 1], alpha=0.2, color='grey',
                             linestyle='--', lw=3, label='Chance')
-                ax_roc.legend(loc='lower right', fontsize='small')
+                ax_roc.legend(loc='lower right', fontsize='medium')
                 ax_roc.tick_params(labelsize=args.axis_font_size)
                 ax_roc.grid(False)
             if 'average_precision' in args.scv_scoring:
@@ -1353,7 +1353,7 @@ def run_model_selection():
                                 te_idx * len(args.scv_scoring)], where='post',
                             label='{} PR (AUC = {:.4f})'.format(
                                 dataset_name_te, scores_te['pr_auc']))
-                ax_pre.legend(loc='lower right', fontsize='small')
+                ax_pre.legend(loc='lower right', fontsize='medium')
                 ax_pre.tick_params(labelsize=args.axis_font_size)
                 ax_pre.grid(False)
     # train-test nested cv
@@ -1558,7 +1558,7 @@ def run_model_selection():
                              color='grey', label=r'$\pm$ 1 std. dev.')
             plt.plot([0, 1], [0, 1], alpha=0.2, color='grey',
                      linestyle='--', lw=3, label='Chance')
-            plt.legend(loc='lower right', fontsize='small')
+            plt.legend(loc='lower right', fontsize='medium')
             plt.tick_params(labelsize=args.axis_font_size)
             plt.grid(False)
         if 'average_precision' in args.scv_scoring:
@@ -1598,7 +1598,7 @@ def run_model_selection():
             pres_lower = np.maximum(mean_pre - std_pre, 0)
             plt.fill_between(mean_rec, pres_lower, pres_upper, alpha=0.2,
                              color='grey', label=r'$\pm$ 1 std. dev.')
-            plt.legend(loc='lower right', fontsize='small')
+            plt.legend(loc='lower right', fontsize='medium')
             plt.tick_params(labelsize=args.axis_font_size)
             plt.grid(False)
 

@@ -6,7 +6,7 @@ import re
 import sys
 import warnings
 from argparse import ArgumentParser
-from itertools import combinations, product
+from itertools import product
 from pprint import pprint
 from shutil import rmtree
 from tempfile import mkdtemp
@@ -23,8 +23,8 @@ from joblib import Memory, Parallel, delayed, dump, parallel_backend
 from natsort import natsorted
 from rpy2.robjects import numpy2ri, pandas2ri
 from rpy2.robjects.packages import importr
-from sklearn.base import (BaseEstimator, ClassifierMixin, clone,
-                          RegressorMixin, TransformerMixin)
+from sklearn.base import (BaseEstimator, ClassifierMixin, RegressorMixin,
+                          TransformerMixin)
 from sklearn.discriminant_analysis import (
     LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis)
 from sklearn.ensemble import (
@@ -64,8 +64,7 @@ from sklearn_extensions.feature_selection import (
     LimmaScorerClassification, LimmaVoom, MutualInfoScorerClassification,
     ReliefF, RFE, SelectFromModel, SelectKBest, VarianceThreshold)
 from sklearn_extensions.model_selection import (
-    GridSearchCV, ParameterGrid, RandomizedSearchCV,
-    StratifiedGroupShuffleSplit)
+    GridSearchCV, RandomizedSearchCV, StratifiedGroupShuffleSplit)
 from sklearn_extensions.pipeline import Pipeline
 from sklearn_extensions.preprocessing import (
     DESeq2RLEVST, EdgeRTMMLogCPM, LimmaRemoveBatchEffect)
@@ -384,14 +383,14 @@ else:
     sel_grb_estimator = GradientBoostingClassifier(
         random_state=args.random_seed)
 
-# specify params in sort order (needed by code dealing with *SearchCV
-# cv_results_)
+# specify params in sort order
+# (needed by code dealing with *SearchCV cv_results_)
 cv_params = {k: v for k, v in vars(args).items()
              if k.startswith(('trf', 'sel', 'clf', 'rgr'))}
 if args.trf_mms_fr:
-    cv_params['trf_mms_fr'] = [tuple(x) for x in args.trf_mms_fr]
+    cv_params['trf_mms_fr'] = sorted(tuple(x) for x in args.trf_mms_fr)
 if args.sel_col_names:
-    cv_params['sel_col_names'] = args.sel_col_names
+    cv_params['sel_col_names'] = sorted(args.sel_col_names)
 if args.sel_vrt_thres:
     cv_params['sel_vrt_thres'] = sorted(args.sel_vrt_thres)
 if args.sel_mi_n:
@@ -735,6 +734,11 @@ pipe_config = {
         'param_grid': {
             'k': cv_params['sel_skb_k']},
         'param_routing': ['sample_meta', 'feature_meta']},
+    'DreamVoom': {
+        'estimator': DreamVoom(memory=memory),
+        'param_grid': {
+            'k': cv_params['sel_skb_k']},
+        'param_routing': ['sample_meta', 'feature_meta']},
     'FCBF': {
         'estimator': FCBF(memory=memory),
         'param_grid': {
@@ -756,7 +760,7 @@ pipe_config = {
             'class_weight': cv_params['clf_svm_cw']},
         'param_routing': ['sample_weight']},
     'KernelSVM': {
-        'estimator': SVC(cache_size=args.clf_svm_cache,
+        'estimator': SVC(cache_size=args.clf_svm_cache, gamma='scale',
                          random_state=args.random_seed),
         'param_grid': {
             'C': cv_params['clf_svm_c'],
@@ -820,11 +824,7 @@ pipe_config = {
             'solver': cv_params['clf_mlp_slvr'],
             'alpha': cv_params['clf_mlp_a'],
             'learning_rate': cv_params['clf_mlp_lr']}}}
-params_feature_select = [
-    'sel__k',
-    'sel__n_features_to_select']
-params_no_sort = [
-    'sel__cols']
+
 params_num_xticks = [
     'sel__k',
     'sel__score_func__n_neighbors',
@@ -836,6 +836,8 @@ params_num_xticks = [
     'clf__n_neighbors',
     'clf__n_estimators']
 params_fixed_xticks = [
+    'trf',
+    'sel',
     'sel__cols',
     'sel__alpha',
     'sel__estimator__C',
@@ -843,6 +845,7 @@ params_fixed_xticks = [
     'sel__estimator__max_depth',
     'sel__estimator__max_features',
     'sel__threshold',
+    'clf',
     'clf__C',
     'clf__class_weight',
     'clf__kernel',
@@ -863,8 +866,7 @@ def setup_pipe_and_param_grid():
     pipe_param_routing = None
     pipe_props = {'has_selector': False, 'uses_rjava': False}
     param_grid = []
-    param_grid_idx = 0
-    param_grid_meta = None
+    param_grid_dict = {}
     pipe_step_keys = []
     pipe_step_types = []
     for step_idx, step_keys in enumerate(args.pipe_steps):
@@ -875,7 +877,6 @@ def setup_pipe_and_param_grid():
             pipe_step_keys.append(step_keys)
     for pipe_step_combo in product(*pipe_step_keys):
         params = {}
-        params_meth_idx = {}
         for step_idx, step_key in enumerate(pipe_step_combo):
             if step_key:
                 if step_key in pipe_config:
@@ -912,9 +913,13 @@ def setup_pipe_and_param_grid():
                     for param, param_values in (
                             pipe_config[step_key]['param_grid'].items()):
                         if param_values:
-                            uniq_step_param = uniq_step_name + '__' + param
+                            uniq_step_param = '{}__{}'.format(uniq_step_name,
+                                                              param)
                             if len(param_values) > 1:
                                 params[uniq_step_param] = param_values
+                                if uniq_step_param not in param_grid_dict:
+                                    param_grid_dict[uniq_step_param] = (
+                                        param_values)
                             else:
                                 estimator.set_params(
                                     **{param: param_values[0]})
@@ -937,25 +942,27 @@ def setup_pipe_and_param_grid():
                         pipe_steps.append((uniq_step_name, estimator))
                 if len(pipe_step_keys[step_idx]) > 1:
                     params[uniq_step_name] = [estimator]
-                    params_meth_idx[uniq_step_name] = (
-                        pipe_step_keys[step_idx].index(step_key))
+                    if uniq_step_name not in param_grid_dict:
+                        param_grid_dict[uniq_step_name] = []
+                    if estimator not in param_grid_dict[uniq_step_name]:
+                        param_grid_dict[uniq_step_name].append(estimator)
             else:
                 uniq_step_name = pipe_step_types[step_idx] + str(step_idx)
-                params_meth_idx[uniq_step_name] = (
-                    pipe_step_keys[step_idx].index(step_key))
+                params[uniq_step_name] = [None]
+                if uniq_step_name not in param_grid_dict:
+                    param_grid_dict[uniq_step_name] = []
+                if None not in param_grid_dict[uniq_step_name]:
+                    param_grid_dict[uniq_step_name].append(None)
         param_grid.append(params)
-        if params_meth_idx:
-            params_meta = {'meth_idx': params_meth_idx, 'grid_idxs': []}
-            for _ in ParameterGrid(params):
-                params_meta['grid_idxs'].append(param_grid_idx)
-                param_grid_idx += 1
-            if param_grid_meta is None:
-                param_grid_meta = []
-            param_grid_meta.append(params_meta)
     pipe = Pipeline(pipe_steps, memory=memory,
                     param_routing=pipe_param_routing)
+    for param, param_values in param_grid_dict.items():
+        if any(isinstance(v, BaseEstimator) for v in param_values):
+            param_grid_dict[param] = sorted([
+                '.'.join([type(o).__module__, type(o).__qualname__])
+                for o in param_values])
     return (pipe, pipe_steps, pipe_param_routing, pipe_props, param_grid,
-            param_grid_meta)
+            param_grid_dict)
 
 
 def load_dataset(file):
@@ -1042,13 +1049,13 @@ def calculate_test_scores(pipe, X_te, y_te, pipe_predict_params,
     return scores
 
 
-def get_feature_idxs_and_weights(pipe, num_orig_features):
-    feature_idxs = np.arange(num_orig_features)
+def get_feature_idxs_and_weights(pipe, num_total_features):
+    feature_idxs = np.arange(num_total_features)
     for step in pipe.named_steps:
         if hasattr(pipe.named_steps[step], 'get_support'):
             feature_idxs = feature_idxs[
                 pipe.named_steps[step].get_support(indices=True)]
-    weights = np.array([], dtype=float)
+    weights = np.zeros_like(feature_idxs, dtype=float)
     final_estimator = pipe.steps[-1][1]
     if hasattr(final_estimator, 'coef_'):
         weights = np.square(final_estimator.coef_[0])
@@ -1068,24 +1075,23 @@ def get_feature_idxs_and_weights(pipe, num_orig_features):
     return feature_idxs, weights
 
 
-def add_param_scores_cv(search, param_grid, param_scores_cv=None):
+def add_param_scores_cv(search, param_grid_dict, param_scores_cv=None):
     if param_scores_cv is None:
         param_scores_cv = {}
-    for param, param_values in param_grid.items():
+    for param, param_values in param_grid_dict.items():
         if len(param_values) == 1:
             continue
-        new_shape = (
-            len(param_values),
-            int(len(search.cv_results_['params']) / len(param_values)))
         param_values_cv = np.ma.getdata(
             search.cv_results_['param_{}'.format(param)])
-        nonuniq_param = re.sub(r'^(\w+)\d+', r'\1', param)
-        if nonuniq_param not in params_no_sort:
-            param_values_cv_sorted_idxs = np.where(
-                np.array(param_values).reshape(len(param_values), 1)
-                == param_values_cv)[1]
-        else:
-            param_values_cv_sorted_idxs = np.arange(param_values_cv.shape[0])
+        if any(isinstance(v, BaseEstimator) for v in param_values_cv):
+            param_values_cv = np.array([
+                '.'.join([type(o).__module__, type(o).__qualname__])
+                for o in param_values_cv])
+        param_values_cv_sorted_idxs = np.where(
+            np.array(param_values).reshape(len(param_values), 1)
+            == param_values_cv)[1]
+        new_shape = (len(param_values), int(len(search.cv_results_['params'])
+                                            / len(param_values)))
         if param not in param_scores_cv:
             param_scores_cv[param] = {}
         for metric in args.scv_scoring:
@@ -1112,7 +1118,7 @@ def add_param_scores_cv(search, param_grid, param_scores_cv=None):
     return param_scores_cv
 
 
-def plot_param_cv_metrics(dataset_name, pipe_name, param_grid,
+def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                           param_scores_cv):
     sns.set_palette(sns.color_palette('hls', len(args.scv_scoring)))
     for param in param_scores_cv:
@@ -1130,11 +1136,11 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid,
         plt.figure()
         nonuniq_param = re.sub(r'^(\w+)\d+', r'\1', param)
         if nonuniq_param in params_num_xticks:
-            x_axis = param_grid[param]
+            x_axis = param_grid_dict[param]
             plt.xticks(x_axis)
         elif nonuniq_param in params_fixed_xticks:
-            x_axis = range(len(param_grid[param]))
-            plt.xticks(x_axis, [str(p) for p in param_grid[param]])
+            x_axis = range(len(param_grid_dict[param]))
+            plt.xticks(x_axis, [str(p) for p in param_grid_dict[param]])
         plt.xlim([min(x_axis), max(x_axis)])
         plt.title('{}\n{}\nEffect of {} on CV Performance Metrics'.format(
             dataset_name, pipe_name, param), fontsize=args.title_font_size)
@@ -1143,27 +1149,27 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid,
         for me_idx, metric in enumerate(args.scv_scoring):
             plt.plot(x_axis, mean_scores_cv[metric], lw=2, alpha=0.8,
                      label='Mean {}'.format(metric_label[metric]))
-            plt.fill_between(
-                x_axis,
-                [m - s for m, s in zip(mean_scores_cv[metric],
-                                       std_scores_cv[metric])],
-                [m + s for m, s in zip(mean_scores_cv[metric],
-                                       std_scores_cv[metric])],
-                color='grey', alpha=0.2, label=(
-                    r'$\pm$ 1 std. dev.' if me_idx == 0 else None))
+            plt.fill_between(x_axis,
+                             [m - s for m, s in zip(mean_scores_cv[metric],
+                                                    std_scores_cv[metric])],
+                             [m + s for m, s in zip(mean_scores_cv[metric],
+                                                    std_scores_cv[metric])],
+                             alpha=0.2, color='grey', label=(
+                                 r'$\pm$ 1 std. dev.' if me_idx == 0
+                                 else None))
         plt.legend(loc='lower right', fontsize='small')
         plt.tick_params(labelsize=args.axis_font_size)
         plt.grid(True, alpha=0.3)
 
 
-def select_model_std():
-    pipe, pipe_steps, pipe_param_routing, pipe_props, param_grid, _ = (
-        setup_pipe_and_param_grid())
+def run_model_selection():
+    (pipe, pipe_steps, pipe_param_routing, pipe_props, param_grid,
+     param_grid_dict) = setup_pipe_and_param_grid()
     dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta = (
         load_dataset(args.dataset_tr))
     search_param_routing = get_search_param_routing(pipe_param_routing, groups)
-    scv_refit = (args.scv_refit if args.dataset_te or not
-                 pipe_props['uses_rjava'] else False)
+    scv_refit = (args.scv_refit if args.dataset_te
+                 or not pipe_props['uses_rjava'] else False)
     pipe_name = ' '.join([n for s in args.pipe_steps for n in s])
     if groups is None:
         splitter_cv = StratifiedShuffleSplit(
@@ -1187,9 +1193,13 @@ def select_model_std():
             refit=scv_refit, return_train_score=False,
             scoring=args.scv_scoring, verbose=args.scv_verbose)
     if args.verbose > 0:
-        print('Search:')
+        print('Grid' if args.scv_type == 'grid' else 'Randomized', end='')
+        print('SearchCV:')
         pprint({k: vars(v) if k == 'estimator' else v
                 for k, v in vars(search).items()})
+    if args.verbose > 1 and param_grid_dict:
+        print('Param grid dict:')
+        pprint(param_grid_dict)
     if args.verbose > 0 or args.scv_verbose > 0:
         print('Train:' if args.dataset_te else 'Dataset:', dataset_name,
               X.shape)
@@ -1206,11 +1216,11 @@ def select_model_std():
             search_fit_params = {'groups': groups, **pipe_fit_params}
         with parallel_backend(args.parallel_backend):
             search.fit(X, y, **search_fit_params)
+        param_scores_cv = add_param_scores_cv(search, param_grid_dict)
         feature_idxs, feature_weights = get_feature_idxs_and_weights(
             search.best_estimator_, X.shape[1])
-        param_scores_cv = add_param_scores_cv(search, param_grid)
         selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
-        if feature_weights.size > 0:
+        if np.any(feature_weights):
             selected_feature_meta['Weight'] = feature_weights
         if args.verbose > 0:
             print('Train:', dataset_name, end=' ')
@@ -1220,7 +1230,7 @@ def select_model_std():
                         'mean_test_{}'.format(metric)][search.best_index_]),
                       end=' ')
             print(' Params:', search.best_params_)
-            if feature_weights.size > 0:
+            if np.any(feature_weights):
                 print('Feature Ranking:')
                 print(tabulate(selected_feature_meta.sort_values(
                     by='Weight', ascending=False), floatfmt='.8f',
@@ -1231,11 +1241,11 @@ def select_model_std():
         if args.save_model:
             os.makedirs(args.results_dir, mode=0o755, exist_ok=True)
             dump(search, args.results_dir + '/' + dataset_name + '_search.pkl')
-        plot_param_cv_metrics(dataset_name, pipe_name, param_grid,
+        plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_scores_cv)
-        # plot num top-ranked features selected vs test performance metrics
-        if feature_weights.size > 0:
-            fig_sel, ax_sel = plt.subplots()
+        # plot top-ranked selected features vs test performance metrics
+        if np.any(feature_weights):
+            _, ax_sel = plt.subplots()
             ax_sel.set_title(('{}\n{}\nEffect of Number of Top-Ranked Features'
                               'Selected on Test Performance Metrics').format(
                                   dataset_name, pipe_name),
@@ -1248,7 +1258,7 @@ def select_model_std():
             ax_sel.set_xticks(x_axis)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
-            fig_roc, ax_roc = plt.subplots()
+            _, ax_roc = plt.subplots()
             ax_roc.set_title('{}\n{}\nROC Curves'.format(
                 dataset_name, pipe_name), fontsize=args.title_font_size)
             ax_roc.set_xlabel('False Positive Rate',
@@ -1258,7 +1268,7 @@ def select_model_std():
             ax_roc.set_xlim([-0.01, 1.01])
             ax_roc.set_ylim([-0.01, 1.01])
         if 'average_precision' in args.scv_scoring:
-            fig_pre, ax_pre = plt.subplots()
+            _, ax_pre = plt.subplots()
             ax_pre.set_title('{}\n{}\\nPR Curves'.format(
                 dataset_name, pipe_name), fontsize=args.title_font_size)
             ax_pre.set_xlabel('Recall', fontsize=args.axis_font_size)
@@ -1270,9 +1280,23 @@ def select_model_std():
         metric_colors_te = sns.color_palette(
             'hls', len(datasets_te) * len(args.scv_scoring))
         for te_idx, dataset_te in enumerate(datasets_te):
-            (dataset_name_te, X_te, y_te, groups_te, sample_meta_te,
-             sample_weights_te, feature_meta_te) = load_dataset(dataset_te)
-            if feature_weights.size > 0:
+            (dataset_name_te, X_te, y_te, _, sample_meta_te, sample_weights_te,
+             feature_meta_te) = load_dataset(dataset_te)
+            pipe_predict_params = {'sample_meta': sample_meta_te,
+                                   'feature_meta': feature_meta_te}
+            scores_te = calculate_test_scores(
+                search, X_te, y_te, pipe_predict_params,
+                sample_weights_te=sample_weights_te)
+            if args.verbose > 0:
+                print('Test:', dataset_name_te, end=' ')
+                for metric in args.scv_scoring:
+                    print(' {}: {:.4f}'.format(
+                        metric_label[metric], scores_te[metric]), end=' ')
+                    if metric == 'average_precision':
+                        print(' PR AUC: {:.4f}'.format(scores_te['pr_auc']),
+                              end=' ')
+                print()
+            if np.any(feature_weights):
                 tf_pipe_steps = pipe_steps[:-1]
                 tf_pipe_steps.append(('selc', ColumnSelector()))
                 tf_pipe_steps.append(pipe_steps[-1])
@@ -1294,8 +1318,6 @@ def select_model_std():
                             {**search.best_params_,
                              'selc__cols': feature_names}, pipe_fit_params)
                         for feature_names in tf_name_sets)
-                pipe_predict_params = {'sample_meta': sample_meta_te,
-                                       'feature_meta': feature_meta_te}
                 tf_scores_te = {}
                 for tf_pipe in tf_pipes:
                     scores_te = calculate_test_scores(
@@ -1314,9 +1336,6 @@ def select_model_std():
                 ax_sel.legend(loc='lower right', fontsize='small')
                 ax_sel.tick_params(labelsize=args.axis_font_size)
                 ax_sel.grid(True, alpha=0.3)
-            scores_te = calculate_test_scores(
-                search, X_te, y_te, pipe_predict_params,
-                sample_weights_te=sample_weights_te)
             if 'roc_auc' in args.scv_scoring:
                 ax_roc.plot(scores_te['fpr'], scores_te['tpr'], alpha=0.8,
                             lw=3, color=metric_colors_te[
@@ -1337,18 +1356,8 @@ def select_model_std():
                 ax_pre.legend(loc='lower right', fontsize='small')
                 ax_pre.tick_params(labelsize=args.axis_font_size)
                 ax_pre.grid(False)
-            if args.verbose > 0:
-                print('Test:', dataset_name_te, end=' ')
-                for metric in args.scv_scoring:
-                    print(' {}: {:.4f}'.format(
-                        metric_label[metric], scores_te[metric]), end=' ')
-                    if metric == 'average_precision':
-                        print(' PR AUC: {:.4f}'.format(scores_te['pr_auc']),
-                              end=' ')
-                print()
     # train-test nested cv
     else:
-        split_num = 1
         split_results = []
         param_scores_cv = {}
         if groups is None:
@@ -1359,7 +1368,8 @@ def select_model_std():
             splitter_te = StratifiedGroupShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
-        for tr_idxs, te_idxs in splitter_te.split(X, y, groups):
+        for split_idx, (tr_idxs, te_idxs) in enumerate(
+                splitter_te.split(X, y, groups)):
             if groups is None:
                 pipe_fit_params = {'sample_meta': sample_meta.iloc[tr_idxs],
                                    'feature_meta': feature_meta}
@@ -1373,39 +1383,41 @@ def select_model_std():
             with parallel_backend(args.parallel_backend):
                 search.fit(X[tr_idxs], y[tr_idxs], **search_fit_params)
             if pipe_props['uses_rjava']:
-                search_best_index = np.argmin(
+                best_index = np.argmin(
                     search.cv_results_['rank_test_{}'.format(args.scv_refit)])
-                search_best_params = (
-                    search.cv_results_['params'][search_best_index])
-                search_best_estimator = Parallel(
+                best_params = search.cv_results_['params'][best_index]
+                best_estimator = Parallel(
                     n_jobs=args.n_jobs, backend=args.parallel_backend,
                     verbose=args.scv_verbose)(
-                        delayed(fit_pipeline)(X[tr_idxs], y[tr_idxs],
-                                              pipe_steps, pipe_param_routing,
-                                              pipe_params, pipe_fit_params)
-                        for pipe_params in [search_best_params])[0]
+                        delayed(fit_pipeline)(
+                            X[tr_idxs], y[tr_idxs], pipe_steps,
+                            pipe_param_routing, pipe_params,
+                            pipe_fit_params)
+                        for pipe_params in [best_params])[0]
             else:
-                search_best_estimator = search.best_estimator_
-                search_best_params = search.best_params_
-                search_best_index = search.best_index_
-            feature_idxs, feature_weights = get_feature_idxs_and_weights(
-                search_best_estimator, X[tr_idxs].shape[1])
-            param_scores_cv = add_param_scores_cv(search, param_grid,
+                best_index = search.best_index_
+                best_params = search.best_params_
+                best_estimator = search.best_estimator_
+            param_scores_cv = add_param_scores_cv(search, param_grid_dict,
                                                   param_scores_cv)
+            feature_idxs, feature_weights = get_feature_idxs_and_weights(
+                best_estimator, X[tr_idxs].shape[1])
+            scores = {'cv': {}}
+            for metric in args.scv_scoring:
+                scores['cv'][metric] = (search.cv_results_
+                                        ['mean_test_{}'.format(metric)]
+                                        [best_index])
             sample_weights_te = (sample_weights[te_idxs] if groups is not None
                                  else None)
             pipe_predict_params = {'sample_meta': sample_meta.iloc[te_idxs],
                                    'feature_meta': feature_meta}
-            scores = {'cv': {}}
-            for metric in args.scv_scoring:
-                scores['cv'][metric] = search.cv_results_[
-                    'mean_test_{}'.format(metric)][search_best_index]
             scores['te'] = calculate_test_scores(
-                search_best_estimator, X[te_idxs], y[te_idxs],
+                best_estimator, X[te_idxs], y[te_idxs],
                 pipe_predict_params, sample_weights_te=sample_weights_te)
             if args.verbose > 0:
-                print('Dataset:', dataset_name, ' Split: {:>{width}d}'.format(
-                    split_num, width=len(str(args.test_splits))), end=' ')
+                print('Dataset:', dataset_name, ' Split: {:>{width}d}'
+                      .format(split_idx + 1,
+                              width=len(str(args.test_splits))), end=' ')
                 for metric in args.scv_scoring:
                     print(' {} (CV / Test): {:.4f} / {:.4f}'.format(
                         metric_label[metric], scores['cv'][metric],
@@ -1413,12 +1425,12 @@ def select_model_std():
                     if metric == 'average_precision':
                         print(' PR AUC Test: {:.4f}'.format(
                             scores['te']['pr_auc']), end=' ')
-                print(' Params:', search_best_params)
+                print(' Params:', best_params)
             selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
-            if feature_weights.size > 0:
+            if np.any(feature_weights):
                 selected_feature_meta['Weight'] = feature_weights
             if args.verbose > 1:
-                if feature_weights.size > 0:
+                if np.any(feature_weights):
                     print('Feature Ranking:')
                     print(tabulate(selected_feature_meta.sort_values(
                         by='Weight', ascending=False), floatfmt='.8f',
@@ -1427,11 +1439,11 @@ def select_model_std():
                     print('Features:')
                     print(tabulate(selected_feature_meta, headers='keys'))
             split_results.append({
-                'model': search if args.save_model else None,
+                'model': (best_estimator if args.save_model
+                          else None),
                 'feature_idxs': feature_idxs,
                 'feature_weights': feature_weights,
                 'scores': scores})
-            split_num += 1
             # clear cache (can grow too big if not)
             if args.pipe_memory:
                 memory.clear(warn=False)
@@ -1441,102 +1453,18 @@ def select_model_std():
                  + '_split_results.pkl')
             dump(param_scores_cv, args.results_dir + '/' + dataset_name
                  + '_param_scores_cv.pkl')
-        plot_param_cv_metrics(dataset_name, pipe_name, param_grid,
-                              param_scores_cv)
-        # plot roc and pr curves
         split_scores = {'cv': {}, 'te': {}}
         num_features = []
-        for split_idx, split_result in enumerate(split_results):
+        for split_result in split_results:
             for metric in args.scv_scoring:
-                if metric in split_scores['cv']:
-                    split_scores['cv'][metric].append(
-                        split_result['scores']['cv'][metric])
-                    split_scores['te'][metric].append(
-                        split_result['scores']['te'][metric])
-                else:
+                if metric not in split_scores['cv']:
                     split_scores['cv'][metric] = []
                     split_scores['te'][metric] = []
+                split_scores['cv'][metric].append(
+                    split_result['scores']['cv'][metric])
+                split_scores['te'][metric].append(
+                    split_result['scores']['te'][metric])
             num_features.append(split_result['feature_idxs'].size)
-        if 'roc_auc' in args.scv_scoring:
-            sns.set_palette(sns.color_palette('hls', 2))
-            plt.figure()
-            plt.title('{}\n{}\nROC Curve'.format(
-                dataset_name, pipe_name), fontsize=args.title_font_size)
-            plt.xlabel('False Positive Rate', fontsize=args.axis_font_size)
-            plt.ylabel('True Positive Rate', fontsize=args.axis_font_size)
-            plt.xlim([-0.01, 1.01])
-            plt.ylim([-0.01, 1.01])
-            tprs = []
-            mean_fpr = np.linspace(0, 1, 100)
-            for split_idx, split_result in enumerate(split_results):
-                tprs.append(np.interp(mean_fpr,
-                                      split_result['scores']['te']['fpr'],
-                                      split_result['scores']['te']['tpr']))
-                tprs[-1][0] = 0.0
-                plt.plot(split_result['scores']['te']['fpr'],
-                         split_result['scores']['te']['tpr'], alpha=0.2,
-                         color='darkgrey', lw=1)
-            mean_tpr = np.mean(tprs, axis=0)
-            mean_tpr[-1] = 1.0
-            mean_roc_auc = np.mean(split_scores['te']['roc_auc'])
-            std_roc_auc = np.std(split_scores['te']['roc_auc'])
-            mean_num_features = np.mean(num_features)
-            std_num_features = np.std(num_features)
-            plt.plot(mean_fpr, mean_tpr, lw=3, alpha=0.8, label=(
-                (r'Test Mean ROC (AUC = {:.4f} $\pm$ {:.2f}, '
-                 r'Features = {:.0f} $\pm$ {:.0f})').format(
-                     mean_roc_auc, std_roc_auc, mean_num_features,
-                     std_num_features)))
-            std_tpr = np.std(tprs, axis=0)
-            tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-            tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-            plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey',
-                             alpha=0.2, label=r'$\pm$ 1 std. dev.')
-            plt.plot([0, 1], [0, 1], alpha=0.2, color='grey', linestyle='--',
-                     lw=3, label='Chance')
-            plt.legend(loc='lower right', fontsize='small')
-            plt.tick_params(labelsize=args.axis_font_size)
-            plt.grid(False)
-        if 'average_precision' in args.scv_scoring:
-            sns.set_palette(sns.color_palette('hls', 10))
-            plt.figure()
-            plt.title('{}\n{}\nPR Curve'.format(
-                dataset_name, pipe_name), fontsize=args.title_font_size)
-            plt.xlabel('Recall', fontsize=args.axis_font_size)
-            plt.ylabel('Precision', fontsize=args.axis_font_size)
-            plt.xlim([-0.01, 1.01])
-            plt.ylim([-0.01, 1.01])
-            pres, split_scores['te']['pr_auc'] = [], []
-            mean_rec = np.linspace(0, 1, 100)
-            for split_idx, split_result in enumerate(split_results):
-                split_scores['te']['pr_auc'].append(
-                    split_result['scores']['te']['pr_auc'])
-                pres.append(np.interp(mean_rec,
-                                      split_result['scores']['te']['rec'],
-                                      split_result['scores']['te']['pre']))
-                pres[-1][0] = 1.0
-                plt.step(split_result['scores']['te']['rec'],
-                         split_result['scores']['te']['pre'], alpha=0.2,
-                         color='darkgrey', lw=1, where='post')
-            mean_pre = np.mean(pres, axis=0)
-            mean_pre[-1] = 0.0
-            mean_pr_auc = np.mean(split_scores['te']['pr_auc'])
-            std_pr_auc = np.std(split_scores['te']['pr_auc'])
-            mean_num_features = np.mean(num_features)
-            std_num_features = np.std(num_features)
-            plt.step(mean_rec, mean_pre, lw=3, alpha=0.8, where='post', label=(
-                (r'Test Mean PR (AUC = {:.4f} $\pm$ {:.2f}, '
-                 r'Features = {:.0f} $\pm$ {:.0f})').format(
-                     mean_pr_auc, std_pr_auc, mean_num_features,
-                     std_num_features)))
-            std_pre = np.std(pres, axis=0)
-            pres_upper = np.minimum(mean_pre + std_pre, 1)
-            pres_lower = np.maximum(mean_pre - std_pre, 0)
-            plt.fill_between(mean_rec, pres_lower, pres_upper, color='grey',
-                             alpha=0.2, label=r'$\pm$ 1 std. dev.')
-            plt.legend(loc='lower right', fontsize='small')
-            plt.tick_params(labelsize=args.axis_font_size)
-            plt.grid(False)
         print('Dataset:', dataset_name, X.shape, end=' ')
         for metric in args.scv_scoring:
             print(' Mean {} (CV / Test): {:.4f} / {:.4f}'.format(
@@ -1545,11 +1473,11 @@ def select_model_std():
             if metric == 'average_precision':
                 print(' PR AUC Test: {:.4f}'.format(
                     np.mean(split_scores['te']['pr_auc'])), end=' ')
-        if pipe_props['has_selector']:
+        if num_features and pipe_props['has_selector']:
             print(' Mean Features: {:.0f}'.format(np.mean(num_features)))
         else:
             print()
-        # calculate overall best ranked features
+        # calculate overall feature ranking
         feature_idxs = []
         for split_result in split_results:
             feature_idxs.extend(split_result['feature_idxs'])
@@ -1565,11 +1493,12 @@ def select_model_std():
                 (len(feature_idxs), len(split_results)), dtype=float)
         for split_idx, split_result in enumerate(split_results):
             for idx, feature_idx in enumerate(split_result['feature_idxs']):
-                weights_matrix[feature_matrix_idx[feature_idx]][split_idx] = (
-                    split_result['feature_weights'][idx])
+                (weights_matrix[feature_matrix_idx[feature_idx]]
+                 [split_idx]) = split_result['feature_weights'][idx]
                 for metric in args.scv_scoring:
-                    scores_cv_matrix[metric][feature_matrix_idx[feature_idx]][
-                        split_idx] = split_result['scores']['cv'][metric]
+                    (scores_cv_matrix[metric]
+                     [feature_matrix_idx[feature_idx]][split_idx]) = (
+                         split_result['scores']['cv'][metric])
         feature_mean_weights, feature_mean_scores = [], []
         for idx in range(len(feature_idxs)):
             feature_mean_weights.append(np.mean(weights_matrix[idx]))
@@ -1589,6 +1518,89 @@ def select_model_std():
                 print(tabulate(selected_feature_meta.sort_values(
                     by=header, ascending=False), floatfmt='.4f',
                                headers='keys'))
+        plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
+                              param_scores_cv)
+        # plot roc and pr curves
+        if 'roc_auc' in args.scv_scoring:
+            sns.set_palette(sns.color_palette('hls', 2))
+            plt.figure()
+            plt.title('{}\n{}\nROC Curve'.format(
+                dataset_name, pipe_name), fontsize=args.title_font_size)
+            plt.xlabel('False Positive Rate', fontsize=args.axis_font_size)
+            plt.ylabel('True Positive Rate', fontsize=args.axis_font_size)
+            plt.xlim([-0.01, 1.01])
+            plt.ylim([-0.01, 1.01])
+            tprs = []
+            mean_fpr = np.linspace(0, 1, 100)
+            for split_result in split_results:
+                tprs.append(np.interp(mean_fpr,
+                                      split_result['scores']['te']['fpr'],
+                                      split_result['scores']['te']['tpr']))
+                tprs[-1][0] = 0.0
+                plt.plot(split_result['scores']['te']['fpr'],
+                         split_result['scores']['te']['tpr'], alpha=0.2,
+                         color='darkgrey', lw=1)
+            mean_tpr = np.mean(tprs, axis=0)
+            mean_tpr[-1] = 1.0
+            mean_roc_auc = np.mean(split_scores['te']['roc_auc'])
+            std_roc_auc = np.std(split_scores['te']['roc_auc'])
+            mean_num_features = np.mean(num_features)
+            std_num_features = np.std(num_features)
+            plt.plot(mean_fpr, mean_tpr, lw=3, alpha=0.8, label=(
+                r'Test Mean ROC (AUC = {:.4f} $\pm$ {:.2f}, '
+                r'Features = {:.0f} $\pm$ {:.0f})').format(
+                    mean_roc_auc, std_roc_auc, mean_num_features,
+                    std_num_features))
+            std_tpr = np.std(tprs, axis=0)
+            tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+            tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+            plt.fill_between(mean_fpr, tprs_lower, tprs_upper, alpha=0.2,
+                             color='grey', label=r'$\pm$ 1 std. dev.')
+            plt.plot([0, 1], [0, 1], alpha=0.2, color='grey',
+                     linestyle='--', lw=3, label='Chance')
+            plt.legend(loc='lower right', fontsize='small')
+            plt.tick_params(labelsize=args.axis_font_size)
+            plt.grid(False)
+        if 'average_precision' in args.scv_scoring:
+            sns.set_palette(sns.color_palette('hls', 10))
+            plt.figure()
+            plt.title('{}\n{}\nPR Curve'.format(
+                dataset_name, pipe_name), fontsize=args.title_font_size)
+            plt.xlabel('Recall', fontsize=args.axis_font_size)
+            plt.ylabel('Precision', fontsize=args.axis_font_size)
+            plt.xlim([-0.01, 1.01])
+            plt.ylim([-0.01, 1.01])
+            pres, split_scores['te']['pr_auc'] = [], []
+            mean_rec = np.linspace(0, 1, 100)
+            for split_result in split_results:
+                split_scores['te']['pr_auc'].append(
+                    split_result['scores']['te']['pr_auc'])
+                pres.append(np.interp(mean_rec,
+                                      split_result['scores']['te']['rec'],
+                                      split_result['scores']['te']['pre']))
+                pres[-1][0] = 1.0
+                plt.step(split_result['scores']['te']['rec'],
+                         split_result['scores']['te']['pre'], alpha=0.2,
+                         color='darkgrey', lw=1, where='post')
+            mean_pre = np.mean(pres, axis=0)
+            mean_pre[-1] = 0.0
+            mean_pr_auc = np.mean(split_scores['te']['pr_auc'])
+            std_pr_auc = np.std(split_scores['te']['pr_auc'])
+            mean_num_features = np.mean(num_features)
+            std_num_features = np.std(num_features)
+            plt.step(mean_rec, mean_pre, lw=3, alpha=0.8, where='post',
+                     label=(r'Test Mean PR (AUC = {:.4f} $\pm$ {:.2f}, '
+                            r'Features = {:.0f} $\pm$ {:.0f})').format(
+                                mean_pr_auc, std_pr_auc, mean_num_features,
+                                std_num_features))
+            std_pre = np.std(pres, axis=0)
+            pres_upper = np.minimum(mean_pre + std_pre, 1)
+            pres_lower = np.maximum(mean_pre - std_pre, 0)
+            plt.fill_between(mean_rec, pres_lower, pres_upper, alpha=0.2,
+                             color='grey', label=r'$\pm$ 1 std. dev.')
+            plt.legend(loc='lower right', fontsize='small')
+            plt.tick_params(labelsize=args.axis_font_size)
+            plt.grid(False)
 
 
 def run_cleanup():
@@ -1599,10 +1611,7 @@ def run_cleanup():
             rmtree(rtmp)
 
 
-if all(len(s) == 1 for s in args.pipe_steps):
-    # standard model selection
-    select_model_std()
-
+run_model_selection()
 if args.show_figs:
     plt.show()
 run_cleanup()

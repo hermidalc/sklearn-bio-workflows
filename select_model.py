@@ -1075,9 +1075,9 @@ def get_feature_idxs_and_weights(pipe, num_total_features):
     return feature_idxs, weights
 
 
-def add_param_scores_cv(search, param_grid_dict, param_scores_cv=None):
-    if param_scores_cv is None:
-        param_scores_cv = {}
+def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
+    if param_cv_scores is None:
+        param_cv_scores = {}
     for param, param_values in param_grid_dict.items():
         if len(param_values) == 1:
             continue
@@ -1092,47 +1092,67 @@ def add_param_scores_cv(search, param_grid_dict, param_scores_cv=None):
             == param_values_cv)[1]
         new_shape = (len(param_values), int(len(search.cv_results_['params'])
                                             / len(param_values)))
-        if param not in param_scores_cv:
-            param_scores_cv[param] = {}
+        if param not in param_cv_scores:
+            param_cv_scores[param] = {}
         for metric in args.scv_scoring:
+            if metric not in param_cv_scores[param]:
+                param_cv_scores[param][metric] = {}
             if args.scv_h_plt_meth == 'best':
-                mean_scores_cv = np.max(np.transpose(np.reshape(
-                    search.cv_results_['mean_test_{}'.format(metric)][
-                        param_values_cv_sorted_idxs], new_shape)), axis=0)
-                if metric in param_scores_cv[param]:
-                    param_scores_cv[param][metric] = np.vstack(
-                        (param_scores_cv[param][metric], mean_scores_cv))
+                mean_cv_scores = np.transpose(np.reshape(
+                    search.cv_results_['mean_test_{}'.format(metric)]
+                    [param_values_cv_sorted_idxs], new_shape))
+                std_cv_scores = np.transpose(np.reshape(
+                    search.cv_results_['std_test_{}'.format(metric)]
+                    [param_values_cv_sorted_idxs], new_shape))
+                mean_cv_scores_max_idxs = np.argmax(mean_cv_scores, axis=0)
+                mean_cv_scores = (
+                    mean_cv_scores[mean_cv_scores_max_idxs,
+                                   np.arange(mean_cv_scores.shape[1])])
+                std_cv_scores = (
+                    std_cv_scores[mean_cv_scores_max_idxs,
+                                  np.arange(std_cv_scores.shape[1])])
+                if 'scores' in param_cv_scores[param][metric]:
+                    param_cv_scores[param][metric]['scores'] = np.vstack(
+                        (param_cv_scores[param][metric]['scores'],
+                         mean_cv_scores))
+                    param_cv_scores[param][metric]['stdev'] = np.vstack(
+                        (param_cv_scores[param][metric]['stdev'],
+                         std_cv_scores))
                 else:
-                    param_scores_cv[param][metric] = mean_scores_cv
+                    param_cv_scores[param][metric]['scores'] = mean_cv_scores
+                    param_cv_scores[param][metric]['stdev'] = std_cv_scores
             elif args.scv_h_plt_meth == 'all':
                 for split_idx in range(search.n_splits_):
                     split_scores_cv = np.transpose(np.reshape(
-                        search.cv_results_['split{:d}_test_{}'.format(
-                            split_idx, metric)]
+                        search.cv_results_
+                        ['split{:d}_test_{}'.format(split_idx, metric)]
                         [param_values_cv_sorted_idxs], new_shape))
-                    if metric in param_scores_cv[param]:
-                        param_scores_cv[param][metric] = np.vstack(
-                            (param_scores_cv[param][metric], split_scores_cv))
+                    if 'scores' in param_cv_scores[param][metric]:
+                        param_cv_scores[param][metric]['scores'] = np.vstack(
+                            (param_cv_scores[param][metric]['scores'],
+                             split_scores_cv))
                     else:
-                        param_scores_cv[param][metric] = split_scores_cv
-    return param_scores_cv
+                        param_cv_scores[param][metric]['scores'] = (
+                            split_scores_cv)
+    return param_cv_scores
 
 
 def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
-                          param_scores_cv):
+                          param_cv_scores):
     sns.set_palette(sns.color_palette('hls', len(args.scv_scoring)))
-    for param in param_scores_cv:
-        mean_scores_cv, std_scores_cv = {}, {}
+    for param in param_cv_scores:
+        mean_cv_scores, std_cv_scores = {}, {}
         for metric in args.scv_scoring:
-            if param_scores_cv[param][metric].ndim > 1:
-                mean_scores_cv[metric] = np.mean(
-                    param_scores_cv[param][metric], axis=0)
-                std_scores_cv[metric] = np.std(
-                    param_scores_cv[param][metric], axis=0)
+            if param_cv_scores[param][metric]['scores'].ndim > 1:
+                mean_cv_scores[metric] = np.mean(
+                    param_cv_scores[param][metric]['scores'], axis=0)
+                std_cv_scores[metric] = np.std(
+                    param_cv_scores[param][metric]['scores'], axis=0)
             else:
-                mean_scores_cv[metric] = param_scores_cv[param][metric]
-                std_scores_cv[metric] = np.zeros_like(
-                    param_scores_cv[param][metric])
+                mean_cv_scores[metric] = (
+                    param_cv_scores[param][metric]['scores'])
+                std_cv_scores[metric] = (
+                    param_cv_scores[param][metric]['stdev'])
         plt.figure()
         nonuniq_param = re.sub(r'^(\w+)\d+', r'\1', param)
         if nonuniq_param in params_num_xticks:
@@ -1147,16 +1167,16 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         plt.xlabel(param, fontsize=args.axis_font_size)
         plt.ylabel('CV Score', fontsize=args.axis_font_size)
         for metric_idx, metric in enumerate(args.scv_scoring):
-            plt.plot(x_axis, mean_scores_cv[metric], lw=2, alpha=0.8,
+            plt.plot(x_axis, mean_cv_scores[metric], lw=2, alpha=0.8,
                      label='Mean {}'.format(metric_label[metric]))
             plt.fill_between(x_axis,
-                             [m - s for m, s in zip(mean_scores_cv[metric],
-                                                    std_scores_cv[metric])],
-                             [m + s for m, s in zip(mean_scores_cv[metric],
-                                                    std_scores_cv[metric])],
-                             alpha=0.2, color='grey', label=(
-                                 r'$\pm$ 1 std. dev.' if metric_idx == 0
-                                 else None))
+                             [m - s for m, s in zip(mean_cv_scores[metric],
+                                                    std_cv_scores[metric])],
+                             [m + s for m, s in zip(mean_cv_scores[metric],
+                                                    std_cv_scores[metric])],
+                             alpha=0.2, color='grey',
+                             label=(r'$\pm$ 1 std. dev.' if metric_idx == 0
+                                    else None))
         plt.legend(loc='lower right', fontsize='medium')
         plt.tick_params(labelsize=args.axis_font_size)
         plt.grid(True, alpha=0.3)
@@ -1216,7 +1236,7 @@ def run_model_selection():
             search_fit_params = {'groups': groups, **pipe_fit_params}
         with parallel_backend(args.parallel_backend):
             search.fit(X, y, **search_fit_params)
-        param_scores_cv = add_param_scores_cv(search, param_grid_dict)
+        param_cv_scores = add_param_cv_scores(search, param_grid_dict)
         feature_idxs, feature_weights = get_feature_idxs_and_weights(
             search.best_estimator_, X.shape[1])
         selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
@@ -1242,7 +1262,7 @@ def run_model_selection():
             os.makedirs(args.results_dir, mode=0o755, exist_ok=True)
             dump(search, args.results_dir + '/' + dataset_name + '_search.pkl')
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
-                              param_scores_cv)
+                              param_cv_scores)
         # plot top-ranked selected features vs test performance metrics
         if np.any(feature_weights):
             _, ax_slr = plt.subplots()
@@ -1359,7 +1379,7 @@ def run_model_selection():
     # train-test nested cv
     else:
         split_results = []
-        param_scores_cv = {}
+        param_cv_scores = {}
         if groups is None:
             splitter_te = StratifiedShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
@@ -1398,8 +1418,8 @@ def run_model_selection():
                 best_index = search.best_index_
                 best_params = search.best_params_
                 best_estimator = search.best_estimator_
-            param_scores_cv = add_param_scores_cv(search, param_grid_dict,
-                                                  param_scores_cv)
+            param_cv_scores = add_param_cv_scores(search, param_grid_dict,
+                                                  param_cv_scores)
             feature_idxs, feature_weights = get_feature_idxs_and_weights(
                 best_estimator, X[tr_idxs].shape[1])
             scores = {'cv': {}}
@@ -1451,8 +1471,8 @@ def run_model_selection():
             os.makedirs(args.results_dir, mode=0o755, exist_ok=True)
             dump(split_results, args.results_dir + '/' + dataset_name
                  + '_split_results.pkl')
-            dump(param_scores_cv, args.results_dir + '/' + dataset_name
-                 + '_param_scores_cv.pkl')
+            dump(param_cv_scores, args.results_dir + '/' + dataset_name
+                 + '_param_cv_scores.pkl')
         split_scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
@@ -1519,7 +1539,7 @@ def run_model_selection():
                     by=header, ascending=False), floatfmt='.4f',
                                headers='keys'))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
-                              param_scores_cv)
+                              param_cv_scores)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
             sns.set_palette(sns.color_palette('hls', 2))

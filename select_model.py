@@ -80,12 +80,12 @@ def str_list(arg):
 
 
 parser = ArgumentParser()
-parser.add_argument('--dataset-tr', '--dataset', '--eset-tr', type=str,
-                    required=True, help='dataset tr')
+parser.add_argument('--train-dataset', '--dataset', '--train-eset', '--train',
+                    type=str, required=True, help='training dataset')
 parser.add_argument('--pipe-steps', type=str_list, nargs='+', required=True,
                     help='pipeline step names')
-parser.add_argument('--dataset-te', '--eset-te', type=str, nargs='+',
-                    help='dataset te')
+parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
+                    nargs='+', help='test datasets')
 parser.add_argument('--trf-mms-fr', type=int_list,
                     nargs='+', help='trf mms fr')
 parser.add_argument('--slr-col-names', type=str_list,
@@ -582,7 +582,7 @@ if args.clf_grb_f:
         [None if a in ('None', 'none') else a for a in args.clf_grb_f],
         key=lambda x: (x is not None, x))
 if args.clf_mlp_hls:
-    cv_params['clf_mlp_hls'] = tuple(args.clf_mlp_hls)
+    cv_params['clf_mlp_hls'] = sorted(tuple(args.clf_mlp_hls))
 if args.clf_mlp_act:
     cv_params['clf_mlp_act'] = sorted(args.clf_mlp_act)
 if args.clf_mlp_slvr:
@@ -624,30 +624,30 @@ pipe_config = {
         'estimator':  VarianceThreshold(),
         'param_grid': {
             'threshold': cv_params['slr_vrt_thres']}},
-    'ANOVA-KBest': {
+    'SelectKBest-ANOVAFScorerClassification': {
         'estimator': SelectKBest(slr_anova_scorer),
         'param_grid': {
             'k': cv_params['slr_skb_k']}},
-    'Chi2-KBest': {
+    'SelectKBest-Chi2Scorer': {
         'estimator': SelectKBest(slr_chi2_scorer),
         'param_grid': {
             'k': cv_params['slr_skb_k']}},
-    'Limma-KBest': {
+    'SelectKBest-Limma': {
         'estimator': SelectKBest(slr_limma_scorer),
         'param_grid': {
             'k': cv_params['slr_skb_k']}},
-    'MI-KBest': {
+    'SelectKBest-MutualInfoScorerClassification': {
         'estimator': SelectKBest(slr_mi_scorer),
         'param_grid': {
             'k': cv_params['slr_skb_k'],
             'score_func__n_neighbors': cv_params['slr_mi_n']}},
-    'SVM-SFM-KBest': {
+    'SelectFromModel-LinearSVC': {
         'estimator': SelectFromModel(slr_svm_sfm_estimator),
         'param_grid': {
             'estimator__C': cv_params['slr_sfm_svm_c'],
             'estimator__class_weight': cv_params['slr_sfm_svm_cw'],
             'k': cv_params['slr_skb_k']}},
-    'RF-SFM-KBest': {
+    'SelectFromModel-RandomForestClassifier': {
         'estimator': SelectFromModel(slr_rf_estimator),
         'param_grid': {
             'estimator__n_estimators': cv_params['slr_sfm_rf_e'],
@@ -655,7 +655,7 @@ pipe_config = {
             'estimator__max_features': cv_params['slr_sfm_rf_f'],
             'estimator__class_weight': cv_params['slr_sfm_rf_cw'],
             'k': cv_params['slr_skb_k']}},
-    'EXT-SFM-KBest': {
+    'SelectFromModel-ExtraTreesClassifier': {
         'estimator': SelectFromModel(slr_ext_estimator),
         'param_grid': {
             'estimator__n_estimators': cv_params['slr_sfm_ext_e'],
@@ -663,14 +663,14 @@ pipe_config = {
             'estimator__max_features': cv_params['slr_sfm_ext_f'],
             'estimator__class_weight': cv_params['slr_sfm_ext_cw'],
             'k': cv_params['slr_skb_k']}},
-    'GRB-SFM-KBest': {
+    'SelectFromModel-GradientBoostingClassifier': {
         'estimator': SelectFromModel(slr_grb_estimator),
         'param_grid': {
             'estimator__n_estimators': cv_params['slr_sfm_grb_e'],
             'estimator__max_depth': cv_params['slr_sfm_grb_d'],
             'estimator__max_features': cv_params['slr_sfm_grb_f'],
             'k': cv_params['slr_skb_k']}},
-    'SVM-RFE': {
+    'RFE-LinearSVC': {
         'estimator': RFE(slr_svm_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
                          reducing_step=args.slr_rfe_reducing_step,
@@ -680,7 +680,7 @@ pipe_config = {
             'estimator__class_weight': cv_params['slr_rfe_svm_cw'],
             'step': cv_params['slr_rfe_step'],
             'n_features_to_select': cv_params['slr_skb_k']}},
-    'RF-RFE': {
+    'RFE-RandomForestClassifier': {
         'estimator': RFE(slr_rf_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
                          reducing_step=args.slr_rfe_reducing_step,
@@ -692,7 +692,7 @@ pipe_config = {
             'estimator__class_weight': cv_params['slr_rfe_rf_cw'],
             'step': cv_params['slr_rfe_step'],
             'n_features_to_select': cv_params['slr_skb_k']}},
-    'EXT-RFE': {
+    'RFE-ExtraTreesClassifier': {
         'estimator': RFE(slr_ext_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
                          reducing_step=args.slr_rfe_reducing_step,
@@ -704,7 +704,7 @@ pipe_config = {
             'estimator__class_weight': cv_params['slr_rfe_ext_cw'],
             'step': cv_params['slr_rfe_step'],
             'n_features_to_select': cv_params['slr_skb_k']}},
-    'GRB-RFE': {
+    'RFE-GradientBoostingClassifier': {
         'estimator': RFE(slr_grb_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
                          reducing_step=args.slr_rfe_reducing_step,
@@ -752,14 +752,14 @@ pipe_config = {
     'CFS': {
         'estimator': CFS()},
     # classifiers
-    'LinearSVM': {
+    'LinearSVC': {
         'estimator': LinearSVC(random_state=args.random_seed,
                                tol=args.clf_svm_tol),
         'param_grid': {
             'C': cv_params['clf_svm_c'],
             'class_weight': cv_params['clf_svm_cw']},
         'param_routing': ['sample_weight']},
-    'KernelSVM': {
+    'SVC': {
         'estimator': SVC(cache_size=args.clf_svm_cache, gamma='scale',
                          random_state=args.random_seed),
         'param_grid': {
@@ -769,32 +769,32 @@ pipe_config = {
             'degree': cv_params['clf_svm_deg'],
             'gamma': cv_params['clf_svm_g']},
         'param_routing': ['sample_weight']},
-    'kNN': {
+    'KNeighborsClassifier': {
         'estimator': KNeighborsClassifier(),
         'param_grid': {
             'n_neighbors': cv_params['clf_knn_k'],
             'weights': cv_params['clf_knn_w']}},
-    'DT': {
+    'DecisionTreeClassifier': {
         'estimator': DecisionTreeClassifier(random_state=args.random_seed),
         'param_grid': {
             'max_depth': cv_params['clf_dt_d'],
             'max_features': cv_params['clf_dt_f'],
             'class_weight': cv_params['clf_dt_cw']}},
-    'RandomForest': {
+    'RandomForestClassifier': {
         'estimator': RandomForestClassifier(random_state=args.random_seed),
         'param_grid': {
             'n_estimators': cv_params['clf_rf_e'],
             'max_depth': cv_params['clf_rf_d'],
             'max_features': cv_params['clf_rf_f'],
             'class_weight': cv_params['clf_rf_cw']}},
-    'ExtraTrees': {
+    'ExtraTreesClassifier': {
         'estimator': ExtraTreesClassifier(random_state=args.random_seed),
         'param_grid': {
             'n_estimators': cv_params['clf_ext_e'],
             'max_depth': cv_params['clf_ext_d'],
             'max_features': cv_params['clf_ext_f'],
             'class_weight': cv_params['clf_ext_cw']}},
-    'AdaBoost-LGR': {
+    'AdaBoostClassifier-LogisticRegression': {
         'estimator': AdaBoostClassifier(
             LogisticRegression(random_state=args.random_seed),
             random_state=args.random_seed),
@@ -802,7 +802,7 @@ pipe_config = {
             'base_estimator__C': cv_params['clf_ada_lgr_c'],
             'base_estimator__class_weight': cv_params['clf_ada_lgr_cw'],
             'n_estimators': cv_params['clf_ada_e']}},
-    'GradientBoost': {
+    'GradientBoostingClassifier': {
         'estimator': GradientBoostingClassifier(random_state=args.random_seed),
         'param_grid': {
             'n_estimators': cv_params['clf_grb_e'],
@@ -810,13 +810,13 @@ pipe_config = {
             'max_features': cv_params['clf_grb_f']}},
     'GaussianNB': {
         'estimator': GaussianNB()},
-    'GaussianProcess': {
+    'GaussianProcessClassifier': {
         'estimator': GaussianProcessClassifier(random_state=args.random_seed)},
-    'LDA': {
+    'LinearDiscriminantAnalysis': {
         'estimator': LinearDiscriminantAnalysis()},
-    'QDA': {
+    'QuadraticDiscriminantAnalysis': {
         'estimator': QuadraticDiscriminantAnalysis()},
-    'MLP': {
+    'MLPClassifier': {
         'estimator': MLPClassifier(random_state=args.random_seed),
         'param_grid': {
             'hidden_layer_sizes': cv_params['clf_mlp_hls'],
@@ -864,6 +864,7 @@ metric_label = {
 def setup_pipe_and_param_grid():
     pipe_steps = []
     pipe_param_routing = None
+    pipe_step_names = []
     pipe_props = {'has_selector': False, 'uses_rjava': False}
     param_grid = []
     param_grid_dict = {}
@@ -875,6 +876,10 @@ def setup_pipe_and_param_grid():
                 [k for k in step_keys if k not in ('None', 'none')] + [None])
         else:
             pipe_step_keys.append(step_keys)
+        if len(step_keys) > 1:
+            pipe_step_names.append('|'.join(step_keys))
+        else:
+            pipe_step_names.append(step_keys[0])
     for pipe_step_combo in product(*pipe_step_keys):
         params = {}
         for step_idx, step_key in enumerate(pipe_step_combo):
@@ -956,13 +961,14 @@ def setup_pipe_and_param_grid():
         param_grid.append(params)
     pipe = Pipeline(pipe_steps, memory=memory,
                     param_routing=pipe_param_routing)
+    pipe_name = '->'.join(pipe_step_names)
     for param, param_values in param_grid_dict.items():
         if any(isinstance(v, BaseEstimator) for v in param_values):
             param_grid_dict[param] = sorted([
                 '.'.join([type(o).__module__, type(o).__qualname__])
                 for o in param_values])
-    return (pipe, pipe_steps, pipe_param_routing, pipe_props, param_grid,
-            param_grid_dict)
+    return (pipe, pipe_steps, pipe_param_routing, pipe_name, pipe_props,
+            param_grid, param_grid_dict)
 
 
 def load_dataset(file):
@@ -1023,7 +1029,7 @@ def fit_pipeline(X, y, steps, param_routing, params, fit_params):
 
 
 def calculate_test_scores(pipe, X_te, y_te, pipe_predict_params,
-                          sample_weights_te=None):
+                          test_sample_weights=None):
     scores = {}
     if hasattr(pipe, 'decision_function'):
         y_score = pipe.decision_function(X_te, **pipe_predict_params)
@@ -1032,19 +1038,19 @@ def calculate_test_scores(pipe, X_te, y_te, pipe_predict_params,
     for metric in args.scv_scoring:
         if metric == 'roc_auc':
             scores[metric] = roc_auc_score(
-                y_te, y_score, sample_weight=sample_weights_te)
+                y_te, y_score, sample_weight=test_sample_weights)
             scores['fpr'], scores['tpr'], _ = roc_curve(
-                y_te, y_score, pos_label=1, sample_weight=sample_weights_te)
+                y_te, y_score, pos_label=1, sample_weight=test_sample_weights)
         elif metric == 'balanced_accuracy':
             y_pred = pipe.predict(X_te, **pipe_predict_params)
             scores[metric] = balanced_accuracy_score(
-                y_te, y_pred, sample_weight=sample_weights_te)
+                y_te, y_pred, sample_weight=test_sample_weights)
         elif metric == 'average_precision':
             scores[metric] = average_precision_score(
-                y_te, y_score, sample_weight=sample_weights_te)
+                y_te, y_score, sample_weight=test_sample_weights)
             scores['pre'], scores['rec'], _ = (
                 precision_recall_curve(y_te, y_score, pos_label=1,
-                                       sample_weight=sample_weights_te))
+                                       sample_weight=test_sample_weights))
             scores['pr_auc'] = auc(scores['rec'], scores['pre'])
     return scores
 
@@ -1055,24 +1061,24 @@ def get_feature_idxs_and_weights(pipe, num_total_features):
         if hasattr(pipe.named_steps[step], 'get_support'):
             feature_idxs = feature_idxs[
                 pipe.named_steps[step].get_support(indices=True)]
-    weights = np.zeros_like(feature_idxs, dtype=float)
+    feature_weights = np.zeros_like(feature_idxs, dtype=float)
     final_estimator = pipe.steps[-1][1]
     if hasattr(final_estimator, 'coef_'):
-        weights = np.square(final_estimator.coef_[0])
+        feature_weights = np.square(final_estimator.coef_[0])
     elif hasattr(final_estimator, 'feature_importances_'):
-        weights = final_estimator.feature_importances_
+        feature_weights = final_estimator.feature_importances_
     else:
-        for _, estimator in pipe.named_steps.items():
+        for estimator in pipe.named_steps.values():
             if hasattr(estimator, 'estimator_'):
                 if hasattr(estimator.estimator_, 'coef_'):
-                    weights = np.square(estimator.estimator_.coef_[0])
+                    feature_weights = np.square(estimator.estimator_.coef_[0])
                 elif hasattr(estimator.estimator_, 'feature_importances_'):
-                    weights = estimator.estimator_.feature_importances_
+                    feature_weights = estimator.estimator_.feature_importances_
             elif hasattr(estimator, 'scores_'):
-                weights = estimator.scores_
+                feature_weights = estimator.scores_
             elif hasattr(estimator, 'feature_importances_'):
-                weights = estimator.feature_importances_
-    return feature_idxs, weights
+                feature_weights = estimator.feature_importances_
+    return feature_idxs, feature_weights
 
 
 def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
@@ -1081,15 +1087,15 @@ def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
     for param, param_values in param_grid_dict.items():
         if len(param_values) == 1:
             continue
-        param_values_cv = np.ma.getdata(
+        param_cv_values = np.ma.getdata(
             search.cv_results_['param_{}'.format(param)])
-        if any(isinstance(v, BaseEstimator) for v in param_values_cv):
-            param_values_cv = np.array([
+        if any(isinstance(v, BaseEstimator) for v in param_cv_values):
+            param_cv_values = np.array([
                 '.'.join([type(o).__module__, type(o).__qualname__])
-                for o in param_values_cv])
-        param_values_cv_sorted_idxs = np.where(
+                for o in param_cv_values])
+        param_cv_values_sort_idxs = np.where(
             np.array(param_values).reshape(len(param_values), 1)
-            == param_values_cv)[1]
+            == param_cv_values)[1]
         new_shape = (len(param_values), int(len(search.cv_results_['params'])
                                             / len(param_values)))
         if param not in param_cv_scores:
@@ -1100,10 +1106,10 @@ def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
             if args.scv_h_plt_meth == 'best':
                 mean_cv_scores = np.transpose(np.reshape(
                     search.cv_results_['mean_test_{}'.format(metric)]
-                    [param_values_cv_sorted_idxs], new_shape))
+                    [param_cv_values_sort_idxs], new_shape))
                 std_cv_scores = np.transpose(np.reshape(
                     search.cv_results_['std_test_{}'.format(metric)]
-                    [param_values_cv_sorted_idxs], new_shape))
+                    [param_cv_values_sort_idxs], new_shape))
                 mean_cv_scores_max_idxs = np.argmax(mean_cv_scores, axis=0)
                 mean_cv_scores = (
                     mean_cv_scores[mean_cv_scores_max_idxs,
@@ -1126,7 +1132,7 @@ def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
                     split_scores_cv = np.transpose(np.reshape(
                         search.cv_results_
                         ['split{:d}_test_{}'.format(split_idx, metric)]
-                        [param_values_cv_sorted_idxs], new_shape))
+                        [param_cv_values_sort_idxs], new_shape))
                     if 'scores' in param_cv_scores[param][metric]:
                         param_cv_scores[param][metric]['scores'] = np.vstack(
                             (param_cv_scores[param][metric]['scores'],
@@ -1183,48 +1189,46 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
 
 
 def run_model_selection():
-    (pipe, pipe_steps, pipe_param_routing, pipe_props, param_grid,
+    (pipe, pipe_steps, pipe_param_routing, pipe_name, pipe_props, param_grid,
      param_grid_dict) = setup_pipe_and_param_grid()
     dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta = (
-        load_dataset(args.dataset_tr))
+        load_dataset(args.train_dataset))
     search_param_routing = get_search_param_routing(pipe_param_routing, groups)
-    scv_refit = (args.scv_refit if args.dataset_te
+    scv_refit = (args.scv_refit if args.test_dataset
                  or not pipe_props['uses_rjava'] else False)
-    pipe_name = ' '.join([n for s in args.pipe_steps for n in s])
     if groups is None:
-        splitter_cv = StratifiedShuffleSplit(
+        cv_splitter = StratifiedShuffleSplit(
             n_splits=args.scv_splits, test_size=args.scv_size,
             random_state=args.random_seed)
     else:
-        splitter_cv = StratifiedGroupShuffleSplit(
+        cv_splitter = StratifiedGroupShuffleSplit(
             n_splits=args.scv_splits, test_size=args.scv_size,
             random_state=args.random_seed)
     if args.scv_type == 'grid':
         search = GridSearchCV(
-            pipe, cv=splitter_cv, error_score=0, iid=False, n_jobs=args.n_jobs,
+            pipe, cv=cv_splitter, error_score=0, iid=False, n_jobs=args.n_jobs,
             param_grid=param_grid, param_routing=search_param_routing,
             refit=scv_refit, return_train_score=False,
             scoring=args.scv_scoring, verbose=args.scv_verbose)
     elif args.scv_type == 'rand':
         search = RandomizedSearchCV(
-            pipe, cv=splitter_cv, error_score=0, iid=False,
+            pipe, cv=cv_splitter, error_score=0, iid=False,
             n_iter=args.scv_n_iter, n_jobs=args.n_jobs,
             param_distributions=param_grid, param_routing=search_param_routing,
             refit=scv_refit, return_train_score=False,
             scoring=args.scv_scoring, verbose=args.scv_verbose)
     if args.verbose > 0:
-        print('Grid' if args.scv_type == 'grid' else 'Randomized', end='')
-        print('SearchCV:')
+        print('{}:'.format(type(search).__name__))
         pprint({k: vars(v) if k == 'estimator' else v
                 for k, v in vars(search).items()})
     if args.verbose > 1 and param_grid_dict:
         print('Param grid dict:')
         pprint(param_grid_dict)
     if args.verbose > 0 or args.scv_verbose > 0:
-        print('Train:' if args.dataset_te else 'Dataset:', dataset_name,
+        print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
               X.shape)
     # train w/ independent test sets
-    if args.dataset_te:
+    if args.test_dataset:
         if groups is None:
             pipe_fit_params = {'sample_meta': sample_meta,
                                'feature_meta': feature_meta}
@@ -1267,8 +1271,8 @@ def run_model_selection():
         if np.any(feature_weights):
             _, ax_slr = plt.subplots()
             ax_slr.set_title(('{}\n{}\nEffect of Number of Top-Ranked Features'
-                              'Selected on Test Performance Metrics').format(
-                                  dataset_name, pipe_name),
+                              'Selected on Test Performance Metrics')
+                             .format(dataset_name, pipe_name),
                              fontsize=args.title_font_size)
             ax_slr.set_xlabel('Number of top-ranked features selected',
                               fontsize=args.axis_font_size)
@@ -1295,25 +1299,26 @@ def run_model_selection():
             ax_pre.set_ylabel('Precision', fontsize=args.axis_font_size)
             ax_pre.set_xlim([-0.01, 1.01])
             ax_pre.set_ylim([-0.01, 1.01])
-        datasets_te = natsorted(list(
-            set(args.dataset_te) - set(args.dataset_tr)))
-        metric_colors_te = sns.color_palette(
-            'hls', len(datasets_te) * len(args.scv_scoring))
-        for te_idx, dataset_te in enumerate(datasets_te):
-            (dataset_name_te, X_te, y_te, _, sample_meta_te, sample_weights_te,
-             feature_meta_te) = load_dataset(dataset_te)
-            pipe_predict_params = {'sample_meta': sample_meta_te,
-                                   'feature_meta': feature_meta_te}
-            scores_te = calculate_test_scores(
+        test_datasets = natsorted(list(
+            set(args.test_dataset) - set(args.train_dataset)))
+        test_metric_colors = sns.color_palette(
+            'hls', len(test_datasets) * len(args.scv_scoring))
+        for test_idx, test_dataset in enumerate(test_datasets):
+            (test_dataset_name, X_te, y_te, _, test_sample_meta,
+             test_sample_weights, test_feature_meta) = (
+                 load_dataset(test_dataset))
+            pipe_predict_params = {'sample_meta': test_sample_meta,
+                                   'feature_meta': test_feature_meta}
+            test_scores = calculate_test_scores(
                 search, X_te, y_te, pipe_predict_params,
-                sample_weights_te=sample_weights_te)
+                test_sample_weights=test_sample_weights)
             if args.verbose > 0:
-                print('Test:', dataset_name_te, end=' ')
+                print('Test:', test_dataset_name, end=' ')
                 for metric in args.scv_scoring:
                     print(' {}: {:.4f}'.format(
-                        metric_label[metric], scores_te[metric]), end=' ')
+                        metric_label[metric], test_scores[metric]), end=' ')
                     if metric == 'average_precision':
-                        print(' PR AUC: {:.4f}'.format(scores_te['pr_auc']),
+                        print(' PR AUC: {:.4f}'.format(test_scores['pr_auc']),
                               end=' ')
                 print()
             if np.any(feature_weights):
@@ -1338,41 +1343,43 @@ def run_model_selection():
                             {**search.best_params_,
                              'slrc__cols': feature_names}, pipe_fit_params)
                         for feature_names in tf_name_sets)
-                tf_scores_te = {}
+                tf_test_scores = {}
                 for tf_pipe in tf_pipes:
-                    scores_te = calculate_test_scores(
+                    test_scores = calculate_test_scores(
                         tf_pipe, X_te, y_te, pipe_predict_params,
-                        sample_weights_te=sample_weights_te)
+                        test_sample_weights=test_sample_weights)
                     for metric in args.scv_scoring:
-                        if metric in scores_te:
-                            if metric not in tf_scores_te:
-                                tf_scores_te[metric] = []
-                            tf_scores_te[metric].append(scores_te[metric])
-                for me_idx, metric in enumerate(tf_scores_te):
-                    ax_slr.plot(x_axis, tf_scores_te[metric], alpha=0.8, lw=2,
-                                color=metric_colors_te[te_idx + me_idx],
-                                label='{} {}'.format(dataset_name_te,
+                        if metric in test_scores:
+                            if metric not in tf_test_scores:
+                                tf_test_scores[metric] = []
+                            tf_test_scores[metric].append(test_scores[metric])
+                for metric_idx, metric in enumerate(tf_test_scores):
+                    ax_slr.plot(x_axis, tf_test_scores[metric], alpha=0.8,
+                                color=test_metric_colors[
+                                    test_idx + metric_idx], lw=2,
+                                label='{} {}'.format(test_dataset_name,
                                                      metric_label[metric]))
                 ax_slr.legend(loc='lower right', fontsize='medium')
                 ax_slr.tick_params(labelsize=args.axis_font_size)
                 ax_slr.grid(True, alpha=0.3)
             if 'roc_auc' in args.scv_scoring:
-                ax_roc.plot(scores_te['fpr'], scores_te['tpr'], alpha=0.8,
-                            lw=3, color=metric_colors_te[
-                                te_idx * len(args.scv_scoring)],
+                ax_roc.plot(test_scores['fpr'], test_scores['tpr'], alpha=0.8,
+                            color=test_metric_colors[
+                                test_idx * len(args.scv_scoring)], lw=3,
                             label='{} ROC (AUC = {:.4f})'.format(
-                                dataset_name_te, scores_te['roc_auc']))
+                                test_dataset_name, test_scores['roc_auc']))
                 ax_roc.plot([0, 1], [0, 1], alpha=0.2, color='grey',
                             linestyle='--', lw=3, label='Chance')
                 ax_roc.legend(loc='lower right', fontsize='medium')
                 ax_roc.tick_params(labelsize=args.axis_font_size)
                 ax_roc.grid(False)
             if 'average_precision' in args.scv_scoring:
-                ax_pre.step(scores_te['rec'], scores_te['pre'], alpha=0.8,
-                            lw=3, color=metric_colors_te[
-                                te_idx * len(args.scv_scoring)], where='post',
+                ax_pre.step(test_scores['rec'], test_scores['pre'], alpha=0.8,
+                            color=test_metric_colors[
+                                test_idx * len(args.scv_scoring)], lw=3,
                             label='{} PR (AUC = {:.4f})'.format(
-                                dataset_name_te, scores_te['pr_auc']))
+                                test_dataset_name, test_scores['pr_auc']),
+                            where='post')
                 ax_pre.legend(loc='lower right', fontsize='medium')
                 ax_pre.tick_params(labelsize=args.axis_font_size)
                 ax_pre.grid(False)
@@ -1381,27 +1388,27 @@ def run_model_selection():
         split_results = []
         param_cv_scores = {}
         if groups is None:
-            splitter_te = StratifiedShuffleSplit(
+            test_splitter = StratifiedShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
         else:
-            splitter_te = StratifiedGroupShuffleSplit(
+            test_splitter = StratifiedGroupShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
-        for split_idx, (tr_idxs, te_idxs) in enumerate(
-                splitter_te.split(X, y, groups)):
+        for split_idx, (train_idxs, test_idxs) in enumerate(
+                test_splitter.split(X, y, groups)):
             if groups is None:
-                pipe_fit_params = {'sample_meta': sample_meta.iloc[tr_idxs],
+                pipe_fit_params = {'sample_meta': sample_meta.iloc[train_idxs],
                                    'feature_meta': feature_meta}
                 search_fit_params = pipe_fit_params
             else:
-                pipe_fit_params = {'sample_meta': sample_meta.iloc[tr_idxs],
+                pipe_fit_params = {'sample_meta': sample_meta.iloc[train_idxs],
                                    'feature_meta': feature_meta,
-                                   'sample_weight': sample_weights[tr_idxs]}
-                search_fit_params = {'groups': groups[tr_idxs],
+                                   'sample_weight': sample_weights[train_idxs]}
+                search_fit_params = {'groups': groups[train_idxs],
                                      **pipe_fit_params}
             with parallel_backend(args.parallel_backend):
-                search.fit(X[tr_idxs], y[tr_idxs], **search_fit_params)
+                search.fit(X[train_idxs], y[train_idxs], **search_fit_params)
             if pipe_props['uses_rjava']:
                 best_index = np.argmin(
                     search.cv_results_['rank_test_{}'.format(args.scv_refit)])
@@ -1410,7 +1417,7 @@ def run_model_selection():
                     n_jobs=args.n_jobs, backend=args.parallel_backend,
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
-                            X[tr_idxs], y[tr_idxs], pipe_steps,
+                            X[train_idxs], y[train_idxs], pipe_steps,
                             pipe_param_routing, pipe_params,
                             pipe_fit_params)
                         for pipe_params in [best_params])[0]
@@ -1421,30 +1428,30 @@ def run_model_selection():
             param_cv_scores = add_param_cv_scores(search, param_grid_dict,
                                                   param_cv_scores)
             feature_idxs, feature_weights = get_feature_idxs_and_weights(
-                best_estimator, X[tr_idxs].shape[1])
-            scores = {'cv': {}}
+                best_estimator, X[train_idxs].shape[1])
+            split_scores = {'cv': {}}
             for metric in args.scv_scoring:
-                scores['cv'][metric] = (search.cv_results_
-                                        ['mean_test_{}'.format(metric)]
-                                        [best_index])
-            sample_weights_te = (sample_weights[te_idxs] if groups is not None
-                                 else None)
-            pipe_predict_params = {'sample_meta': sample_meta.iloc[te_idxs],
+                split_scores['cv'][metric] = (search.cv_results_
+                                              ['mean_test_{}'.format(metric)]
+                                              [best_index])
+            test_sample_weights = (sample_weights[test_idxs]
+                                   if groups is not None else None)
+            pipe_predict_params = {'sample_meta': sample_meta.iloc[test_idxs],
                                    'feature_meta': feature_meta}
-            scores['te'] = calculate_test_scores(
-                best_estimator, X[te_idxs], y[te_idxs],
-                pipe_predict_params, sample_weights_te=sample_weights_te)
+            split_scores['te'] = calculate_test_scores(
+                best_estimator, X[test_idxs], y[test_idxs],
+                pipe_predict_params, test_sample_weights=test_sample_weights)
             if args.verbose > 0:
                 print('Dataset:', dataset_name, ' Split: {:>{width}d}'
                       .format(split_idx + 1,
                               width=len(str(args.test_splits))), end=' ')
                 for metric in args.scv_scoring:
                     print(' {} (CV / Test): {:.4f} / {:.4f}'.format(
-                        metric_label[metric], scores['cv'][metric],
-                        scores['te'][metric]), end=' ')
+                        metric_label[metric], split_scores['cv'][metric],
+                        split_scores['te'][metric]), end=' ')
                     if metric == 'average_precision':
                         print(' PR AUC Test: {:.4f}'.format(
-                            scores['te']['pr_auc']), end=' ')
+                            split_scores['te']['pr_auc']), end=' ')
                 print(' Params:', best_params)
             selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
             if np.any(feature_weights):
@@ -1459,11 +1466,10 @@ def run_model_selection():
                     print('Features:')
                     print(tabulate(selected_feature_meta, headers='keys'))
             split_results.append({
-                'model': (best_estimator if args.save_model
-                          else None),
+                'model': best_estimator if args.save_model else None,
                 'feature_idxs': feature_idxs,
                 'feature_weights': feature_weights,
-                'scores': scores})
+                'scores': split_scores})
             # clear cache (can grow too big if not)
             if args.pipe_memory:
                 memory.clear(warn=False)
@@ -1473,26 +1479,26 @@ def run_model_selection():
                  + '_split_results.pkl')
             dump(param_cv_scores, args.results_dir + '/' + dataset_name
                  + '_param_cv_scores.pkl')
-        split_scores = {'cv': {}, 'te': {}}
+        scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
             for metric in args.scv_scoring:
-                if metric not in split_scores['cv']:
-                    split_scores['cv'][metric] = []
-                    split_scores['te'][metric] = []
-                split_scores['cv'][metric].append(
+                if metric not in scores['cv']:
+                    scores['cv'][metric] = []
+                    scores['te'][metric] = []
+                scores['cv'][metric].append(
                     split_result['scores']['cv'][metric])
-                split_scores['te'][metric].append(
+                scores['te'][metric].append(
                     split_result['scores']['te'][metric])
             num_features.append(split_result['feature_idxs'].size)
         print('Dataset:', dataset_name, X.shape, end=' ')
         for metric in args.scv_scoring:
             print(' Mean {} (CV / Test): {:.4f} / {:.4f}'.format(
-                metric_label[metric], np.mean(split_scores['cv'][metric]),
-                np.mean(split_scores['te'][metric])), end=' ')
+                metric_label[metric], np.mean(scores['cv'][metric]),
+                np.mean(scores['te'][metric])), end=' ')
             if metric == 'average_precision':
                 print(' PR AUC Test: {:.4f}'.format(
-                    np.mean(split_scores['te']['pr_auc'])), end=' ')
+                    np.mean(scores['te']['pr_auc'])), end=' ')
         if num_features and pipe_props['has_selector']:
             print(' Mean Features: {:.0f}'.format(np.mean(num_features)))
         else:
@@ -1562,8 +1568,8 @@ def run_model_selection():
                          color='darkgrey', lw=1)
             mean_tpr = np.mean(tprs, axis=0)
             mean_tpr[-1] = 1.0
-            mean_roc_auc = np.mean(split_scores['te']['roc_auc'])
-            std_roc_auc = np.std(split_scores['te']['roc_auc'])
+            mean_roc_auc = np.mean(scores['te']['roc_auc'])
+            std_roc_auc = np.std(scores['te']['roc_auc'])
             mean_num_features = np.mean(num_features)
             std_num_features = np.std(num_features)
             plt.plot(mean_fpr, mean_tpr, lw=3, alpha=0.8, label=(
@@ -1590,10 +1596,10 @@ def run_model_selection():
             plt.ylabel('Precision', fontsize=args.axis_font_size)
             plt.xlim([-0.01, 1.01])
             plt.ylim([-0.01, 1.01])
-            pres, split_scores['te']['pr_auc'] = [], []
+            pres, scores['te']['pr_auc'] = [], []
             mean_rec = np.linspace(0, 1, 100)
             for split_result in split_results:
-                split_scores['te']['pr_auc'].append(
+                scores['te']['pr_auc'].append(
                     split_result['scores']['te']['pr_auc'])
                 pres.append(np.interp(mean_rec,
                                       split_result['scores']['te']['rec'],
@@ -1604,11 +1610,11 @@ def run_model_selection():
                          color='darkgrey', lw=1, where='post')
             mean_pre = np.mean(pres, axis=0)
             mean_pre[-1] = 0.0
-            mean_pr_auc = np.mean(split_scores['te']['pr_auc'])
-            std_pr_auc = np.std(split_scores['te']['pr_auc'])
+            mean_pr_auc = np.mean(scores['te']['pr_auc'])
+            std_pr_auc = np.std(scores['te']['pr_auc'])
             mean_num_features = np.mean(num_features)
             std_num_features = np.std(num_features)
-            plt.step(mean_rec, mean_pre, lw=3, alpha=0.8, where='post',
+            plt.step(mean_rec, mean_pre, alpha=0.8, lw=3, where='post',
                      label=(r'Test Mean PR (AUC = {:.4f} $\pm$ {:.2f}, '
                             r'Features = {:.0f} $\pm$ {:.0f})').format(
                                 mean_pr_auc, std_pr_auc, mean_num_features,

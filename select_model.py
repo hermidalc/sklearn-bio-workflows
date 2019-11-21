@@ -268,6 +268,8 @@ parser.add_argument('--title-font-size', type=int, default=14,
                     help='figure title font size')
 parser.add_argument('--axis-font-size', type=int, default=14,
                     help='figure axis font size')
+parser.add_argument('--long-label-names', default=False, action='store_true',
+                    help='figure long label names')
 parser.add_argument('--save-figs', default=False, action='store_true',
                     help='save figures')
 parser.add_argument('--show-figs', default=False, action='store_true',
@@ -385,8 +387,9 @@ else:
 
 # specify params in sort order
 # (needed by code dealing with *SearchCV cv_results_)
+pipeline_step_types = ('trf', 'slr', 'clf', 'rgr')
 cv_params = {k: v for k, v in vars(args).items()
-             if k.startswith(('trf', 'slr', 'clf', 'rgr'))}
+             if k.startswith(pipeline_step_types)}
 if args.trf_mms_fr:
     cv_params['trf_mms_fr'] = sorted(tuple(x) for x in args.trf_mms_fr)
 if args.slr_col_names:
@@ -1091,8 +1094,8 @@ def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
             search.cv_results_['param_{}'.format(param)])
         if any(isinstance(v, BaseEstimator) for v in param_cv_values):
             param_cv_values = np.array([
-                '.'.join([type(o).__module__, type(o).__qualname__])
-                for o in param_cv_values])
+                '.'.join([type(v).__module__, type(v).__qualname__])
+                for v in param_cv_values])
         param_cv_values_sort_idxs = np.where(
             np.array(param_values).reshape(len(param_values), 1)
             == param_cv_values)[1]
@@ -1166,7 +1169,11 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
             plt.xticks(x_axis)
         elif nonuniq_param in params_fixed_xticks:
             x_axis = range(len(param_grid_dict[param]))
-            plt.xticks(x_axis, [str(p) for p in param_grid_dict[param]])
+            xtick_labels = [v.split('.')[-1]
+                            if nonuniq_param in pipeline_step_types
+                            and not args.long_label_names
+                            else str(v) for v in param_grid_dict[param]]
+            plt.xticks(x_axis, xtick_labels)
         plt.xlim([min(x_axis), max(x_axis)])
         plt.title('{}\n{}\nEffect of {} on CV Performance Metrics'.format(
             dataset_name, pipe_name, param), fontsize=args.title_font_size)
@@ -1180,9 +1187,10 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                                                     std_cv_scores[metric])],
                              [m + s for m, s in zip(mean_cv_scores[metric],
                                                     std_cv_scores[metric])],
-                             alpha=0.2, color='grey',
-                             label=(r'$\pm$ 1 std. dev.' if metric_idx == 0
-                                    else None))
+                             alpha=0.2, color='grey', label=(
+                                 r'$\pm$ 1 std. dev.'
+                                 if metric_idx == len(args.scv_scoring) - 1
+                                 else None))
         plt.legend(loc='lower right', fontsize='medium')
         plt.tick_params(labelsize=args.axis_font_size)
         plt.grid(True, alpha=0.3)
@@ -1253,7 +1261,10 @@ def run_model_selection():
                     metric_label[metric], search.cv_results_[
                         'mean_test_{}'.format(metric)][search.best_index_]),
                       end=' ')
-            print(' Params:', search.best_params_)
+            print(' Params:', {
+                k: ('.'.join([type(v).__module__, type(v).__qualname__])
+                    if isinstance(v, BaseEstimator) else v)
+                for k, v in search.best_params_.items()})
             if np.any(feature_weights):
                 print('Feature Ranking:')
                 print(tabulate(selected_feature_meta.sort_values(
@@ -1370,7 +1381,8 @@ def run_model_selection():
                                 test_dataset_name, test_scores['roc_auc']))
                 ax_roc.plot([0, 1], [0, 1], alpha=0.2, color='grey',
                             linestyle='--', lw=3, label=(
-                                'Chance' if test_idx == 0 else None))
+                                'Chance' if test_idx == len(test_datasets) - 1
+                                else None))
                 ax_roc.legend(loc='lower right', fontsize='medium')
                 ax_roc.tick_params(labelsize=args.axis_font_size)
                 ax_roc.grid(False)
@@ -1453,7 +1465,10 @@ def run_model_selection():
                     if metric == 'average_precision':
                         print(' PR AUC Test: {:.4f}'.format(
                             split_scores['te']['pr_auc']), end=' ')
-                print(' Params:', best_params)
+                print(' Params:', {
+                    k: ('.'.join([type(v).__module__, type(v).__qualname__])
+                        if isinstance(v, BaseEstimator) else v)
+                    for k, v in best_params.items()})
             selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
             if np.any(feature_weights):
                 selected_feature_meta['Weight'] = feature_weights

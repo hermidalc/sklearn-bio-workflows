@@ -1369,7 +1369,8 @@ def run_model_selection():
                             label='{} ROC (AUC = {:.4f})'.format(
                                 test_dataset_name, test_scores['roc_auc']))
                 ax_roc.plot([0, 1], [0, 1], alpha=0.2, color='grey',
-                            linestyle='--', lw=3, label='Chance')
+                            linestyle='--', lw=3, label=(
+                                'Chance' if test_idx == 0 else None))
                 ax_roc.legend(loc='lower right', fontsize='medium')
                 ax_roc.tick_params(labelsize=args.axis_font_size)
                 ax_roc.grid(False)

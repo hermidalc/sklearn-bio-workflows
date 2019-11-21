@@ -1007,21 +1007,6 @@ def load_dataset(file):
             feature_meta)
 
 
-def get_search_param_routing(pipe_param_routing, groups):
-    search_param_routing = ({'cv': 'groups',
-                             'estimator': ['sample_weight'],
-                             'scoring': ['sample_weight']}
-                            if groups is not None else None)
-    if pipe_param_routing:
-        if search_param_routing is None:
-            search_param_routing = {'estimator': [], 'scoring': []}
-        for param in [p for l in pipe_param_routing.values() for p in l]:
-            if param not in search_param_routing['estimator']:
-                search_param_routing['estimator'].append(param)
-                search_param_routing['scoring'].append(param)
-    return search_param_routing
-
-
 def fit_pipeline(X, y, steps, param_routing, params, fit_params):
     pipe = Pipeline(steps, memory=memory, param_routing=param_routing)
     pipe.set_params(**params)
@@ -1201,7 +1186,17 @@ def run_model_selection():
      param_grid_dict) = setup_pipe_and_param_grid()
     dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta = (
         load_dataset(args.train_dataset))
-    search_param_routing = get_search_param_routing(pipe_param_routing, groups)
+    search_param_routing = ({'cv': 'groups',
+                             'estimator': ['sample_weight'],
+                             'scoring': ['sample_weight']}
+                            if groups is not None else None)
+    if pipe_param_routing:
+        if search_param_routing is None:
+            search_param_routing = {'estimator': [], 'scoring': []}
+        for param in [p for l in pipe_param_routing.values() for p in l]:
+            if param not in search_param_routing['estimator']:
+                search_param_routing['estimator'].append(param)
+                search_param_routing['scoring'].append(param)
     scv_refit = (args.scv_refit if args.test_dataset
                  or not pipe_props['uses_rjava'] else False)
     if groups is None:
@@ -1237,15 +1232,16 @@ def run_model_selection():
               X.shape)
     # train w/ independent test sets
     if args.test_dataset:
-        if groups is None:
-            pipe_fit_params = {'sample_meta': sample_meta,
-                               'feature_meta': feature_meta}
-            search_fit_params = pipe_fit_params
-        else:
-            pipe_fit_params = {'sample_meta': sample_meta,
-                               'feature_meta': feature_meta,
-                               'sample_weight': sample_weights}
-            search_fit_params = {'groups': groups, **pipe_fit_params}
+        pipe_fit_params = {}
+        if 'sample_meta' in search_param_routing['estimator']:
+            pipe_fit_params['sample_meta'] = sample_meta
+        if 'feature_meta' in search_param_routing['estimator']:
+            pipe_fit_params['feature_meta'] = feature_meta
+        if 'sample_weight' in search_param_routing['estimator']:
+            pipe_fit_params['sample_weight'] = sample_weights
+        search_fit_params = pipe_fit_params
+        if groups is not None:
+            search_fit_params['groups'] = groups
         with parallel_backend(args.parallel_backend):
             search.fit(X, y, **search_fit_params)
         param_cv_scores = add_param_cv_scores(search, param_grid_dict)
@@ -1318,8 +1314,11 @@ def run_model_selection():
             (test_dataset_name, X_te, y_te, _, test_sample_meta,
              test_sample_weights, test_feature_meta) = (
                  load_dataset(test_dataset))
-            pipe_predict_params = {'sample_meta': test_sample_meta,
-                                   'feature_meta': test_feature_meta}
+            pipe_predict_params = {}
+            if 'sample_meta' in pipe_fit_params:
+                pipe_predict_params['sample_meta'] = test_sample_meta
+            if 'feature_meta' in pipe_fit_params:
+                pipe_predict_params['feature_meta'] = test_feature_meta
             test_scores = calculate_test_scores(
                 search, X_te, y_te, pipe_predict_params,
                 test_sample_weights=test_sample_weights)
@@ -1336,7 +1335,8 @@ def run_model_selection():
                 tf_pipe_steps = pipe_steps[:-1]
                 tf_pipe_steps.append(('slrc', ColumnSelector()))
                 tf_pipe_steps.append(pipe_steps[-1])
-                tf_pipe_param_routing = pipe_param_routing
+                tf_pipe_param_routing = (pipe_param_routing
+                                         if pipe_param_routing else {})
                 tf_pipe_param_routing['slrc'] = (
                     pipe_config['ColumnSelector']['param_routing'])
                 tf_name_sets = []
@@ -1410,16 +1410,18 @@ def run_model_selection():
                 random_state=args.random_seed)
         for split_idx, (train_idxs, test_idxs) in enumerate(
                 test_splitter.split(X, y, groups)):
-            if groups is None:
-                pipe_fit_params = {'sample_meta': sample_meta.iloc[train_idxs],
-                                   'feature_meta': feature_meta}
-                search_fit_params = pipe_fit_params
-            else:
-                pipe_fit_params = {'sample_meta': sample_meta.iloc[train_idxs],
-                                   'feature_meta': feature_meta,
-                                   'sample_weight': sample_weights[train_idxs]}
-                search_fit_params = {'groups': groups[train_idxs],
-                                     **pipe_fit_params}
+            pipe_fit_params = {}
+            if 'sample_meta' in search_param_routing['estimator']:
+                pipe_fit_params['sample_meta'] = sample_meta.iloc[train_idxs]
+            if 'feature_meta' in search_param_routing['estimator']:
+                pipe_fit_params['feature_meta'] = feature_meta
+            if 'sample_weight' in search_param_routing['estimator']:
+                pipe_fit_params['sample_weight'] = (
+                    sample_weights[train_idxs] if sample_weights is not None
+                    else None)
+            search_fit_params = pipe_fit_params
+            if groups is not None:
+                search_fit_params['groups'] = groups[train_idxs]
             with parallel_backend(args.parallel_backend):
                 search.fit(X[train_idxs], y[train_idxs], **search_fit_params)
             if pipe_props['uses_rjava']:
@@ -1448,9 +1450,13 @@ def run_model_selection():
                                               ['mean_test_{}'.format(metric)]
                                               [best_index])
             test_sample_weights = (sample_weights[test_idxs]
-                                   if groups is not None else None)
-            pipe_predict_params = {'sample_meta': sample_meta.iloc[test_idxs],
-                                   'feature_meta': feature_meta}
+                                   if sample_weights is not None else None)
+            pipe_predict_params = {}
+            if 'sample_meta' in pipe_fit_params:
+                pipe_predict_params['sample_meta'] = (
+                    sample_meta.iloc[test_idxs])
+            if 'feature_meta' in pipe_fit_params:
+                pipe_predict_params['feature_meta'] = feature_meta
             split_scores['te'] = calculate_test_scores(
                 best_estimator, X[test_idxs], y[test_idxs],
                 pipe_predict_params, test_sample_weights=test_sample_weights)

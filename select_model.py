@@ -71,6 +71,14 @@ from sklearn_extensions.preprocessing import (
 from sklearn_extensions.svm import CachedLinearSVC
 
 
+def run_cleanup():
+    if args.pipe_memory:
+        rmtree(cachedir)
+    if glob.glob('/tmp/Rtmp*'):
+        for rtmp in glob.glob('/tmp/Rtmp*'):
+            rmtree(rtmp)
+
+
 def int_list(arg):
     return list(map(int, arg.split(',')))
 
@@ -390,210 +398,50 @@ else:
 pipeline_step_types = ('trf', 'slr', 'clf', 'rgr')
 cv_params = {k: v for k, v in vars(args).items()
              if k.startswith(pipeline_step_types)}
-if args.trf_mms_fr:
-    cv_params['trf_mms_fr'] = sorted(tuple(x) for x in args.trf_mms_fr)
-if args.slr_col_names:
-    cv_params['slr_col_names'] = sorted(args.slr_col_names)
-if args.slr_vrt_thres:
-    cv_params['slr_vrt_thres'] = sorted(args.slr_vrt_thres)
-if args.slr_mi_n:
-    cv_params['slr_mi_n'] = sorted(args.slr_mi_n)
-if args.slr_skb_k:
-    cv_params['slr_skb_k'] = sorted(args.slr_skb_k)
-elif args.slr_skb_k_max:
-    if args.slr_skb_k_min == 1 and args.slr_skb_k_step > 1:
-        cv_params['slr_skb_k'] = [1] + list(range(
-            0, args.slr_skb_k_max + args.slr_skb_k_step, args.slr_skb_k_step
-        ))[1:]
-    else:
-        cv_params['slr_skb_k'] = list(range(
-            args.slr_skb_k_min, args.slr_skb_k_max + args.slr_skb_k_step,
-            args.slr_skb_k_step))
-if args.slr_sfp_p:
-    cv_params['slr_sfp_p'] = sorted(args.slr_sfp_p)
-if args.slr_sfm_svm_thres:
-    cv_params['slr_sfm_svm_thres'] = sorted(args.slr_sfm_svm_thres)
-if args.slr_sfm_svm_c:
-    cv_params['slr_sfm_svm_c'] = sorted(args.slr_sfm_svm_c)
-if args.slr_sfm_svm_cw:
-    cv_params['slr_sfm_svm_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_sfm_svm_cw],
-        key=lambda x: (x is not None, x))
-if args.slr_sfm_rf_thres:
-    cv_params['slr_sfm_rf_thres'] = sorted(args.slr_sfm_rf_thres)
-if args.slr_sfm_rf_e:
-    cv_params['slr_sfm_rf_e'] = sorted(args.slr_sfm_rf_e)
-if args.slr_sfm_rf_d:
-    cv_params['slr_sfm_rf_d'] = sorted(
-        [None if a in ('None', 'none') else int(a)
-         for a in args.slr_sfm_rf_d], key=lambda x: (x is not None, x))
-if args.slr_sfm_rf_f:
-    cv_params['slr_sfm_rf_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_sfm_rf_f],
-        key=lambda x: (x is not None, x))
-if args.slr_sfm_rf_cw:
-    cv_params['slr_sfm_rf_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_sfm_rf_cw],
-        key=lambda x: (x is not None, x))
-if args.slr_sfm_ext_thres:
-    cv_params['slr_sfm_ext_thres'] = sorted(args.slr_sfm_ext_thres)
-if args.slr_sfm_ext_e:
-    cv_params['slr_sfm_ext_e'] = sorted(args.slr_sfm_ext_e)
-if args.slr_sfm_ext_d:
-    cv_params['slr_sfm_ext_d'] = sorted(
-        [None if a in ('None', 'none')
-         else int(a) for a in args.slr_sfm_ext_d],
-        key=lambda x: (x is not None, x))
-if args.slr_sfm_ext_f:
-    cv_params['slr_sfm_ext_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_sfm_ext_f],
-        key=lambda x: (x is not None, x))
-if args.slr_sfm_ext_cw:
-    cv_params['slr_sfm_ext_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_sfm_ext_cw],
-        key=lambda x: (x is not None, x))
-if args.slr_sfm_grb_e:
-    cv_params['slr_sfm_grb_e'] = sorted(args.slr_sfm_grb_e)
-if args.slr_sfm_grb_d:
-    cv_params['slr_sfm_grb_d'] = sorted(args.slr_sfm_grb_d)
-if args.slr_sfm_grb_f:
-    cv_params['slr_sfm_grb_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_sfm_grb_f],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_svm_c:
-    cv_params['slr_rfe_svm_c'] = sorted(args.slr_rfe_svm_c)
-if args.slr_rfe_svm_cw:
-    cv_params['slr_rfe_svm_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_rfe_svm_cw],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_rf_e:
-    cv_params['slr_rfe_rf_e'] = sorted(args.slr_rfe_rf_e)
-if args.slr_rfe_rf_d:
-    cv_params['slr_rfe_rf_d'] = sorted(
-        [None if a in ('None', 'none')
-         else int(a) for a in args.slr_rfe_rf_d],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_rf_f:
-    cv_params['slr_rfe_rf_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_rfe_rf_f],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_rf_cw:
-    cv_params['slr_rfe_rf_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_rfe_rf_cw],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_ext_e:
-    cv_params['slr_rfe_ext_e'] = sorted(args.slr_rfe_ext_e)
-if args.slr_rfe_ext_d:
-    cv_params['slr_rfe_ext_d'] = sorted(
-        [None if a in ('None', 'none')
-         else int(a) for a in args.slr_rfe_ext_d],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_ext_f:
-    cv_params['slr_rfe_ext_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_rfe_ext_f],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_ext_cw:
-    cv_params['slr_rfe_ext_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_rfe_ext_cw],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_grb_e:
-    cv_params['slr_rfe_grb_e'] = sorted(args.slr_rfe_grb_e)
-if args.slr_rfe_grb_d:
-    cv_params['slr_rfe_grb_d'] = sorted(args.slr_rfe_grb_d)
-if args.slr_rfe_grb_f:
-    cv_params['slr_rfe_grb_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.slr_rfe_grb_f],
-        key=lambda x: (x is not None, x))
-if args.slr_rfe_step:
-    cv_params['slr_rfe_step'] = sorted(args.slr_rfe_step)
-if args.slr_rlf_n:
-    cv_params['slr_rlf_n'] = sorted(args.slr_rlf_n)
-if args.slr_rlf_s:
-    cv_params['slr_rlf_s'] = sorted(args.slr_rlf_s)
-if args.clf_svm_c:
-    cv_params['clf_svm_c'] = sorted(args.clf_svm_c)
-if args.clf_svm_cw:
-    cv_params['clf_svm_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_svm_cw],
-        key=lambda x: (x is not None, x))
-if args.clf_svm_kern:
-    cv_params['clf_svm_kern'] = sorted(args.clf_svm_kern)
-if args.clf_svm_deg:
-    cv_params['clf_svm_deg'] = sorted(args.clf_svm_deg)
-if args.clf_svm_g:
-    cv_params['clf_svm_g'] = sorted(args.clf_svm_g)
-if args.clf_knn_k:
-    cv_params['clf_knn_k'] = sorted(args.clf_knn_k)
-if args.clf_knn_w:
-    cv_params['clf_knn_w'] = sorted(args.clf_knn_w)
-if args.clf_dt_d:
-    cv_params['clf_dt_d'] = sorted(
-        [None if a in ('None', 'none') else int(a) for a in args.clf_dt_d],
-        key=lambda x: (x is not None, x))
-if args.clf_dt_f:
-    cv_params['clf_dt_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_dt_f],
-        key=lambda x: (x is not None, x))
-if args.clf_dt_cw:
-    cv_params['clf_dt_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_dt_cw],
-        key=lambda x: (x is not None, x))
-if args.clf_rf_e:
-    cv_params['clf_rf_e'] = sorted(args.clf_rf_e)
-if args.clf_rf_d:
-    cv_params['clf_rf_d'] = sorted(
-        [None if a in ('None', 'none') else int(a) for a in args.clf_rf_d],
-        key=lambda x: (x is not None, x))
-if args.clf_rf_f:
-    cv_params['clf_rf_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_rf_f],
-        key=lambda x: (x is not None, x))
-if args.clf_rf_cw:
-    cv_params['clf_rf_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_rf_cw],
-        key=lambda x: (x is not None, x))
-if args.clf_ext_e:
-    cv_params['clf_ext_e'] = sorted(args.clf_ext_e)
-if args.clf_ext_d:
-    cv_params['clf_ext_d'] = sorted(
-        [None if a in ('None', 'none')
-         else int(a) for a in args.clf_ext_d],
-        key=lambda x: (x is not None, x))
-if args.clf_ext_f:
-    cv_params['clf_ext_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_ext_f],
-        key=lambda x: (x is not None, x))
-if args.clf_ext_cw:
-    cv_params['clf_ext_cw'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_ext_cw],
-        key=lambda x: (x is not None, x))
-if args.clf_ada_e:
-    cv_params['clf_ada_e'] = sorted(args.clf_ada_e)
-if args.clf_ada_lgr_c:
-    cv_params['clf_ada_lgr_c'] = sorted(args.clf_ada_lgr_c)
-if args.clf_ada_lgr_cw:
-    cv_params['clf_ada_lgr_cw'] = sorted(
-        [None if a in ('None', 'none')
-         else a for a in args.clf_ada_lgr_cw],
-        key=lambda x: (x is not None, x))
-if args.clf_grb_e:
-    cv_params['clf_grb_e'] = sorted(args.clf_grb_e)
-if args.clf_grb_d:
-    cv_params['clf_grb_d'] = sorted(args.clf_grb_d)
-if args.clf_grb_f:
-    cv_params['clf_grb_f'] = sorted(
-        [None if a in ('None', 'none') else a for a in args.clf_grb_f],
-        key=lambda x: (x is not None, x))
-if args.clf_mlp_hls:
-    cv_params['clf_mlp_hls'] = sorted(tuple(args.clf_mlp_hls))
-if args.clf_mlp_act:
-    cv_params['clf_mlp_act'] = sorted(args.clf_mlp_act)
-if args.clf_mlp_slvr:
-    cv_params['clf_mlp_slvr'] = sorted(args.clf_mlp_slvr)
-if args.clf_mlp_a:
-    cv_params['clf_mlp_a'] = sorted(args.clf_mlp_a)
-if args.clf_mlp_lr:
-    cv_params['clf_mlp_lr'] = sorted(args.clf_mlp_lr)
+for cv_param, cv_param_values in cv_params.items():
+    if cv_param_values is None:
+        continue
+    if cv_param == 'trf_mms_fr':
+        cv_params[cv_param] = sorted(tuple(v) for v in cv_param_values)
+    elif cv_param in ('slr_col_names', 'slr_vrt_thres', 'slr_mi_n',
+                      'slr_skb_k', 'slr_sfp_p', 'slr_sfm_svm_thres',
+                      'slr_sfm_svm_c', 'slr_sfm_rf_thres', 'slr_sfm_rf_e',
+                      'slr_sfm_ext_thres', 'slr_sfm_ext_e', 'slr_sfm_grb_e',
+                      'slr_sfm_grb_d', 'slr_rfe_svm_c', 'slr_rfe_rf_e',
+                      'slr_rfe_ext_e', 'slr_rfe_grb_e', 'slr_rfe_grb_d',
+                      'slr_rfe_step', 'slr_rlf_n', 'slr_rlf_s', 'clf_svm_c',
+                      'clf_svm_kern', 'clf_svm_deg', 'clf_svm_g', 'clf_knn_k',
+                      'clf_knn_w', 'clf_rf_e', 'clf_ext_e', 'clf_ada_e',
+                      'clf_ada_lgr_c', 'clf_grb_e', 'clf_grb_d', 'clf_mlp_hls',
+                      'clf_mlp_act', 'clf_mlp_slvr', 'clf_mlp_a',
+                      'clf_mlp_lr'):
+        cv_params[cv_param] = sorted(cv_param_values)
+    elif cv_param in ('slr_skb_k_min', 'slr_skb_k_max'):
+        if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
+            cv_params['slr_skb_k'] = [1] + list(range(
+                0, cv_params['slr_skb_k_max'] + cv_params['slr_skb_k_step'],
+                cv_params['slr_skb_k_step']))[1:]
+        else:
+            cv_params['slr_skb_k'] = list(range(
+                cv_params['slr_skb_k_min'],
+                cv_params['slr_skb_k_max'] + cv_params['slr_skb_k_step'],
+                cv_params['slr_skb_k_step']))
+    elif cv_param in ('slr_sfm_svm_cw', 'slr_sfm_rf_cw', 'slr_sfm_ext_cw',
+                      'slr_rfe_svm_cw', 'slr_rfe_rf_cw', 'slr_rfe_ext_cw',
+                      'slr_sfm_rf_f', 'slr_sfm_ext_f', 'slr_sfm_grb_f',
+                      'slr_rfe_rf_f', 'slr_rfe_ext_f', 'slr_rfe_grb_f',
+                      'clf_svm_cw', 'clf_dt_f', 'clf_dt_cw', 'clf_rf_f',
+                      'clf_rf_cw', 'clf_ext_f', 'clf_ext_cw', 'clf_ada_lgr_cw',
+                      'clf_grb_f'):
+        cv_params[cv_param] = sorted(
+            [None if v in ('None', 'none') else v
+             for v in cv_param_values], key=lambda x: (x is not None, x))
+    elif cv_param in ('slr_sfm_rf_d', 'slr_sfm_ext_d', 'slr_rfe_rf_d',
+                      'slr_rfe_ext_d', 'clf_dt_d', 'clf_rf_d', 'clf_ext_d'):
+        cv_params[cv_param] = sorted(
+            [None if v in ('None', 'none') else int(v)
+             for v in cv_param_values], key=lambda x: (x is not None, x))
+
 
 pipe_config = {
     # transformers
@@ -1300,7 +1148,7 @@ def run_model_selection():
             ax_roc.set_ylim([-0.01, 1.01])
         if 'average_precision' in args.scv_scoring:
             _, ax_pre = plt.subplots()
-            ax_pre.set_title('{}\n{}\\nPR Curves'.format(
+            ax_pre.set_title('{}\n{}\nPR Curves'.format(
                 dataset_name, pipe_name), fontsize=args.title_font_size)
             ax_pre.set_xlabel('Recall', fontsize=args.axis_font_size)
             ax_pre.set_ylabel('Precision', fontsize=args.axis_font_size)
@@ -1649,14 +1497,6 @@ def run_model_selection():
             plt.legend(loc='lower right', fontsize='medium')
             plt.tick_params(labelsize=args.axis_font_size)
             plt.grid(False)
-
-
-def run_cleanup():
-    if args.pipe_memory:
-        rmtree(cachedir)
-    if glob.glob('/tmp/Rtmp*'):
-        for rtmp in glob.glob('/tmp/Rtmp*'):
-            rmtree(rtmp)
 
 
 run_model_selection()

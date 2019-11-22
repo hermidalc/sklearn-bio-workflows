@@ -1152,7 +1152,7 @@ if args.pipe_memory:
         memory=memory, random_state=args.random_seed)
     slr_svm_estimator = CachedLinearSVC(
         memory=memory, random_state=args.random_seed, tol=args.clf_svm_tol)
-    slr_svm_sfm_estimator = CachedLinearSVC(
+    slr_sfm_svm_estimator = CachedLinearSVC(
         memory=memory, penalty='l1', dual=False,
         random_state=args.random_seed, tol=args.clf_svm_tol)
     slr_rf_estimator = CachedRandomForestClassifier(
@@ -1170,7 +1170,7 @@ else:
         random_state=args.random_seed)
     slr_svm_estimator = LinearSVC(
         random_state=args.random_seed, tol=args.clf_svm_tol)
-    slr_svm_sfm_estimator = LinearSVC(
+    slr_sfm_svm_estimator = LinearSVC(
         penalty='l1', dual=False, random_state=args.random_seed,
         tol=args.clf_svm_tol)
     slr_rf_estimator = RandomForestClassifier(
@@ -1280,7 +1280,7 @@ pipe_config = {
             'k': cv_params['slr_skb_k'],
             'score_func__n_neighbors': cv_params['slr_mi_n']}},
     'SelectFromModel-LinearSVC': {
-        'estimator': SelectFromModel(slr_svm_sfm_estimator),
+        'estimator': SelectFromModel(slr_sfm_svm_estimator),
         'param_grid': {
             'estimator__C': cv_params['slr_sfm_svm_c'],
             'estimator__class_weight': cv_params['slr_sfm_svm_cw'],

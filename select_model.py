@@ -972,6 +972,10 @@ parser.add_argument('--slr-rlf-s', type=int, nargs='+',
                     help='slr rlf sample size')
 parser.add_argument('--clf-svm-c', type=float, nargs='+',
                     help='clf svm c')
+parser.add_argument('--clf-svm-c-min', type=float,
+                    help='clf svm c min')
+parser.add_argument('--clf-svm-c-max', type=float,
+                    help='clf svm c max')
 parser.add_argument('--clf-svm-cw', type=str, nargs='+',
                     help='clf svm class weight')
 parser.add_argument('--clf-svm-kern', type=str,
@@ -1214,6 +1218,14 @@ for cv_param, cv_param_values in cv_params.items():
                 cv_params['slr_skb_k_min'],
                 cv_params['slr_skb_k_max'] + cv_params['slr_skb_k_step'],
                 cv_params['slr_skb_k_step']))
+    elif cv_param in ('clf_svm_c_min', 'clf_svm_c_max'):
+        svm_c_log_start = int(np.floor(np.log10(abs(
+            cv_params['clf_svm_c_min']))))
+        svm_c_log_end = int(np.floor(np.log10(abs(
+            cv_params['clf_svm_c_max']))))
+        cv_params['clf_svm_c'] = list(np.logspace(
+            svm_c_log_start, svm_c_log_end,
+            svm_c_log_end - svm_c_log_start + 1))
     elif cv_param in ('slr_sfm_svm_cw', 'slr_sfm_rf_cw', 'slr_sfm_ext_cw',
                       'slr_rfe_svm_cw', 'slr_rfe_rf_cw', 'slr_rfe_ext_cw',
                       'slr_sfm_rf_f', 'slr_sfm_ext_f', 'slr_sfm_grb_f',

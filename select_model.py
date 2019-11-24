@@ -223,28 +223,29 @@ def fit_pipeline(X, y, steps, param_routing, params, fit_params):
     return pipe
 
 
-def calculate_test_scores(pipe, X_te, y_te, pipe_predict_params,
+def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
                           test_sample_weights=None):
     scores = {}
     if hasattr(pipe, 'decision_function'):
-        y_score = pipe.decision_function(X_te, **pipe_predict_params)
+        y_score = pipe.decision_function(X_test, **pipe_predict_params)
     else:
-        y_score = pipe.predict_proba(X_te, **pipe_predict_params)[:, 1]
+        y_score = pipe.predict_proba(X_test, **pipe_predict_params)[:, 1]
     for metric in args.scv_scoring:
         if metric == 'roc_auc':
             scores[metric] = roc_auc_score(
-                y_te, y_score, sample_weight=test_sample_weights)
+                y_test, y_score, sample_weight=test_sample_weights)
             scores['fpr'], scores['tpr'], _ = roc_curve(
-                y_te, y_score, pos_label=1, sample_weight=test_sample_weights)
+                y_test, y_score, pos_label=1,
+                sample_weight=test_sample_weights)
         elif metric == 'balanced_accuracy':
-            y_pred = pipe.predict(X_te, **pipe_predict_params)
+            y_pred = pipe.predict(X_test, **pipe_predict_params)
             scores[metric] = balanced_accuracy_score(
-                y_te, y_pred, sample_weight=test_sample_weights)
+                y_test, y_pred, sample_weight=test_sample_weights)
         elif metric == 'average_precision':
             scores[metric] = average_precision_score(
-                y_te, y_score, sample_weight=test_sample_weights)
+                y_test, y_score, sample_weight=test_sample_weights)
             scores['pre'], scores['rec'], _ = (
-                precision_recall_curve(y_te, y_score, pos_label=1,
+                precision_recall_curve(y_test, y_score, pos_label=1,
                                        sample_weight=test_sample_weights))
             scores['pr_auc'] = auc(scores['rec'], scores['pre'])
     return scores
@@ -518,7 +519,7 @@ def run_model_selection():
         test_metric_colors = sns.color_palette(
             'hls', len(test_datasets) * len(args.scv_scoring))
         for test_idx, test_dataset in enumerate(test_datasets):
-            (test_dataset_name, X_te, y_te, _, test_sample_meta,
+            (test_dataset_name, X_test, y_test, _, test_sample_meta,
              test_sample_weights, test_feature_meta) = (
                  load_dataset(test_dataset))
             pipe_predict_params = {}
@@ -527,7 +528,7 @@ def run_model_selection():
             if 'feature_meta' in pipe_fit_params:
                 pipe_predict_params['feature_meta'] = test_feature_meta
             test_scores = calculate_test_scores(
-                search, X_te, y_te, pipe_predict_params,
+                search, X_test, y_test, pipe_predict_params,
                 test_sample_weights=test_sample_weights)
             if args.verbose > 0:
                 print('Test:', test_dataset_name, end=' ')
@@ -564,7 +565,7 @@ def run_model_selection():
                 tf_test_scores = {}
                 for tf_pipe in tf_pipes:
                     test_scores = calculate_test_scores(
-                        tf_pipe, X_te, y_te, pipe_predict_params,
+                        tf_pipe, X_test, y_test, pipe_predict_params,
                         test_sample_weights=test_sample_weights)
                     for metric in args.scv_scoring:
                         if metric in test_scores:
@@ -1228,7 +1229,6 @@ for cv_param, cv_param_values in cv_params.items():
         cv_params[cv_param] = sorted(
             [None if v in ('None', 'none') else int(v)
              for v in cv_param_values], key=lambda x: (x is not None, x))
-
 
 pipe_config = {
     # transformers

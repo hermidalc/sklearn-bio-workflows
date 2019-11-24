@@ -886,6 +886,8 @@ parser.add_argument('--trf-mms-fr', type=int_list,
                     nargs='+', help='trf mms fr')
 parser.add_argument('--slr-col-names', type=str_list,
                     nargs='+', help='slr feature names')
+parser.add_argument('--slr-col-meta', type=str,
+                    help='slr meta column name')
 parser.add_argument('--slr-vrt-thres', type=float,
                     nargs='+', help='slr vrt threshold')
 parser.add_argument('--slr-mi-n', type=int, nargs='+',
@@ -1266,7 +1268,7 @@ pipe_config = {
         'param_routing': ['sample_meta']},
     # feature selectors
     'ColumnSelector': {
-        'estimator': ColumnSelector(),
+        'estimator': ColumnSelector(meta_col=args.slr_col_meta),
         'param_grid': {
             'cols': cv_params['slr_col_names']},
         'param_routing': ['feature_meta']},

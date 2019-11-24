@@ -882,12 +882,10 @@ parser.add_argument('--pipe-steps', type=str_list, nargs='+', required=True,
                     help='pipeline step names')
 parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
                     nargs='+', help='test datasets')
-parser.add_argument('--trf-mms-fr', type=int_list,
-                    nargs='+', help='trf mms fr')
 parser.add_argument('--slr-col-names', type=str_list,
-                    nargs='+', help='slr feature names')
+                    nargs='+', help='slr feature or metadata names')
 parser.add_argument('--slr-col-meta', type=str,
-                    help='slr meta column name')
+                    help='slr col metadata column name')
 parser.add_argument('--slr-vrt-thres', type=float,
                     nargs='+', help='slr vrt threshold')
 parser.add_argument('--slr-mi-n', type=int, nargs='+',
@@ -900,8 +898,10 @@ parser.add_argument('--slr-skb-k-max', type=int,
                     help='slr skb k max')
 parser.add_argument('--slr-skb-k-step', type=int,
                     default=1, help='slr skb k step')
-parser.add_argument('--slr-sfp-p', type=float, nargs='+',
-                    help='slr sfp fpr')
+parser.add_argument('--slr-de-pv', type=float, nargs='+',
+                    help='slr diff expr adj p-value')
+parser.add_argument('--slr-de-fc', type=float, nargs='+',
+                    help='slr diff expr fold change')
 parser.add_argument('--slr-sfm-svm-thres', type=float,
                     nargs='+', help='slr sfm svm threshold')
 parser.add_argument('--slr-sfm-svm-c', type=float,
@@ -972,6 +972,8 @@ parser.add_argument('--slr-rlf-n', type=int, nargs='+',
                     help='slr rlf n neighbors')
 parser.add_argument('--slr-rlf-s', type=int, nargs='+',
                     help='slr rlf sample size')
+parser.add_argument('--trf-mms-fr', type=int_list,
+                    nargs='+', help='trf mms fr')
 parser.add_argument('--clf-svm-c', type=float, nargs='+',
                     help='clf svm c')
 parser.add_argument('--clf-svm-c-min', type=float,
@@ -1038,6 +1040,12 @@ parser.add_argument('--clf-mlp-a', type=float,
                     nargs='+', help='clf mlp alpha')
 parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
+parser.add_argument('--edger-prior-count', type=int, default=1,
+                    help='edger prior count')
+parser.add_argument('--model-batch', default=False, action='store_true',
+                    help='model batch')
+parser.add_argument('--model-dupcor', default=False, action='store_true',
+                    help='model duplicate correlation')
 parser.add_argument('--scv-type', type=str, choices=['grid', 'rand'],
                     default='grid', help='scv type')
 parser.add_argument('--scv-splits', type=int,
@@ -1189,7 +1197,7 @@ else:
 
 # specify params in sort order
 # (needed by code dealing with *SearchCV cv_results_)
-pipeline_step_types = ('trf', 'slr', 'clf', 'rgr')
+pipeline_step_types = ('slr', 'trf', 'clf', 'rgr')
 cv_params = {k: v for k, v in vars(args).items()
              if k.startswith(pipeline_step_types)}
 for cv_param, cv_param_values in cv_params.items():
@@ -1198,17 +1206,17 @@ for cv_param, cv_param_values in cv_params.items():
     if cv_param == 'trf_mms_fr':
         cv_params[cv_param] = sorted(tuple(v) for v in cv_param_values)
     elif cv_param in ('slr_col_names', 'slr_vrt_thres', 'slr_mi_n',
-                      'slr_skb_k', 'slr_sfp_p', 'slr_sfm_svm_thres',
-                      'slr_sfm_svm_c', 'slr_sfm_rf_thres', 'slr_sfm_rf_e',
-                      'slr_sfm_ext_thres', 'slr_sfm_ext_e', 'slr_sfm_grb_e',
-                      'slr_sfm_grb_d', 'slr_rfe_svm_c', 'slr_rfe_rf_e',
-                      'slr_rfe_ext_e', 'slr_rfe_grb_e', 'slr_rfe_grb_d',
-                      'slr_rfe_step', 'slr_rlf_n', 'slr_rlf_s', 'clf_svm_c',
-                      'clf_svm_kern', 'clf_svm_deg', 'clf_svm_g', 'clf_knn_k',
-                      'clf_knn_w', 'clf_rf_e', 'clf_ext_e', 'clf_ada_e',
-                      'clf_ada_lgr_c', 'clf_grb_e', 'clf_grb_d', 'clf_mlp_hls',
-                      'clf_mlp_act', 'clf_mlp_slvr', 'clf_mlp_a',
-                      'clf_mlp_lr'):
+                      'slr_skb_k', 'slr_de_pv', 'slr_de_fc',
+                      'slr_sfm_svm_thres', 'slr_sfm_svm_c', 'slr_sfm_rf_thres',
+                      'slr_sfm_rf_e', 'slr_sfm_ext_thres', 'slr_sfm_ext_e',
+                      'slr_sfm_grb_e', 'slr_sfm_grb_d', 'slr_rfe_svm_c',
+                      'slr_rfe_rf_e', 'slr_rfe_ext_e', 'slr_rfe_grb_e',
+                      'slr_rfe_grb_d', 'slr_rfe_step', 'slr_rlf_n',
+                      'slr_rlf_s', 'clf_svm_c', 'clf_svm_kern', 'clf_svm_deg',
+                      'clf_svm_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
+                      'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
+                      'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act',
+                      'clf_mlp_slvr', 'clf_mlp_a', 'clf_mlp_lr'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param in ('slr_skb_k_min', 'slr_skb_k_max'):
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
@@ -1245,27 +1253,6 @@ for cv_param, cv_param_values in cv_params.items():
              for v in cv_param_values], key=lambda x: (x is not None, x))
 
 pipe_config = {
-    # transformers
-    'MinMaxScaler': {
-        'estimator': MinMaxScaler(),
-        'param_grid': {
-            'feature_range': cv_params['trf_mms_fr']}},
-    'StandardScaler': {
-        'estimator': StandardScaler()},
-    'RobustScaler': {
-        'estimator': RobustScaler()},
-    'DESeq2RLEVST': {
-        'estimator': DESeq2RLEVST(),
-        'param_grid': {},
-        'param_routing': ['sample_meta']},
-    'EdgeRTMMLogCPM': {
-        'estimator': EdgeRTMMLogCPM(),
-        'param_grid': {},
-        'param_routing': ['sample_meta']},
-    'LimmaRemoveBatchEffect': {
-        'estimator': LimmaRemoveBatchEffect(),
-        'param_grid': {},
-        'param_routing': ['sample_meta']},
     # feature selectors
     'ColumnSelector': {
         'estimator': ColumnSelector(meta_col=args.slr_col_meta),
@@ -1367,29 +1354,40 @@ pipe_config = {
             'estimator__max_features': cv_params['slr_rfe_grb_f'],
             'step': cv_params['slr_rfe_step'],
             'n_features_to_select': cv_params['slr_skb_k']}},
-    'EdgeRFilterByExpr': {
-        'estimator': EdgeRFilterByExpr(),
-        'param_grid': {},
-        'param_routing': ['sample_meta', 'feature_meta']},
     'DESeq2': {
-        'estimator': DESeq2(memory=memory),
+        'estimator': DESeq2(memory=memory, model_batch=args.model_batch),
         'param_grid': {
-            'k': cv_params['slr_skb_k']},
+            'k': cv_params['slr_skb_k'],
+            'sv': cv_params['slr_de_pv'],
+            'fc': cv_params['slr_de_fc']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'EdgeR': {
-        'estimator': EdgeR(memory=memory),
+        'estimator': EdgeR(memory=memory, prior_count=args.edger_prior_count,
+                           model_batch=args.model_batch),
         'param_grid': {
-            'k': cv_params['slr_skb_k']},
+            'k': cv_params['slr_skb_k'],
+            'pv': cv_params['slr_de_pv'],
+            'fc': cv_params['slr_de_fc']},
+        'param_routing': ['sample_meta', 'feature_meta']},
+    'EdgeRFilterByExpr': {
+        'estimator': EdgeRFilterByExpr(model_batch=args.model_batch),
         'param_routing': ['sample_meta', 'feature_meta']},
     'LimmaVoom': {
-        'estimator': LimmaVoom(memory=memory),
+        'estimator': LimmaVoom(memory=memory, model_batch=args.model_batch,
+                               model_dupcor=args.model_dupcor,
+                               prior_count=args.edger_prior_count),
         'param_grid': {
-            'k': cv_params['slr_skb_k']},
+            'k': cv_params['slr_skb_k'],
+            'pv': cv_params['slr_de_pv'],
+            'fc': cv_params['slr_de_fc']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'DreamVoom': {
-        'estimator': DreamVoom(memory=memory),
+        'estimator': DreamVoom(memory=memory, model_batch=args.model_batch,
+                               prior_count=args.edger_prior_count),
         'param_grid': {
-            'k': cv_params['slr_skb_k']},
+            'k': cv_params['slr_skb_k'],
+            'pv': cv_params['slr_de_pv'],
+            'fc': cv_params['slr_de_fc']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'FCBF': {
         'estimator': FCBF(memory=memory),
@@ -1403,6 +1401,25 @@ pipe_config = {
             'sample_size': cv_params['slr_rlf_s']}},
     'CFS': {
         'estimator': CFS()},
+    # transformers
+    'MinMaxScaler': {
+        'estimator': MinMaxScaler(),
+        'param_grid': {
+            'feature_range': cv_params['trf_mms_fr']}},
+    'StandardScaler': {
+        'estimator': StandardScaler()},
+    'RobustScaler': {
+        'estimator': RobustScaler()},
+    'DESeq2RLEVST': {
+        'estimator': DESeq2RLEVST(memory=memory, model_batch=args.model_batch),
+        'param_routing': ['sample_meta']},
+    'EdgeRTMMLogCPM': {
+        'estimator': EdgeRTMMLogCPM(memory=memory,
+                                    prior_count=args.edger_prior_count),
+        'param_routing': ['sample_meta']},
+    'LimmaRemoveBatchEffect': {
+        'estimator': LimmaRemoveBatchEffect(),
+        'param_routing': ['sample_meta']},
     # classifiers
     'LinearSVC': {
         'estimator': LinearSVC(random_state=args.random_seed,
@@ -1495,6 +1512,9 @@ params_fixed_xticks = [
     'slr__estimator__class_weight',
     'slr__estimator__max_depth',
     'slr__estimator__max_features',
+    'slr__fc',
+    'slr__pv',
+    'slr__sv',
     'slr__threshold',
     'trf',
     'clf',

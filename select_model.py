@@ -437,6 +437,9 @@ def run_model_selection():
     if args.verbose > 0 or args.scv_verbose > 0:
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
               X.shape)
+    if args.load_only:
+        run_cleanup()
+        sys.exit()
     # train w/ independent test sets
     if args.test_dataset:
         pipe_fit_params = {}
@@ -1110,6 +1113,8 @@ parser.add_argument('--filter-warnings', type=str, nargs='+',
                     help='filter warnings')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
+parser.add_argument('--load-only', default=False, action='store_true',
+                    help='set up model selection and load dataset only')
 args = parser.parse_args()
 
 if args.test_size >= 1.0:

@@ -895,11 +895,11 @@ parser.add_argument('--slr-mi-n', type=int, nargs='+',
 parser.add_argument('--slr-skb-k', type=int,
                     nargs='+', help='slr skb k')
 parser.add_argument('--slr-skb-k-min', type=int,
-                    default=1, help='slr skb k min')
+                    help='slr skb k min')
 parser.add_argument('--slr-skb-k-max', type=int,
                     help='slr skb k max')
-parser.add_argument('--slr-skb-k-step', type=int,
-                    default=1, help='slr skb k step')
+parser.add_argument('--slr-skb-k-step', type=int, default=1,
+                    help='slr skb k step')
 parser.add_argument('--slr-de-pv', type=float, nargs='+',
                     help='slr diff expr adj p-value')
 parser.add_argument('--slr-de-fc', type=float, nargs='+',
@@ -964,12 +964,12 @@ parser.add_argument('--slr-rfe-grb-f', type=str,
                     nargs='+', help='slr rfe grb max features')
 parser.add_argument('--slr-rfe-step', type=float,
                     nargs='+', help='slr rfe step')
-parser.add_argument('--slr-rfe-tune-step-at', type=int,
-                    default=None, help='slr rfe tune step at')
+parser.add_argument('--slr-rfe-tune-step-at', type=int, default=None,
+                    help='slr rfe tune step at')
 parser.add_argument('--slr-rfe-reducing-step', default=False,
                     action='store_true', help='slr rfe reducing step')
-parser.add_argument('--slr-rfe-verbose', type=int,
-                    default=0, help='slr rfe verbosity')
+parser.add_argument('--slr-rfe-verbose', type=int, default=0,
+                    help='slr rfe verbosity')
 parser.add_argument('--slr-rlf-n', type=int, nargs='+',
                     help='slr rlf n neighbors')
 parser.add_argument('--slr-rlf-s', type=int, nargs='+',
@@ -990,10 +990,10 @@ parser.add_argument('--clf-svm-deg', type=int,
                     nargs='+', help='clf svm poly degree')
 parser.add_argument('--clf-svm-g', type=str,
                     nargs='+', help='clf svm gamma')
-parser.add_argument('--clf-svm-tol', type=float,
-                    default=1e-4, help='clf svm tol')
-parser.add_argument('--clf-svm-cache', type=int,
-                    default=2000, help='libsvm cache size')
+parser.add_argument('--clf-svm-tol', type=float, default=1e-4,
+                    help='clf svm tol')
+parser.add_argument('--clf-svm-cache', type=int, default=2000,
+                    help='libsvm cache size')
 parser.add_argument('--clf-knn-k', type=int, nargs='+',
                     help='clf knn neighbors')
 parser.add_argument('--clf-knn-w', type=str,
@@ -1050,12 +1050,12 @@ parser.add_argument('--limma-trend', default=False, action='store_true',
                     help='limma trend')
 parser.add_argument('--model-batch', default=False, action='store_true',
                     help='model batch')
-parser.add_argument('--model-dupcor', default=False, action='store_true',
-                    help='model duplicate correlation')
+parser.add_argument('--voom-model-dupcor', default=False, action='store_true',
+                    help='limma-voom model dupcor')
 parser.add_argument('--scv-type', type=str, choices=['grid', 'rand'],
                     default='grid', help='scv type')
-parser.add_argument('--scv-splits', type=int,
-                    default=100, help='scv splits')
+parser.add_argument('--scv-splits', type=int, default=10,
+                    help='scv splits')
 parser.add_argument('--scv-size', type=float, default=0.2,
                     help='scv size')
 parser.add_argument('--scv-verbose', type=int, default=1,
@@ -1094,20 +1094,20 @@ parser.add_argument('--save-model', default=False, action='store_true',
                     help='save model')
 parser.add_argument('--save-results', default=False, action='store_true',
                     help='save results')
-parser.add_argument('--results-dir', type=str,
-                    default='results', help='results dir')
+parser.add_argument('--results-dir', type=str, default='results',
+                    help='results dir')
 parser.add_argument('--n-jobs', type=int, default=-1,
                     help='num parallel jobs')
-parser.add_argument('--parallel-backend', type=str,
-                    default='loky', help='joblib parallel backend')
+parser.add_argument('--parallel-backend', type=str, default='loky',
+                    help='joblib parallel backend')
 parser.add_argument('--pipe-memory', default=False, action='store_true',
                     help='turn on pipeline memory')
-parser.add_argument('--cache-dir', type=str,
-                    default='/tmp', help='cache dir')
-parser.add_argument('--random-seed', type=int,
-                    default=19825791, help='random state seed')
-parser.add_argument('--jvm-heap-size', type=int,
-                    default=1000, help='rjava jvm heap size')
+parser.add_argument('--cache-dir', type=str, default='/tmp',
+                    help='cache dir')
+parser.add_argument('--random-seed', type=int, default=19825791,
+                    help='random state seed')
+parser.add_argument('--jvm-heap-size', type=int, default=500,
+                    help='rjava jvm heap size')
 parser.add_argument('--filter-warnings', type=str, nargs='+',
                     choices=['lsvc', 'qda', 'joblib'],
                     help='filter warnings')
@@ -1376,7 +1376,7 @@ pipe_config = {
         'param_routing': ['sample_meta', 'feature_meta']},
     'LimmaVoom': {
         'estimator': LimmaVoom(memory=memory, model_batch=args.model_batch,
-                               model_dupcor=args.model_dupcor,
+                               model_dupcor=args.voom_model_dupcor,
                                prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['slr_skb_k'],

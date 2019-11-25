@@ -183,8 +183,8 @@ def setup_pipe_and_param_grid():
 def load_dataset(file):
     dataset_name, file_extension = os.path.splitext(os.path.split(file)[1])
     if os.path.isfile(file) and file_extension in (
-            '.Rda', '.RData', '.Rdata', '.Rds'):
-        if file_extension in ('.Rda', '.RData', '.Rdata'):
+            '.Rda', '.rda', '.RData', '.Rdata', '.Rds', '.rds'):
+        if file_extension in ('.Rda', '.rda', '.RData', '.Rdata'):
             r_base.load(file)
             eset = robjects.globalenv[dataset_name]
         else:

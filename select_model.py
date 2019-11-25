@@ -58,11 +58,10 @@ from sklearn_extensions.feature_selection.base import (
     SelectorMixin as ExtendedSelectorMixin)
 from sklearn_extensions.feature_selection import (
     ANOVAFScorerClassification, CachedANOVAFScorerClassification,
-    CachedChi2Scorer, CachedLimmaScorerClassification,
-    CachedMutualInfoScorerClassification, CFS, Chi2Scorer, ColumnSelector,
-    DESeq2, DreamVoom, EdgeR, EdgeRFilterByExpr, FCBF,
-    LimmaScorerClassification, LimmaVoom, MutualInfoScorerClassification,
-    ReliefF, RFE, SelectFromModel, SelectKBest, VarianceThreshold)
+    CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
+    ColumnSelector, DESeq2, DreamVoom, EdgeR, EdgeRFilterByExpr, FCBF, Limma,
+    LimmaVoom, MutualInfoScorerClassification, ReliefF, RFE, SelectFromModel,
+    SelectKBest, VarianceThreshold)
 from sklearn_extensions.model_selection import (
     GridSearchCV, RandomizedSearchCV, StratifiedGroupShuffleSplit)
 from sklearn_extensions.pipeline import Pipeline
@@ -885,7 +884,7 @@ parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
 parser.add_argument('--slr-col-names', type=str_list,
                     nargs='+', help='slr feature or metadata names')
 parser.add_argument('--slr-col-meta', type=str,
-                    help='slr col metadata column name')
+                    help='slr feature metadata column name')
 parser.add_argument('--slr-vrt-thres', type=float,
                     nargs='+', help='slr vrt threshold')
 parser.add_argument('--slr-mi-n', type=int, nargs='+',
@@ -1042,6 +1041,10 @@ parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
 parser.add_argument('--edger-prior-count', type=int, default=1,
                     help='edger prior count')
+parser.add_argument('--limma-robust', default=False, action='store_true',
+                    help='limma robust')
+parser.add_argument('--limma-trend', default=False, action='store_true',
+                    help='limma trend')
 parser.add_argument('--model-batch', default=False, action='store_true',
                     help='model batch')
 parser.add_argument('--model-dupcor', default=False, action='store_true',
@@ -1162,7 +1165,6 @@ if args.pipe_memory:
     memory = Memory(location=cachedir, verbose=0)
     slr_anova_scorer = CachedANOVAFScorerClassification(memory=memory)
     slr_chi2_scorer = CachedChi2Scorer(memory=memory)
-    slr_limma_scorer = CachedLimmaScorerClassification(memory=memory)
     slr_mi_scorer = CachedMutualInfoScorerClassification(
         memory=memory, random_state=args.random_seed)
     slr_svm_estimator = CachedLinearSVC(
@@ -1180,7 +1182,6 @@ else:
     memory = None
     slr_anova_scorer = ANOVAFScorerClassification()
     slr_chi2_scorer = Chi2Scorer()
-    slr_limma_scorer = LimmaScorerClassification()
     slr_mi_scorer = MutualInfoScorerClassification(
         random_state=args.random_seed)
     slr_svm_estimator = LinearSVC(
@@ -1269,10 +1270,6 @@ pipe_config = {
             'k': cv_params['slr_skb_k']}},
     'SelectKBest-Chi2Scorer': {
         'estimator': SelectKBest(slr_chi2_scorer),
-        'param_grid': {
-            'k': cv_params['slr_skb_k']}},
-    'SelectKBest-Limma': {
-        'estimator': SelectKBest(slr_limma_scorer),
         'param_grid': {
             'k': cv_params['slr_skb_k']}},
     'SelectKBest-MutualInfoScorerClassification': {
@@ -1384,6 +1381,14 @@ pipe_config = {
     'DreamVoom': {
         'estimator': DreamVoom(memory=memory, model_batch=args.model_batch,
                                prior_count=args.edger_prior_count),
+        'param_grid': {
+            'k': cv_params['slr_skb_k'],
+            'pv': cv_params['slr_de_pv'],
+            'fc': cv_params['slr_de_fc']},
+        'param_routing': ['sample_meta', 'feature_meta']},
+    'Limma': {
+        'estimator': Limma(memory=memory, model_batch=args.model_batch,
+                           robust=args.limma_robust, trend=args.limma_trend),
         'param_grid': {
             'k': cv_params['slr_skb_k'],
             'pv': cv_params['slr_de_pv'],

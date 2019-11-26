@@ -1043,8 +1043,13 @@ parser.add_argument('--clf-mlp-a', type=float, nargs='+',
 parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
 parser.add_argument('--clf-sgd-penalty', type=str,
+                    choices=['hinge', 'log', 'modified_huber', 'squared_hinge',
+                             'perceptron', 'squared_loss', 'huber',
+                             'epsilon_insensitive',
+                             'squared_epsilon_insensitive'], default='hinge',
                     help='clf sgd penalty')
 parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
+                    choices=['l1', 'l2', 'elasticnet'],
                     help='clf sgd loss')
 parser.add_argument('--clf-sgd-l1r', type=float, nargs='+',
                     help='clf sgd l1 ratio')
@@ -1231,7 +1236,7 @@ for cv_param, cv_param_values in cv_params.items():
                       'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
                       'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act',
                       'clf_mlp_slvr', 'clf_mlp_a', 'clf_mlp_lr',
-                      'clf_sgd_loss', 'clf_sgd_l1r'):
+                      'clf_sgd_penalty', 'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param in ('slr_skb_k_min', 'slr_skb_k_max'):
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
@@ -1513,10 +1518,10 @@ pipe_config = {
             'alpha': cv_params['clf_mlp_a'],
             'learning_rate': cv_params['clf_mlp_lr']}},
     'SGDClassifier': {
-        'estimator': SGDClassifier(penalty=args.clf_sgd_penalty,
+        'estimator': SGDClassifier(loss=args.clf_sgd_loss,
                                    random_state=args.random_seed),
         'param_grid': {
-            'loss': cv_params['clf_sgd_loss'],
+            'penalty': cv_params['clf_sgd_penalty'],
             'l1_ratio': cv_params['clf_sgd_l1r'],
             'class_weight': cv_params['clf_sgd_cw']},
         'param_routing': ['sample_weight']}}

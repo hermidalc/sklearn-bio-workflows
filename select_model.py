@@ -1222,8 +1222,6 @@ cv_params = {k: v for k, v in vars(args).items()
 for cv_param, cv_param_values in cv_params.items():
     if cv_param_values is None:
         continue
-    if cv_param == 'trf_mms_fr':
-        cv_params[cv_param] = sorted(tuple(v) for v in cv_param_values)
     elif cv_param in ('slr_col_names', 'slr_vrt_thres', 'slr_mi_n',
                       'slr_skb_k', 'slr_de_pv', 'slr_de_fc',
                       'slr_sfm_svm_thres', 'slr_sfm_svm_c', 'slr_sfm_rf_thres',
@@ -1231,10 +1229,10 @@ for cv_param, cv_param_values in cv_params.items():
                       'slr_sfm_grb_e', 'slr_sfm_grb_d', 'slr_rfe_svm_c',
                       'slr_rfe_rf_e', 'slr_rfe_ext_e', 'slr_rfe_grb_e',
                       'slr_rfe_grb_d', 'slr_rfe_step', 'slr_rlf_n',
-                      'slr_rlf_s', 'clf_svm_c', 'clf_svm_kern', 'clf_svm_deg',
-                      'clf_svm_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
-                      'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
-                      'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act',
+                      'slr_rlf_s', 'trf_mms_fr', 'clf_svm_c', 'clf_svm_kern',
+                      'clf_svm_deg', 'clf_svm_g', 'clf_knn_k', 'clf_knn_w',
+                      'clf_rf_e', 'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c',
+                      'clf_grb_e', 'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act',
                       'clf_mlp_slvr', 'clf_mlp_a', 'clf_mlp_lr',
                       'clf_sgd_penalty', 'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)

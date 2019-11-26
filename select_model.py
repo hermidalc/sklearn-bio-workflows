@@ -33,7 +33,7 @@ from sklearn.ensemble import (
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.feature_selection.base import SelectorMixin
 from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     auc, average_precision_score, balanced_accuracy_score,
     precision_recall_curve, roc_auc_score, roc_curve)
@@ -1042,6 +1042,14 @@ parser.add_argument('--clf-mlp-a', type=float,
                     nargs='+', help='clf mlp alpha')
 parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
+parser.add_argument('--clf-sgd-penalty', type=str,
+                    help='clf sgd penalty')
+parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
+                    help='clf sgd loss')
+parser.add_argument('--clf-sgd-l1r', type=float, nargs='+',
+                    help='clf sgd l1 ratio')
+parser.add_argument('--clf-sgd-cw', type=str, nargs='+',
+                    help='clf sgd class weight')
 parser.add_argument('--edger-prior-count', type=int, default=1,
                     help='edger prior count')
 parser.add_argument('--limma-robust', default=False, action='store_true',
@@ -1222,7 +1230,8 @@ for cv_param, cv_param_values in cv_params.items():
                       'clf_svm_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
                       'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
                       'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act',
-                      'clf_mlp_slvr', 'clf_mlp_a', 'clf_mlp_lr'):
+                      'clf_mlp_slvr', 'clf_mlp_a', 'clf_mlp_lr',
+                      'clf_sgd_loss', 'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param in ('slr_skb_k_min', 'slr_skb_k_max'):
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
@@ -1248,7 +1257,7 @@ for cv_param, cv_param_values in cv_params.items():
                       'slr_rfe_rf_f', 'slr_rfe_ext_f', 'slr_rfe_grb_f',
                       'clf_svm_cw', 'clf_dt_f', 'clf_dt_cw', 'clf_rf_f',
                       'clf_rf_cw', 'clf_ext_f', 'clf_ext_cw', 'clf_ada_lgr_cw',
-                      'clf_grb_f'):
+                      'clf_grb_f', 'clf_sgd_cw'):
         cv_params[cv_param] = sorted(
             [None if v in ('None', 'none') else v
              for v in cv_param_values], key=lambda x: (x is not None, x))
@@ -1502,7 +1511,15 @@ pipe_config = {
             'activation': cv_params['clf_mlp_act'],
             'solver': cv_params['clf_mlp_slvr'],
             'alpha': cv_params['clf_mlp_a'],
-            'learning_rate': cv_params['clf_mlp_lr']}}}
+            'learning_rate': cv_params['clf_mlp_lr']}},
+    'SGDClassifier': {
+        'estimator': SGDClassifier(penalty=args.clf_sgd_penalty,
+                                   random_state=args.random_seed),
+        'param_grid': {
+            'loss': cv_params['clf_sgd_loss'],
+            'l1_ratio': cv_params['clf_sgd_l1r'],
+            'class_weight': cv_params['clf_sgd_cw']},
+        'param_routing': ['sample_weight']}}
 
 params_num_xticks = [
     'slr__k',

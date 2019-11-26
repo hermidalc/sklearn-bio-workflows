@@ -80,9 +80,9 @@ def setup_pipe_and_param_grid():
     pipe_step_keys = []
     pipe_step_types = []
     for step_idx, step_keys in enumerate(args.pipe_steps):
-        if any(k in ('None', 'none') for k in step_keys):
+        if any(k.title() == 'None' for k in step_keys):
             pipe_step_keys.append(
-                [k for k in step_keys if k not in ('None', 'none')] + [None])
+                [k for k in step_keys if k.title() != 'None'] + [None])
         else:
             pipe_step_keys.append(step_keys)
         if len(step_keys) > 1:
@@ -1261,12 +1261,12 @@ for cv_param, cv_param_values in cv_params.items():
                       'clf_rf_cw', 'clf_ext_f', 'clf_ext_cw', 'clf_ada_lgr_cw',
                       'clf_grb_f', 'clf_sgd_cw'):
         cv_params[cv_param] = sorted(
-            [None if v in ('None', 'none') else v
+            [None if v.title() == 'None' else v
              for v in cv_param_values], key=lambda x: (x is not None, x))
     elif cv_param in ('slr_sfm_rf_d', 'slr_sfm_ext_d', 'slr_rfe_rf_d',
                       'slr_rfe_ext_d', 'clf_dt_d', 'clf_rf_d', 'clf_ext_d'):
         cv_params[cv_param] = sorted(
-            [None if v in ('None', 'none') else int(v)
+            [None if v.title() == 'None' else int(v)
              for v in cv_param_values], key=lambda x: (x is not None, x))
 
 pipe_config = {

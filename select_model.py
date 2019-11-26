@@ -1260,14 +1260,14 @@ for cv_param, cv_param_values in cv_params.items():
                       'clf_svm_cw', 'clf_dt_f', 'clf_dt_cw', 'clf_rf_f',
                       'clf_rf_cw', 'clf_ext_f', 'clf_ext_cw', 'clf_ada_lgr_cw',
                       'clf_grb_f', 'clf_sgd_cw'):
-        cv_params[cv_param] = sorted(
-            [None if v.title() == 'None' else v
-             for v in cv_param_values], key=lambda x: (x is not None, x))
+        cv_params[cv_param] = sorted([None if v.title() == 'None' else v
+                                      for v in cv_param_values],
+                                     key=lambda x: (x is not None, x))
     elif cv_param in ('slr_sfm_rf_d', 'slr_sfm_ext_d', 'slr_rfe_rf_d',
                       'slr_rfe_ext_d', 'clf_dt_d', 'clf_rf_d', 'clf_ext_d'):
-        cv_params[cv_param] = sorted(
-            [None if v.title() == 'None' else int(v)
-             for v in cv_param_values], key=lambda x: (x is not None, x))
+        cv_params[cv_param] = sorted([None if v.title() == 'None' else int(v)
+                                      for v in cv_param_values],
+                                     key=lambda x: (x is not None, x))
 
 pipe_config = {
     # feature selectors

@@ -884,16 +884,16 @@ parser.add_argument('--pipe-steps', type=str_list, nargs='+', required=True,
                     help='pipeline step names')
 parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
                     nargs='+', help='test datasets')
-parser.add_argument('--slr-col-names', type=str_list,
-                    nargs='+', help='slr feature or metadata names')
+parser.add_argument('--slr-col-names', type=str_list, nargs='+',
+                    help='slr feature or metadata names')
 parser.add_argument('--slr-col-meta', type=str,
                     help='slr feature metadata column name')
-parser.add_argument('--slr-vrt-thres', type=float,
-                    nargs='+', help='slr vrt threshold')
+parser.add_argument('--slr-vrt-thres', type=float, nargs='+',
+                    help='slr vrt threshold')
 parser.add_argument('--slr-mi-n', type=int, nargs='+',
                     help='slr mi n neighbors')
-parser.add_argument('--slr-skb-k', type=int,
-                    nargs='+', help='slr skb k')
+parser.add_argument('--slr-skb-k', type=int, nargs='+',
+                    help='slr skb k')
 parser.add_argument('--slr-skb-k-min', type=int,
                     help='slr skb k min')
 parser.add_argument('--slr-skb-k-max', type=int,
@@ -904,66 +904,66 @@ parser.add_argument('--slr-de-pv', type=float, nargs='+',
                     help='slr diff expr adj p-value')
 parser.add_argument('--slr-de-fc', type=float, nargs='+',
                     help='slr diff expr fold change')
-parser.add_argument('--slr-sfm-svm-thres', type=float,
-                    nargs='+', help='slr sfm svm threshold')
-parser.add_argument('--slr-sfm-svm-c', type=float,
-                    nargs='+', help='slr sfm svm c')
-parser.add_argument('--slr-sfm-svm-cw', type=str,
-                    nargs='+', help='slr sfm svm class weight')
-parser.add_argument('--slr-sfm-rf-thres', type=float,
-                    nargs='+', help='slr sfm rf threshold')
-parser.add_argument('--slr-sfm-rf-e', type=int,
-                    nargs='+', help='slr sfm rf n estimators')
-parser.add_argument('--slr-sfm-rf-d', type=str,
-                    nargs='+', help='slr sfm rf max depth')
-parser.add_argument('--slr-sfm-rf-f', type=str,
-                    nargs='+', help='slr sfm rf max features')
-parser.add_argument('--slr-sfm-rf-cw', type=str,
-                    nargs='+', help='slr sfm rf class weight')
-parser.add_argument('--slr-sfm-ext-thres', type=float,
-                    nargs='+', help='slr sfm ext threshold')
-parser.add_argument('--slr-sfm-ext-e', type=int,
-                    nargs='+', help='slr sfm ext n estimators')
-parser.add_argument('--slr-sfm-ext-d', type=str,
-                    nargs='+', help='slr sfm ext max depth')
-parser.add_argument('--slr-sfm-ext-f', type=str,
-                    nargs='+', help='slr sfm ext max features')
-parser.add_argument('--slr-sfm-ext-cw', type=str,
-                    nargs='+', help='slr sfm ext class weight')
-parser.add_argument('--slr-sfm-grb-e', type=int,
-                    nargs='+', help='slr sfm grb n estimators')
-parser.add_argument('--slr-sfm-grb-d', type=int,
-                    nargs='+', help='slr sfm grb max depth')
-parser.add_argument('--slr-sfm-grb-f', type=str,
-                    nargs='+', help='slr sfm grb max features')
-parser.add_argument('--slr-rfe-svm-c', type=float,
-                    nargs='+', help='slr rfe svm c')
-parser.add_argument('--slr-rfe-svm-cw', type=str,
-                    nargs='+', help='slr rfe svm class weight')
-parser.add_argument('--slr-rfe-rf-e', type=int,
-                    nargs='+', help='slr rfe rf n estimators')
-parser.add_argument('--slr-rfe-rf-d', type=str,
-                    nargs='+', help='slr rfe rf max depth')
-parser.add_argument('--slr-rfe-rf-f', type=str,
-                    nargs='+', help='slr rfe rf max features')
-parser.add_argument('--slr-rfe-rf-cw', type=str,
-                    nargs='+', help='slr rfe rf class weight')
-parser.add_argument('--slr-rfe-ext-e', type=int,
-                    nargs='+', help='slr rfe ext n estimators')
-parser.add_argument('--slr-rfe-ext-d', type=str,
-                    nargs='+', help='slr rfe ext max depth')
-parser.add_argument('--slr-rfe-ext-f', type=str,
-                    nargs='+', help='slr rfe ext max features')
-parser.add_argument('--slr-rfe-ext-cw', type=str,
-                    nargs='+', help='slr rfe ext class weight')
-parser.add_argument('--slr-rfe-grb-e', type=int,
-                    nargs='+', help='slr rfe grb n estimators')
-parser.add_argument('--slr-rfe-grb-d', type=int,
-                    nargs='+', help='slr rfe grb max depth')
-parser.add_argument('--slr-rfe-grb-f', type=str,
-                    nargs='+', help='slr rfe grb max features')
-parser.add_argument('--slr-rfe-step', type=float,
-                    nargs='+', help='slr rfe step')
+parser.add_argument('--slr-sfm-svm-thres', type=float, nargs='+',
+                    help='slr sfm svm threshold')
+parser.add_argument('--slr-sfm-svm-c', type=float, nargs='+',
+                    help='slr sfm svm c')
+parser.add_argument('--slr-sfm-svm-cw', type=str, nargs='+',
+                    help='slr sfm svm class weight')
+parser.add_argument('--slr-sfm-rf-thres', type=float, nargs='+',
+                    help='slr sfm rf threshold')
+parser.add_argument('--slr-sfm-rf-e', type=int, nargs='+',
+                    help='slr sfm rf n estimators')
+parser.add_argument('--slr-sfm-rf-d', type=str, nargs='+',
+                    help='slr sfm rf max depth')
+parser.add_argument('--slr-sfm-rf-f', type=str, nargs='+',
+                    help='slr sfm rf max features')
+parser.add_argument('--slr-sfm-rf-cw', type=str, nargs='+',
+                    help='slr sfm rf class weight')
+parser.add_argument('--slr-sfm-ext-thres', type=float, nargs='+',
+                    help='slr sfm ext threshold')
+parser.add_argument('--slr-sfm-ext-e', type=int, nargs='+',
+                    help='slr sfm ext n estimators')
+parser.add_argument('--slr-sfm-ext-d', type=str, nargs='+',
+                    help='slr sfm ext max depth')
+parser.add_argument('--slr-sfm-ext-f', type=str, nargs='+',
+                    help='slr sfm ext max features')
+parser.add_argument('--slr-sfm-ext-cw', type=str, nargs='+',
+                    help='slr sfm ext class weight')
+parser.add_argument('--slr-sfm-grb-e', type=int, nargs='+',
+                    help='slr sfm grb n estimators')
+parser.add_argument('--slr-sfm-grb-d', type=int, nargs='+',
+                    help='slr sfm grb max depth')
+parser.add_argument('--slr-sfm-grb-f', type=str, nargs='+',
+                    help='slr sfm grb max features')
+parser.add_argument('--slr-rfe-svm-c', type=float, nargs='+',
+                    help='slr rfe svm c')
+parser.add_argument('--slr-rfe-svm-cw', type=str, nargs='+',
+                    help='slr rfe svm class weight')
+parser.add_argument('--slr-rfe-rf-e', type=int, nargs='+',
+                    help='slr rfe rf n estimators')
+parser.add_argument('--slr-rfe-rf-d', type=str, nargs='+',
+                    help='slr rfe rf max depth')
+parser.add_argument('--slr-rfe-rf-f', type=str, nargs='+',
+                    help='slr rfe rf max features')
+parser.add_argument('--slr-rfe-rf-cw', type=str, nargs='+',
+                    help='slr rfe rf class weight')
+parser.add_argument('--slr-rfe-ext-e', type=int, nargs='+',
+                    help='slr rfe ext n estimators')
+parser.add_argument('--slr-rfe-ext-d', type=str, nargs='+',
+                    help='slr rfe ext max depth')
+parser.add_argument('--slr-rfe-ext-f', type=str, nargs='+',
+                    help='slr rfe ext max features')
+parser.add_argument('--slr-rfe-ext-cw', type=str, nargs='+',
+                    help='slr rfe ext class weight')
+parser.add_argument('--slr-rfe-grb-e', type=int, nargs='+',
+                    help='slr rfe grb n estimators')
+parser.add_argument('--slr-rfe-grb-d', type=int, nargs='+',
+                    help='slr rfe grb max depth')
+parser.add_argument('--slr-rfe-grb-f', type=str, nargs='+',
+                    help='slr rfe grb max features')
+parser.add_argument('--slr-rfe-step', type=float, nargs='+',
+                    help='slr rfe step')
 parser.add_argument('--slr-rfe-tune-step-at', type=int, default=None,
                     help='slr rfe tune step at')
 parser.add_argument('--slr-rfe-reducing-step', default=False,
@@ -974,8 +974,8 @@ parser.add_argument('--slr-rlf-n', type=int, nargs='+',
                     help='slr rlf n neighbors')
 parser.add_argument('--slr-rlf-s', type=int, nargs='+',
                     help='slr rlf sample size')
-parser.add_argument('--trf-mms-fr', type=int_list,
-                    nargs='+', help='trf mms fr')
+parser.add_argument('--trf-mms-fr', type=int_list, nargs='+',
+                    help='trf mms fr')
 parser.add_argument('--clf-svm-c', type=float, nargs='+',
                     help='clf svm c')
 parser.add_argument('--clf-svm-c-min', type=float,
@@ -984,20 +984,20 @@ parser.add_argument('--clf-svm-c-max', type=float,
                     help='clf svm c max')
 parser.add_argument('--clf-svm-cw', type=str, nargs='+',
                     help='clf svm class weight')
-parser.add_argument('--clf-svm-kern', type=str,
-                    nargs='+', help='clf svm kernel')
-parser.add_argument('--clf-svm-deg', type=int,
-                    nargs='+', help='clf svm poly degree')
-parser.add_argument('--clf-svm-g', type=str,
-                    nargs='+', help='clf svm gamma')
+parser.add_argument('--clf-svm-kern', type=str, nargs='+',
+                    help='clf svm kernel')
+parser.add_argument('--clf-svm-deg', type=int, nargs='+',
+                    help='clf svm poly degree')
+parser.add_argument('--clf-svm-g', type=str, nargs='+',
+                    help='clf svm gamma')
 parser.add_argument('--clf-svm-tol', type=float, default=1e-4,
                     help='clf svm tol')
 parser.add_argument('--clf-svm-cache', type=int, default=2000,
                     help='libsvm cache size')
 parser.add_argument('--clf-knn-k', type=int, nargs='+',
                     help='clf knn neighbors')
-parser.add_argument('--clf-knn-w', type=str,
-                    nargs='+', help='clf knn weights')
+parser.add_argument('--clf-knn-w', type=str, nargs='+',
+                    help='clf knn weights')
 parser.add_argument('--clf-dt-d', type=str, nargs='+',
                     help='clf dt max depth')
 parser.add_argument('--clf-dt-f', type=str, nargs='+',
@@ -1022,10 +1022,10 @@ parser.add_argument('--clf-ext-cw', type=str, nargs='+',
                     help='clf ext class weight')
 parser.add_argument('--clf-ada-e', type=int, nargs='+',
                     help='clf ada n estimators')
-parser.add_argument('--clf-ada-lgr-c', type=float,
-                    nargs='+', help='clf ada lgr c')
-parser.add_argument('--clf-ada-lgr-cw', type=str,
-                    nargs='+', help='clf ada lgr class weight')
+parser.add_argument('--clf-ada-lgr-c', type=float, nargs='+',
+                    help='clf ada lgr c')
+parser.add_argument('--clf-ada-lgr-cw', type=str, nargs='+',
+                    help='clf ada lgr class weight')
 parser.add_argument('--clf-grb-e', type=int, nargs='+',
                     help='clf grb n estimators')
 parser.add_argument('--clf-grb-d', type=int, nargs='+',
@@ -1036,10 +1036,10 @@ parser.add_argument('--clf-mlp-hls', type=str, nargs='+',
                     help='clf mlp hidden layer sizes')
 parser.add_argument('--clf-mlp-act', type=str, nargs='+',
                     help='clf mlp activation function')
-parser.add_argument('--clf-mlp-slvr', type=str,
-                    nargs='+', help='clf mlp solver')
-parser.add_argument('--clf-mlp-a', type=float,
-                    nargs='+', help='clf mlp alpha')
+parser.add_argument('--clf-mlp-slvr', type=str, nargs='+',
+                    help='clf mlp solver')
+parser.add_argument('--clf-mlp-a', type=float, nargs='+',
+                    help='clf mlp alpha')
 parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
 parser.add_argument('--clf-sgd-penalty', type=str,

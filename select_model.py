@@ -990,10 +990,10 @@ parser.add_argument('--clf-svm-deg', type=int, nargs='+',
                     help='clf svm poly degree')
 parser.add_argument('--clf-svm-g', type=str, nargs='+',
                     help='clf svm gamma')
-parser.add_argument('--clf-svm-tol', type=float, default=1e-4,
-                    help='clf svm tol')
-parser.add_argument('--clf-svm-cache', type=int, default=2000,
-                    help='libsvm cache size')
+parser.add_argument('--clf-lsvc-tol', type=float, default=1e-2,
+                    help='linearsvc tol')
+parser.add_argument('--clf-svc-cache', type=int, default=2000,
+                    help='svc cache size')
 parser.add_argument('--clf-knn-k', type=int, nargs='+',
                     help='clf knn neighbors')
 parser.add_argument('--clf-knn-w', type=str, nargs='+',
@@ -1186,10 +1186,10 @@ if args.pipe_memory:
     slr_mi_scorer = CachedMutualInfoScorerClassification(
         memory=memory, random_state=args.random_seed)
     slr_svm_estimator = CachedLinearSVC(
-        memory=memory, random_state=args.random_seed, tol=args.clf_svm_tol)
+        memory=memory, random_state=args.random_seed, tol=args.clf_lsvc_tol)
     slr_sfm_svm_estimator = CachedLinearSVC(
         memory=memory, penalty='l1', dual=False,
-        random_state=args.random_seed, tol=args.clf_svm_tol)
+        random_state=args.random_seed, tol=args.clf_lsvc_tol)
     slr_rf_estimator = CachedRandomForestClassifier(
         memory=memory, random_state=args.random_seed)
     slr_ext_estimator = CachedExtraTreesClassifier(
@@ -1203,10 +1203,10 @@ else:
     slr_mi_scorer = MutualInfoScorerClassification(
         random_state=args.random_seed)
     slr_svm_estimator = LinearSVC(
-        random_state=args.random_seed, tol=args.clf_svm_tol)
+        random_state=args.random_seed, tol=args.clf_lsvc_tol)
     slr_sfm_svm_estimator = LinearSVC(
         penalty='l1', dual=False, random_state=args.random_seed,
-        tol=args.clf_svm_tol)
+        tol=args.clf_lsvc_tol)
     slr_rf_estimator = RandomForestClassifier(
         random_state=args.random_seed)
     slr_ext_estimator = ExtraTreesClassifier(
@@ -1452,13 +1452,13 @@ pipe_config = {
     # classifiers
     'LinearSVC': {
         'estimator': LinearSVC(random_state=args.random_seed,
-                               tol=args.clf_svm_tol),
+                               tol=args.clf_lsvc_tol),
         'param_grid': {
             'C': cv_params['clf_svm_c'],
             'class_weight': cv_params['clf_svm_cw']},
         'param_routing': ['sample_weight']},
     'SVC': {
-        'estimator': SVC(cache_size=args.clf_svm_cache, gamma='scale',
+        'estimator': SVC(cache_size=args.clf_svc_cache, gamma='scale',
                          random_state=args.random_seed),
         'param_grid': {
             'C': cv_params['clf_svm_c'],

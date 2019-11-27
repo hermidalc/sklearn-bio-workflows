@@ -964,7 +964,7 @@ parser.add_argument('--slr-rfe-grb-f', type=str, nargs='+',
                     help='slr rfe grb max features')
 parser.add_argument('--slr-rfe-step', type=float, nargs='+',
                     help='slr rfe step')
-parser.add_argument('--slr-rfe-tune-step-at', type=int, default=None,
+parser.add_argument('--slr-rfe-tune-step-at', type=int,
                     help='slr rfe tune step at')
 parser.add_argument('--slr-rfe-reducing-step', default=False,
                     action='store_true', help='slr rfe reducing step')
@@ -1046,10 +1046,10 @@ parser.add_argument('--clf-sgd-penalty', type=str,
                     choices=['hinge', 'log', 'modified_huber', 'squared_hinge',
                              'perceptron', 'squared_loss', 'huber',
                              'epsilon_insensitive',
-                             'squared_epsilon_insensitive'], default='hinge',
+                             'squared_epsilon_insensitive'],
                     help='clf sgd penalty')
 parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
-                    choices=['l1', 'l2', 'elasticnet'],
+                    choices=['l1', 'l2', 'elasticnet'], default='l2',
                     help='clf sgd loss')
 parser.add_argument('--clf-sgd-l1r', type=float, nargs='+',
                     help='clf sgd l1 ratio')

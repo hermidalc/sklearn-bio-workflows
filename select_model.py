@@ -894,7 +894,7 @@ parser.add_argument('--slr-mi-n', type=int, nargs='+',
                     help='slr mi n neighbors')
 parser.add_argument('--slr-skb-k', type=int, nargs='+',
                     help='slr skb k')
-parser.add_argument('--slr-skb-k-min', type=int,
+parser.add_argument('--slr-skb-k-min', type=int, default=1,
                     help='slr skb k min')
 parser.add_argument('--slr-skb-k-max', type=int,
                     help='slr skb k max')
@@ -1042,15 +1042,15 @@ parser.add_argument('--clf-mlp-a', type=float, nargs='+',
                     help='clf mlp alpha')
 parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
-parser.add_argument('--clf-sgd-penalty', type=str,
+parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
                     choices=['hinge', 'log', 'modified_huber', 'squared_hinge',
                              'perceptron', 'squared_loss', 'huber',
                              'epsilon_insensitive',
                              'squared_epsilon_insensitive'],
-                    help='clf sgd penalty')
-parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
-                    choices=['l1', 'l2', 'elasticnet'], default='l2',
                     help='clf sgd loss')
+parser.add_argument('--clf-sgd-penalty', type=str,
+                    choices=['l1', 'l2', 'elasticnet'], default='l2',
+                    help='clf sgd penalty')
 parser.add_argument('--clf-sgd-l1r', type=float, nargs='+',
                     help='clf sgd l1 ratio')
 parser.add_argument('--clf-sgd-cw', type=str, nargs='+',
@@ -1233,7 +1233,7 @@ for cv_param, cv_param_values in cv_params.items():
                     'clf_knn_k', 'clf_knn_w', 'clf_rf_e', 'clf_ext_e',
                     'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e', 'clf_grb_d',
                     'clf_mlp_hls', 'clf_mlp_act', 'clf_mlp_slvr', 'clf_mlp_a',
-                    'clf_mlp_lr', 'clf_sgd_penalty', 'clf_sgd_l1r'):
+                    'clf_mlp_lr', 'clf_sgd_loss', 'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param in ('slr_skb_k_min', 'slr_skb_k_max'):
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
@@ -1530,10 +1530,10 @@ pipe_config = {
             'alpha': cv_params['clf_mlp_a'],
             'learning_rate': cv_params['clf_mlp_lr']}},
     'SGDClassifier': {
-        'estimator': SGDClassifier(loss=args.clf_sgd_loss,
+        'estimator': SGDClassifier(penalty=args.clf_sgd_penalty,
                                    random_state=args.random_seed),
         'param_grid': {
-            'penalty': cv_params['clf_sgd_penalty'],
+            'loss': cv_params['clf_sgd_loss'],
             'l1_ratio': cv_params['clf_sgd_l1r'],
             'class_weight': cv_params['clf_sgd_cw']},
         'param_routing': ['sample_weight']}}

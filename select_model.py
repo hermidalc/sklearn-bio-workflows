@@ -1298,7 +1298,8 @@ pipe_config = {
         'param_grid': {
             'estimator__C': cv_params['slr_sfm_svm_c'],
             'estimator__class_weight': cv_params['slr_sfm_svm_cw'],
-            'k': cv_params['slr_skb_k']}},
+            'k': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'SelectFromModel-RandomForestClassifier': {
         'estimator': SelectFromModel(slr_rf_estimator),
         'param_grid': {
@@ -1306,7 +1307,8 @@ pipe_config = {
             'estimator__max_depth': cv_params['slr_sfm_rf_d'],
             'estimator__max_features': cv_params['slr_sfm_rf_f'],
             'estimator__class_weight': cv_params['slr_sfm_rf_cw'],
-            'k': cv_params['slr_skb_k']}},
+            'k': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'SelectFromModel-ExtraTreesClassifier': {
         'estimator': SelectFromModel(slr_ext_estimator),
         'param_grid': {
@@ -1314,14 +1316,16 @@ pipe_config = {
             'estimator__max_depth': cv_params['slr_sfm_ext_d'],
             'estimator__max_features': cv_params['slr_sfm_ext_f'],
             'estimator__class_weight': cv_params['slr_sfm_ext_cw'],
-            'k': cv_params['slr_skb_k']}},
+            'k': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'SelectFromModel-GradientBoostingClassifier': {
         'estimator': SelectFromModel(slr_grb_estimator),
         'param_grid': {
             'estimator__n_estimators': cv_params['slr_sfm_grb_e'],
             'estimator__max_depth': cv_params['slr_sfm_grb_d'],
             'estimator__max_features': cv_params['slr_sfm_grb_f'],
-            'k': cv_params['slr_skb_k']}},
+            'k': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'RFE-LinearSVC': {
         'estimator': RFE(slr_svm_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
@@ -1331,7 +1335,8 @@ pipe_config = {
             'estimator__C': cv_params['slr_rfe_svm_c'],
             'estimator__class_weight': cv_params['slr_rfe_svm_cw'],
             'step': cv_params['slr_rfe_step'],
-            'n_features_to_select': cv_params['slr_skb_k']}},
+            'n_features_to_select': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'RFE-RandomForestClassifier': {
         'estimator': RFE(slr_rf_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
@@ -1343,7 +1348,8 @@ pipe_config = {
             'estimator__max_features': cv_params['slr_rfe_rf_f'],
             'estimator__class_weight': cv_params['slr_rfe_rf_cw'],
             'step': cv_params['slr_rfe_step'],
-            'n_features_to_select': cv_params['slr_skb_k']}},
+            'n_features_to_select': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'RFE-ExtraTreesClassifier': {
         'estimator': RFE(slr_ext_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
@@ -1355,7 +1361,8 @@ pipe_config = {
             'estimator__max_features': cv_params['slr_rfe_ext_f'],
             'estimator__class_weight': cv_params['slr_rfe_ext_cw'],
             'step': cv_params['slr_rfe_step'],
-            'n_features_to_select': cv_params['slr_skb_k']}},
+            'n_features_to_select': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'RFE-GradientBoostingClassifier': {
         'estimator': RFE(slr_grb_estimator,
                          tune_step_at=args.slr_rfe_tune_step_at,
@@ -1366,7 +1373,8 @@ pipe_config = {
             'estimator__max_depth': cv_params['slr_rfe_grb_d'],
             'estimator__max_features': cv_params['slr_rfe_grb_f'],
             'step': cv_params['slr_rfe_step'],
-            'n_features_to_select': cv_params['slr_skb_k']}},
+            'n_features_to_select': cv_params['slr_skb_k']},
+        'param_routing': ['sample_weight']},
     'DESeq2': {
         'estimator': DESeq2(memory=memory, model_batch=args.model_batch),
         'param_grid': {
@@ -1463,27 +1471,31 @@ pipe_config = {
         'estimator': KNeighborsClassifier(),
         'param_grid': {
             'n_neighbors': cv_params['clf_knn_k'],
-            'weights': cv_params['clf_knn_w']}},
+            'weights': cv_params['clf_knn_w']},
+        'param_routing': ['sample_weight']},
     'DecisionTreeClassifier': {
         'estimator': DecisionTreeClassifier(random_state=args.random_seed),
         'param_grid': {
             'max_depth': cv_params['clf_dt_d'],
             'max_features': cv_params['clf_dt_f'],
-            'class_weight': cv_params['clf_dt_cw']}},
+            'class_weight': cv_params['clf_dt_cw']},
+        'param_routing': ['sample_weight']},
     'RandomForestClassifier': {
         'estimator': RandomForestClassifier(random_state=args.random_seed),
         'param_grid': {
             'n_estimators': cv_params['clf_rf_e'],
             'max_depth': cv_params['clf_rf_d'],
             'max_features': cv_params['clf_rf_f'],
-            'class_weight': cv_params['clf_rf_cw']}},
+            'class_weight': cv_params['clf_rf_cw']},
+        'param_routing': ['sample_weight']},
     'ExtraTreesClassifier': {
         'estimator': ExtraTreesClassifier(random_state=args.random_seed),
         'param_grid': {
             'n_estimators': cv_params['clf_ext_e'],
             'max_depth': cv_params['clf_ext_d'],
             'max_features': cv_params['clf_ext_f'],
-            'class_weight': cv_params['clf_ext_cw']}},
+            'class_weight': cv_params['clf_ext_cw']},
+        'param_routing': ['sample_weight']},
     'AdaBoostClassifier-LogisticRegression': {
         'estimator': AdaBoostClassifier(
             LogisticRegression(random_state=args.random_seed),
@@ -1491,15 +1503,18 @@ pipe_config = {
         'param_grid': {
             'base_estimator__C': cv_params['clf_ada_lgr_c'],
             'base_estimator__class_weight': cv_params['clf_ada_lgr_cw'],
-            'n_estimators': cv_params['clf_ada_e']}},
+            'n_estimators': cv_params['clf_ada_e']},
+        'param_routing': ['sample_weight']},
     'GradientBoostingClassifier': {
         'estimator': GradientBoostingClassifier(random_state=args.random_seed),
         'param_grid': {
             'n_estimators': cv_params['clf_grb_e'],
             'max_depth': cv_params['clf_grb_d'],
-            'max_features': cv_params['clf_grb_f']}},
+            'max_features': cv_params['clf_grb_f']},
+        'param_routing': ['sample_weight']},
     'GaussianNB': {
-        'estimator': GaussianNB()},
+        'estimator': GaussianNB(),
+        'param_routing': ['sample_weight']},
     'GaussianProcessClassifier': {
         'estimator': GaussianProcessClassifier(random_state=args.random_seed)},
     'LinearDiscriminantAnalysis': {

@@ -254,8 +254,7 @@ def get_feature_idxs_and_weights(pipe, num_total_features):
     feature_idxs = np.arange(num_total_features)
     for step in pipe.named_steps:
         if hasattr(pipe.named_steps[step], 'get_support'):
-            feature_idxs = feature_idxs[
-                pipe.named_steps[step].get_support(indices=True)]
+            feature_idxs = feature_idxs[pipe.named_steps[step].get_support()]
     feature_weights = np.zeros_like(feature_idxs, dtype=float)
     final_estimator = pipe.steps[-1][1]
     if hasattr(final_estimator, 'coef_'):

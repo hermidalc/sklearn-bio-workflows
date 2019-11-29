@@ -904,8 +904,8 @@ parser.add_argument('--slr-de-pv', type=float, nargs='+',
                     help='slr diff expr adj p-value')
 parser.add_argument('--slr-de-fc', type=float, nargs='+',
                     help='slr diff expr fold change')
-parser.add_argument('--slr-sfm-svm-thres', type=float, nargs='+',
-                    help='slr sfm svm threshold')
+parser.add_argument('--slr-sfm-thres', type=float, nargs='+',
+                    help='slr sfm threshold')
 parser.add_argument('--slr-sfm-svm-c', type=float, nargs='+',
                     help='slr sfm svm c')
 parser.add_argument('--slr-sfm-svm-cw', type=str, nargs='+',
@@ -1223,7 +1223,7 @@ for cv_param, cv_param_values in cv_params.items():
     if cv_param_values is None:
         continue
     if cv_param in ('slr_col_names', 'slr_vrt_thres', 'slr_mi_n', 'slr_skb_k',
-                    'slr_de_pv', 'slr_de_fc', 'slr_sfm_svm_thres',
+                    'slr_de_pv', 'slr_de_fc', 'slr_sfm_thres',
                     'slr_sfm_svm_c', 'slr_sfm_rf_thres', 'slr_sfm_rf_e',
                     'slr_sfm_ext_thres', 'slr_sfm_ext_e', 'slr_sfm_grb_e',
                     'slr_sfm_grb_d', 'slr_rfe_svm_c', 'slr_rfe_rf_e',
@@ -1298,7 +1298,8 @@ pipe_config = {
         'param_grid': {
             'estimator__C': cv_params['slr_sfm_svm_c'],
             'estimator__class_weight': cv_params['slr_sfm_svm_cw'],
-            'k': cv_params['slr_skb_k']},
+            'max_features': cv_params['slr_skb_k'],
+            'threshold': cv_params['slr_sfm_thres']},
         'param_routing': ['sample_weight']},
     'SelectFromModel-RandomForestClassifier': {
         'estimator': SelectFromModel(slr_rf_estimator),
@@ -1307,7 +1308,8 @@ pipe_config = {
             'estimator__max_depth': cv_params['slr_sfm_rf_d'],
             'estimator__max_features': cv_params['slr_sfm_rf_f'],
             'estimator__class_weight': cv_params['slr_sfm_rf_cw'],
-            'k': cv_params['slr_skb_k']},
+            'max_features': cv_params['slr_skb_k'],
+            'threshold': cv_params['slr_sfm_thres']},
         'param_routing': ['sample_weight']},
     'SelectFromModel-ExtraTreesClassifier': {
         'estimator': SelectFromModel(slr_ext_estimator),
@@ -1316,7 +1318,8 @@ pipe_config = {
             'estimator__max_depth': cv_params['slr_sfm_ext_d'],
             'estimator__max_features': cv_params['slr_sfm_ext_f'],
             'estimator__class_weight': cv_params['slr_sfm_ext_cw'],
-            'k': cv_params['slr_skb_k']},
+            'max_features': cv_params['slr_skb_k'],
+            'threshold': cv_params['slr_sfm_thres']},
         'param_routing': ['sample_weight']},
     'SelectFromModel-GradientBoostingClassifier': {
         'estimator': SelectFromModel(slr_grb_estimator),
@@ -1324,7 +1327,8 @@ pipe_config = {
             'estimator__n_estimators': cv_params['slr_sfm_grb_e'],
             'estimator__max_depth': cv_params['slr_sfm_grb_d'],
             'estimator__max_features': cv_params['slr_sfm_grb_f'],
-            'k': cv_params['slr_skb_k']},
+            'max_features': cv_params['slr_skb_k'],
+            'threshold': cv_params['slr_sfm_thres']},
         'param_routing': ['sample_weight']},
     'RFE-LinearSVC': {
         'estimator': RFE(slr_svm_estimator,
@@ -1540,6 +1544,7 @@ pipe_config = {
 
 params_num_xticks = [
     'slr__k',
+    'slr__max_features',
     'slr__score_func__n_neighbors',
     'slr__estimator__n_estimators',
     'slr__n_neighbors',

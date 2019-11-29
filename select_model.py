@@ -868,6 +868,13 @@ def run_cleanup():
             rmtree(rtmp)
 
 
+def svm_c_range(c_min, c_max):
+    svm_c_log_start = int(np.floor(np.log10(abs(c_min))))
+    svm_c_log_end = int(np.floor(np.log10(abs(c_max))))
+    return list(np.logspace(svm_c_log_start, svm_c_log_end,
+                            svm_c_log_end - svm_c_log_start + 1))
+
+
 def int_list(arg):
     return list(map(int, arg.split(',')))
 
@@ -885,6 +892,8 @@ parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
                     nargs='+', help='test datasets')
 parser.add_argument('--slr-col-names', type=str_list, nargs='+',
                     help='slr feature or metadata names')
+parser.add_argument('--slr-col-file', type=str, nargs='+',
+                    help='slr feature or metadata name file')
 parser.add_argument('--slr-col-meta', type=str,
                     help='slr feature metadata column name')
 parser.add_argument('--slr-vrt-thres', type=float, nargs='+',
@@ -907,6 +916,10 @@ parser.add_argument('--slr-sfm-thres', type=float, nargs='+',
                     help='slr sfm threshold')
 parser.add_argument('--slr-sfm-svm-c', type=float, nargs='+',
                     help='slr sfm svm c')
+parser.add_argument('--slr-sfm-svm-c-min', type=float,
+                    help='slr sfm svm c min')
+parser.add_argument('--slr-sfm-svm-c-max', type=float,
+                    help='slr sfm svm c max')
 parser.add_argument('--slr-sfm-svm-cw', type=str, nargs='+',
                     help='slr sfm svm class weight')
 parser.add_argument('--slr-sfm-rf-thres', type=float, nargs='+',
@@ -937,6 +950,10 @@ parser.add_argument('--slr-sfm-grb-f', type=str, nargs='+',
                     help='slr sfm grb max features')
 parser.add_argument('--slr-rfe-svm-c', type=float, nargs='+',
                     help='slr rfe svm c')
+parser.add_argument('--slr-rfe-svm-c-min', type=float,
+                    help='slr rfe svm c min')
+parser.add_argument('--slr-rfe-svm-c-max', type=float,
+                    help='slr rfe svm c max')
 parser.add_argument('--slr-rfe-svm-cw', type=str, nargs='+',
                     help='slr rfe svm class weight')
 parser.add_argument('--slr-rfe-rf-e', type=int, nargs='+',
@@ -1070,7 +1087,7 @@ parser.add_argument('--scv-splits', type=int, default=10,
                     help='scv splits')
 parser.add_argument('--scv-size', type=float, default=0.2,
                     help='scv size')
-parser.add_argument('--scv-verbose', type=int, default=1,
+parser.add_argument('--scv-verbose', type=int,
                     help='scv verbosity')
 parser.add_argument('--scv-scoring', type=str, nargs='+',
                     choices=['roc_auc', 'balanced_accuracy',
@@ -1133,6 +1150,8 @@ if args.test_size >= 1.0:
     args.test_size = int(args.test_size)
 if args.scv_size >= 1.0:
     args.scv_size = int(args.scv_size)
+if args.scv_verbose is None:
+    args.scv_verbose = args.verbose
 if args.filter_warnings:
     if args.parallel_backend == 'multiprocessing':
         if 'lsvc' in args.filter_warnings:
@@ -1218,6 +1237,18 @@ else:
 pipeline_step_types = ('slr', 'trf', 'clf', 'rgr')
 cv_params = {k: v for k, v in vars(args).items()
              if k.startswith(pipeline_step_types)}
+if cv_params['slr_col_file']:
+    for file in cv_params['slr_col_file']:
+        if os.path.isfile(file):
+            with open(file) as f:
+                feature_names = f.read().splitlines()
+            feature_names = [n.strip() for n in feature_names]
+            if cv_params['slr_col_names'] is None:
+                cv_params['slr_col_names'] = []
+            cv_params['slr_col_names'].append(feature_names)
+        else:
+            run_cleanup()
+            raise ValueError('File does not exist/invalid: {}'.format(file))
 for cv_param, cv_param_values in cv_params.items():
     if cv_param_values is None:
         continue
@@ -1234,7 +1265,7 @@ for cv_param, cv_param_values in cv_params.items():
                     'clf_mlp_hls', 'clf_mlp_act', 'clf_mlp_slvr', 'clf_mlp_a',
                     'clf_mlp_lr', 'clf_sgd_loss', 'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
-    elif cv_param in ('slr_skb_k_min', 'slr_skb_k_max'):
+    elif cv_param == 'slr_skb_k_max':
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
             cv_params['slr_skb_k'] = [1] + list(range(
                 0, cv_params['slr_skb_k_max'] + cv_params['slr_skb_k_step'],
@@ -1244,14 +1275,15 @@ for cv_param, cv_param_values in cv_params.items():
                 cv_params['slr_skb_k_min'],
                 cv_params['slr_skb_k_max'] + cv_params['slr_skb_k_step'],
                 cv_params['slr_skb_k_step']))
-    elif cv_param in ('clf_svm_c_min', 'clf_svm_c_max'):
-        svm_c_log_start = int(np.floor(np.log10(abs(
-            cv_params['clf_svm_c_min']))))
-        svm_c_log_end = int(np.floor(np.log10(abs(
-            cv_params['clf_svm_c_max']))))
-        cv_params['clf_svm_c'] = list(np.logspace(
-            svm_c_log_start, svm_c_log_end,
-            svm_c_log_end - svm_c_log_start + 1))
+    elif cv_param == 'slr_sfm_svm_c_max':
+        cv_params['slr_sfm_svm_c'] = svm_c_range(
+            cv_params['slr_sfm_svm_c_min'], cv_params['slr_sfm_svm_c_max'])
+    elif cv_param == 'slr_rfe_svm_c_max':
+        cv_params['slr_rfe_svm_c'] = svm_c_range(
+            cv_params['slr_rfe_svm_c_min'], cv_params['slr_rfe_svm_c_max'])
+    elif cv_param == 'clf_svm_c_max':
+        cv_params['clf_svm_c'] = svm_c_range(
+            cv_params['clf_svm_c_min'], cv_params['clf_svm_c_max'])
     elif cv_param in ('slr_sfm_svm_cw', 'slr_sfm_rf_cw', 'slr_sfm_ext_cw',
                       'slr_rfe_svm_cw', 'slr_rfe_rf_cw', 'slr_rfe_ext_cw',
                       'slr_sfm_rf_f', 'slr_sfm_ext_f', 'slr_sfm_grb_f',

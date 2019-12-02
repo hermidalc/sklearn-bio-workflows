@@ -5,7 +5,7 @@ import os
 import re
 import sys
 import warnings
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 from itertools import product
 from pprint import pprint
 from shutil import rmtree
@@ -883,6 +883,16 @@ def str_list(arg):
     return list(map(str, arg.split(',')))
 
 
+def str_bool(arg):
+    if isinstance(arg, bool):
+        return arg
+    if arg.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    if arg.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    raise ArgumentTypeError('Boolean value expected.')
+
+
 parser = ArgumentParser()
 parser.add_argument('--train-dataset', '--dataset', '--train-eset', '--train',
                     type=str, required=True, help='training dataset')
@@ -912,6 +922,8 @@ parser.add_argument('--slr-de-pv', type=float, nargs='+',
                     help='slr diff expr adj p-value')
 parser.add_argument('--slr-de-fc', type=float, nargs='+',
                     help='slr diff expr fold change')
+parser.add_argument('--slr-de-mb', type=str_bool, nargs='+',
+                    help='slr diff expr model batch')
 parser.add_argument('--slr-sfm-thres', type=float, nargs='+',
                     help='slr sfm threshold')
 parser.add_argument('--slr-sfm-svm-c', type=float, nargs='+',
@@ -992,6 +1004,8 @@ parser.add_argument('--slr-rlf-s', type=int, nargs='+',
                     help='slr rlf sample size')
 parser.add_argument('--trf-mms-fr', type=int_list, nargs='+',
                     help='trf mms fr')
+parser.add_argument('--trf-de-mb', type=str_bool, nargs='+',
+                    help='trf diff expr model batch')
 parser.add_argument('--clf-svm-c', type=float, nargs='+',
                     help='clf svm c')
 parser.add_argument('--clf-svm-c-min', type=float,
@@ -1077,10 +1091,8 @@ parser.add_argument('--limma-robust', default=False, action='store_true',
                     help='limma robust')
 parser.add_argument('--limma-trend', default=False, action='store_true',
                     help='limma trend')
-parser.add_argument('--model-batch', default=False, action='store_true',
-                    help='model batch')
-parser.add_argument('--voom-model-dupcor', default=False, action='store_true',
-                    help='limma-voom model dupcor')
+parser.add_argument('--limma-model-dupcor', default=False, action='store_true',
+                    help='limma model dupcor')
 parser.add_argument('--scv-type', type=str, choices=['grid', 'rand'],
                     default='grid', help='scv type')
 parser.add_argument('--scv-splits', type=int, default=10,
@@ -1253,17 +1265,17 @@ for cv_param, cv_param_values in cv_params.items():
     if cv_param_values is None:
         continue
     if cv_param in ('slr_col_names', 'slr_vrt_thres', 'slr_mi_n', 'slr_skb_k',
-                    'slr_de_pv', 'slr_de_fc', 'slr_sfm_thres',
+                    'slr_de_pv', 'slr_de_fc', 'slr_de_mb', 'slr_sfm_thres',
                     'slr_sfm_svm_c', 'slr_sfm_rf_thres', 'slr_sfm_rf_e',
                     'slr_sfm_ext_thres', 'slr_sfm_ext_e', 'slr_sfm_grb_e',
                     'slr_sfm_grb_d', 'slr_rfe_svm_c', 'slr_rfe_rf_e',
                     'slr_rfe_ext_e', 'slr_rfe_grb_e', 'slr_rfe_grb_d',
                     'slr_rfe_step', 'slr_rlf_n', 'slr_rlf_s', 'trf_mms_fr',
-                    'clf_svm_c', 'clf_svm_kern', 'clf_svm_deg', 'clf_svm_g',
-                    'clf_knn_k', 'clf_knn_w', 'clf_rf_e', 'clf_ext_e',
-                    'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e', 'clf_grb_d',
-                    'clf_mlp_hls', 'clf_mlp_act', 'clf_mlp_slvr', 'clf_mlp_a',
-                    'clf_mlp_lr', 'clf_sgd_loss', 'clf_sgd_l1r'):
+                    'trf_de_mb', 'clf_svm_c', 'clf_svm_kern', 'clf_svm_deg',
+                    'clf_svm_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
+                    'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
+                    'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act', 'clf_mlp_slvr',
+                    'clf_mlp_a', 'clf_mlp_lr', 'clf_sgd_loss', 'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param == 'slr_skb_k_max':
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
@@ -1411,47 +1423,53 @@ pipe_config = {
             'n_features_to_select': cv_params['slr_skb_k']},
         'param_routing': ['sample_weight']},
     'DESeq2': {
-        'estimator': DESeq2(memory=memory, model_batch=args.model_batch),
+        'estimator': DESeq2(memory=memory),
         'param_grid': {
             'k': cv_params['slr_skb_k'],
             'sv': cv_params['slr_de_pv'],
-            'fc': cv_params['slr_de_fc']},
+            'fc': cv_params['slr_de_fc'],
+            'model_batch': cv_params['slr_de_mb']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'EdgeR': {
-        'estimator': EdgeR(memory=memory, prior_count=args.edger_prior_count,
-                           model_batch=args.model_batch),
+        'estimator': EdgeR(memory=memory, prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['slr_skb_k'],
             'pv': cv_params['slr_de_pv'],
-            'fc': cv_params['slr_de_fc']},
+            'fc': cv_params['slr_de_fc'],
+            'model_batch': cv_params['slr_de_mb']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'EdgeRFilterByExpr': {
-        'estimator': EdgeRFilterByExpr(model_batch=args.model_batch),
+        'estimator': EdgeRFilterByExpr(),
+        'param_grid': {
+            'model_batch': cv_params['slr_de_mb']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'LimmaVoom': {
-        'estimator': LimmaVoom(memory=memory, model_batch=args.model_batch,
-                               model_dupcor=args.voom_model_dupcor,
+        'estimator': LimmaVoom(memory=memory,
+                               model_dupcor=args.limma_model_dupcor,
                                prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['slr_skb_k'],
             'pv': cv_params['slr_de_pv'],
-            'fc': cv_params['slr_de_fc']},
+            'fc': cv_params['slr_de_fc'],
+            'model_batch': cv_params['slr_de_mb']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'DreamVoom': {
-        'estimator': DreamVoom(memory=memory, model_batch=args.model_batch,
+        'estimator': DreamVoom(memory=memory,
                                prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['slr_skb_k'],
             'pv': cv_params['slr_de_pv'],
-            'fc': cv_params['slr_de_fc']},
+            'fc': cv_params['slr_de_fc'],
+            'model_batch': cv_params['slr_de_mb']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'Limma': {
-        'estimator': Limma(memory=memory, model_batch=args.model_batch,
-                           robust=args.limma_robust, trend=args.limma_trend),
+        'estimator': Limma(memory=memory, robust=args.limma_robust,
+                           trend=args.limma_trend),
         'param_grid': {
             'k': cv_params['slr_skb_k'],
             'pv': cv_params['slr_de_pv'],
-            'fc': cv_params['slr_de_fc']},
+            'fc': cv_params['slr_de_fc'],
+            'model_batch': cv_params['slr_de_mb']},
         'param_routing': ['sample_meta', 'feature_meta']},
     'FCBF': {
         'estimator': FCBF(memory=memory),
@@ -1475,7 +1493,9 @@ pipe_config = {
     'RobustScaler': {
         'estimator': RobustScaler()},
     'DESeq2RLEVST': {
-        'estimator': DESeq2RLEVST(memory=memory, model_batch=args.model_batch),
+        'estimator': DESeq2RLEVST(memory=memory),
+        'param_grid': {
+            'model_batch': cv_params['trf_de_mb']},
         'param_routing': ['sample_meta']},
     'EdgeRTMMLogCPM': {
         'estimator': EdgeRTMMLogCPM(memory=memory,

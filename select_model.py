@@ -438,6 +438,11 @@ def run_model_selection():
     if args.verbose > 0 or args.scv_verbose > 0:
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
               X.shape)
+    if args.verbose > 1 and groups is not None:
+        print('Groups:')
+        pprint(groups)
+        print('Sample weights:')
+        pprint(sample_weights)
     if args.load_only:
         run_cleanup()
         sys.exit()

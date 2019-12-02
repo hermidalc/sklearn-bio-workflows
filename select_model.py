@@ -180,18 +180,20 @@ def setup_pipe_and_param_grid():
             param_grid, param_grid_dict)
 
 
-def load_dataset(file):
-    dataset_name, file_extension = os.path.splitext(os.path.split(file)[1])
-    if os.path.isfile(file) and file_extension in (
+def load_dataset(dataset_file):
+    dataset_name, file_extension = os.path.splitext(
+        os.path.split(dataset_file)[1])
+    if os.path.isfile(dataset_file) and file_extension in (
             '.Rda', '.rda', '.RData', '.Rdata', '.Rds', '.rds'):
         if file_extension in ('.Rda', '.rda', '.RData', '.Rdata'):
-            r_base.load(file)
+            r_base.load(dataset_file)
             eset = robjects.globalenv[dataset_name]
         else:
-            eset = r_base.readRDS(file)
+            eset = r_base.readRDS(dataset_file)
     else:
         run_cleanup()
-        raise ValueError('File does not exist/invalid: {}'.format(file))
+        raise ValueError('File does not exist/invalid: {}'
+                         .format(dataset_file))
     X = np.array(r_base.t(r_biobase.exprs(eset)), dtype=(
         int if r_base.typeof(r_biobase.exprs(eset))[0] == 'integer'
         else float))
@@ -1250,9 +1252,9 @@ pipeline_step_types = ('slr', 'trf', 'clf', 'rgr')
 cv_params = {k: v for k, v in vars(args).items()
              if k.startswith(pipeline_step_types)}
 if cv_params['slr_col_file']:
-    for file in cv_params['slr_col_file']:
-        if os.path.isfile(file):
-            with open(file) as f:
+    for feature_file in cv_params['slr_col_file']:
+        if os.path.isfile(feature_file):
+            with open(feature_file) as f:
                 feature_names = f.read().splitlines()
             feature_names = [n.strip() for n in feature_names]
             if cv_params['slr_col_names'] is None:
@@ -1260,7 +1262,8 @@ if cv_params['slr_col_file']:
             cv_params['slr_col_names'].append(feature_names)
         else:
             run_cleanup()
-            raise ValueError('File does not exist/invalid: {}'.format(file))
+            raise ValueError('File does not exist/invalid: {}'
+                             .format(feature_file))
 for cv_param, cv_param_values in cv_params.items():
     if cv_param_values is None:
         continue

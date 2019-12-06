@@ -1148,7 +1148,7 @@ parser.add_argument('--pipe-memory', default=False, action='store_true',
                     help='turn on pipeline memory')
 parser.add_argument('--cache-dir', type=str, default='/tmp',
                     help='cache dir')
-parser.add_argument('--random-seed', type=int, default=19825791,
+parser.add_argument('--random-seed', type=int, default=777,
                     help='random state seed')
 parser.add_argument('--jvm-heap-size', type=int, default=500,
                     help='rjava jvm heap size')

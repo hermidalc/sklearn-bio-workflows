@@ -475,7 +475,7 @@ def run_model_selection():
             if np.any(feature_weights):
                 print('Feature Ranking:')
                 print(tabulate(selected_feature_meta.sort_values(
-                    by='Weight', ascending=False), floatfmt='.8f',
+                    by='Weight', ascending=False), floatfmt='.8e',
                                headers='keys'))
             else:
                 print('Features:')
@@ -694,7 +694,7 @@ def run_model_selection():
                 if np.any(feature_weights):
                     print('Feature Ranking:')
                     print(tabulate(selected_feature_meta.sort_values(
-                        by='Weight', ascending=False), floatfmt='.8f',
+                        by='Weight', ascending=False), floatfmt='.8e',
                                    headers='keys'))
                 else:
                     print('Features:')
@@ -770,7 +770,7 @@ def run_model_selection():
             if args.feature_rank_meth == 'weight':
                 selected_feature_meta['Mean Weight'] = feature_mean_weights
                 print(tabulate(selected_feature_meta.sort_values(
-                    by='Mean Weight', ascending=False), floatfmt='.8f',
+                    by='Mean Weight', ascending=False), floatfmt='.8e',
                                headers='keys'))
             elif args.feature_rank_meth == 'score':
                 header = 'Mean {}'.format(metric_label[args.scv_refit])

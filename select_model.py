@@ -482,7 +482,8 @@ def run_model_selection():
                 print(tabulate(selected_feature_meta, headers='keys'))
         if args.save_model:
             os.makedirs(args.results_dir, mode=0o755, exist_ok=True)
-            dump(search, args.results_dir + '/' + dataset_name + '_search.pkl')
+            dump(search, '{}/{}_search.pkl'.format(args.results_dir,
+                                                   dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         # plot top-ranked selected features vs test performance metrics
@@ -708,10 +709,10 @@ def run_model_selection():
                 memory.clear(warn=False)
         if args.save_results:
             os.makedirs(args.results_dir, mode=0o755, exist_ok=True)
-            dump(split_results, args.results_dir + '/' + dataset_name
-                 + '_split_results.pkl')
-            dump(param_cv_scores, args.results_dir + '/' + dataset_name
-                 + '_param_cv_scores.pkl')
+            dump(split_results, '{}/{}_split_results.pkl'.format(
+                args.results_dir, dataset_name))
+            dump(param_cv_scores, '{}/{}_param_cv_scores.pkl'.format(
+                args.results_dir, dataset_name))
         scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
@@ -1207,9 +1208,9 @@ if sys.platform.startswith('linux'):
 
 r_base = importr('base')
 r_biobase = importr('Biobase')
-robjects.r('set.seed(' + str(args.random_seed) + ')')
-robjects.r('options(\'java.parameters\'="-Xmx' + str(args.jvm_heap_size)
-           + 'm")')
+robjects.r('set.seed({:d})'.format(args.random_seed))
+robjects.r('options(\'java.parameters\'="-Xmx{:d}m")'
+           .format(args.jvm_heap_size))
 
 if args.pipe_memory:
     cachedir = mkdtemp(dir=args.cache_dir)

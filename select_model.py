@@ -1280,7 +1280,8 @@ for cv_param, cv_param_values in cv_params.items():
                     'clf_svm_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
                     'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
                     'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act', 'clf_mlp_slvr',
-                    'clf_mlp_a', 'clf_mlp_lr', 'clf_sgd_loss', 'clf_sgd_l1r'):
+                    'clf_mlp_a', 'clf_mlp_lr', 'clf_sgd_a', 'clf_sgd_loss',
+                    'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param == 'slr_skb_k_max':
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:

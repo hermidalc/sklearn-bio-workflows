@@ -1075,6 +1075,8 @@ parser.add_argument('--clf-mlp-a', type=float, nargs='+',
                     help='clf mlp alpha')
 parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
+parser.add_argument('--clf-sgd-a', type=float, nargs='+',
+                    help='clf sgd alpha')
 parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
                     choices=['hinge', 'log', 'modified_huber', 'squared_hinge',
                              'perceptron', 'squared_loss', 'huber',
@@ -1591,6 +1593,7 @@ pipe_config = {
         'estimator': SGDClassifier(penalty=args.clf_sgd_penalty,
                                    random_state=args.random_seed),
         'param_grid': {
+            'alpha': cv_params['clf_sgd_a'],
             'loss': cv_params['clf_sgd_loss'],
             'l1_ratio': cv_params['clf_sgd_l1r'],
             'class_weight': cv_params['clf_sgd_cw']},
@@ -1623,6 +1626,7 @@ params_fixed_xticks = [
     'trf',
     'trf__model_batch',
     'clf',
+    'clf__alpha',
     'clf__C',
     'clf__class_weight',
     'clf__kernel',

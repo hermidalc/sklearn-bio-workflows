@@ -126,17 +126,21 @@ def setup_pipe_and_param_grid():
                 if 'param_grid' in pipe_config[step_key]:
                     for param, param_values in (
                             pipe_config[step_key]['param_grid'].items()):
-                        if param_values:
-                            uniq_step_param = '{}__{}'.format(uniq_step_name,
-                                                              param)
-                            if len(param_values) > 1:
-                                params[uniq_step_param] = param_values
-                                if uniq_step_param not in param_grid_dict:
-                                    param_grid_dict[uniq_step_param] = (
-                                        param_values)
-                            else:
-                                estimator.set_params(
-                                    **{param: param_values[0]})
+                        if isinstance(param_values, (list, tuple, np.ndarray)):
+                            if (isinstance(param_values, (list, tuple))
+                                    and param_values or np.any(param_values)):
+                                uniq_step_param = '{}__{}'.format(
+                                    uniq_step_name, param)
+                                if len(param_values) > 1:
+                                    params[uniq_step_param] = param_values
+                                    if uniq_step_param not in param_grid_dict:
+                                        param_grid_dict[uniq_step_param] = (
+                                            param_values)
+                                else:
+                                    estimator.set_params(
+                                        **{param: param_values[0]})
+                        elif param_values is not None:
+                            estimator.set_params(**{param: param_values})
                 if 'param_routing' in pipe_config[step_key]:
                     if pipe_param_routing is None:
                         pipe_param_routing = {}
@@ -874,7 +878,7 @@ def run_cleanup():
 def get_logspace(v_min, v_max):
     log_start = int(np.floor(np.log10(abs(v_min))))
     log_end = int(np.floor(np.log10(abs(v_max))))
-    return list(np.logspace(log_start, log_end, log_end - log_start + 1))
+    return np.logspace(log_start, log_end, log_end - log_start + 1)
 
 
 def int_list(arg):
@@ -1091,6 +1095,12 @@ parser.add_argument('--clf-sgd-penalty', type=str,
                     help='clf sgd penalty')
 parser.add_argument('--clf-sgd-l1r', type=float, nargs='+',
                     help='clf sgd l1 ratio')
+parser.add_argument('--clf-sgd-l1r-min', type=float,
+                    help='clf sgd l1 ratio min')
+parser.add_argument('--clf-sgd-l1r-max', type=float,
+                    help='clf sgd l1 ratio max')
+parser.add_argument('--clf-sgd-l1r-step', type=float, default=0.05,
+                    help='clf sgd l1 ratio step')
 parser.add_argument('--clf-sgd-cw', type=str, nargs='+',
                     help='clf sgd class weight')
 parser.add_argument('--edger-prior-count', type=int, default=1,
@@ -1308,6 +1318,12 @@ for cv_param, cv_param_values in cv_params.items():
     elif cv_param == 'clf_sgd_a_max':
         cv_params['clf_sgd_a'] = get_logspace(
             cv_params['clf_sgd_a_min'], cv_params['clf_sgd_a_max'])
+    elif cv_param == 'clf_sgd_l1r_max':
+        cv_params['clf_sgd_l1r'] = np.linspace(
+            cv_params['clf_sgd_l1r_min'], cv_params['clf_sgd_l1r_max'],
+            int(np.floor(
+                (cv_params['clf_sgd_l1r_max'] - cv_params['clf_sgd_l1r_min'])
+                / cv_params['clf_sgd_l1r_step'])) + 1)
     elif cv_param in ('slr_sfm_svm_cw', 'slr_sfm_rf_cw', 'slr_sfm_ext_cw',
                       'slr_rfe_svm_cw', 'slr_rfe_rf_cw', 'slr_rfe_ext_cw',
                       'slr_sfm_rf_f', 'slr_sfm_ext_f', 'slr_sfm_grb_f',

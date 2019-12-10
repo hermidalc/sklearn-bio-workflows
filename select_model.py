@@ -265,14 +265,21 @@ def get_feature_idxs_and_weights(pipe, num_total_features):
     feature_weights = np.zeros_like(feature_idxs, dtype=float)
     final_estimator = pipe.steps[-1][1]
     if hasattr(final_estimator, 'coef_'):
-        feature_weights = np.square(final_estimator.coef_[0])
+        if isinstance(final_estimator, (LinearSVC, SVC)):
+            feature_weights = np.square(final_estimator.coef_[0])
+        else:
+            feature_weights = np.abs(final_estimator.coef_[0])
     elif hasattr(final_estimator, 'feature_importances_'):
         feature_weights = final_estimator.feature_importances_
     else:
         for estimator in pipe.named_steps.values():
             if hasattr(estimator, 'estimator_'):
                 if hasattr(estimator.estimator_, 'coef_'):
-                    feature_weights = np.square(estimator.estimator_.coef_[0])
+                    if isinstance(estimator, (LinearSVC, SVC)):
+                        feature_weights = np.square(
+                            estimator.estimator_.coef_[0])
+                    else:
+                        feature_weights = np.abs(estimator.estimator_.coef_[0])
                 elif hasattr(estimator.estimator_, 'feature_importances_'):
                     feature_weights = estimator.estimator_.feature_importances_
             elif hasattr(estimator, 'scores_'):

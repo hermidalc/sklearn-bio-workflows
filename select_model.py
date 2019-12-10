@@ -871,11 +871,10 @@ def run_cleanup():
             rmtree(rtmp)
 
 
-def svm_c_range(c_min, c_max):
-    svm_c_log_start = int(np.floor(np.log10(abs(c_min))))
-    svm_c_log_end = int(np.floor(np.log10(abs(c_max))))
-    return list(np.logspace(svm_c_log_start, svm_c_log_end,
-                            svm_c_log_end - svm_c_log_start + 1))
+def get_logspace(v_min, v_max):
+    log_start = int(np.floor(np.log10(abs(v_min))))
+    log_end = int(np.floor(np.log10(abs(v_max))))
+    return list(np.logspace(log_start, log_end, log_end - log_start + 1))
 
 
 def int_list(arg):
@@ -1077,6 +1076,10 @@ parser.add_argument('--clf-mlp-lr', type=str, nargs='+',
                     help='clf mlp learning rate')
 parser.add_argument('--clf-sgd-a', type=float, nargs='+',
                     help='clf sgd alpha')
+parser.add_argument('--clf-sgd-a-min', type=float,
+                    help='clf sgd alpha min')
+parser.add_argument('--clf-sgd-a-max', type=float,
+                    help='clf sgd alpha max')
 parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
                     choices=['hinge', 'log', 'modified_huber', 'squared_hinge',
                              'perceptron', 'squared_loss', 'huber',
@@ -1294,14 +1297,17 @@ for cv_param, cv_param_values in cv_params.items():
                 cv_params['slr_skb_k_max'] + cv_params['slr_skb_k_step'],
                 cv_params['slr_skb_k_step']))
     elif cv_param == 'slr_sfm_svm_c_max':
-        cv_params['slr_sfm_svm_c'] = svm_c_range(
+        cv_params['slr_sfm_svm_c'] = get_logspace(
             cv_params['slr_sfm_svm_c_min'], cv_params['slr_sfm_svm_c_max'])
     elif cv_param == 'slr_rfe_svm_c_max':
-        cv_params['slr_rfe_svm_c'] = svm_c_range(
+        cv_params['slr_rfe_svm_c'] = get_logspace(
             cv_params['slr_rfe_svm_c_min'], cv_params['slr_rfe_svm_c_max'])
     elif cv_param == 'clf_svm_c_max':
-        cv_params['clf_svm_c'] = svm_c_range(
+        cv_params['clf_svm_c'] = get_logspace(
             cv_params['clf_svm_c_min'], cv_params['clf_svm_c_max'])
+    elif cv_param == 'clf_sgd_a_max':
+        cv_params['clf_sgd_a'] = get_logspace(
+            cv_params['clf_sgd_a_min'], cv_params['clf_sgd_a_max'])
     elif cv_param in ('slr_sfm_svm_cw', 'slr_sfm_rf_cw', 'slr_sfm_ext_cw',
                       'slr_rfe_svm_cw', 'slr_rfe_rf_cw', 'slr_rfe_ext_cw',
                       'slr_sfm_rf_f', 'slr_sfm_ext_f', 'slr_sfm_grb_f',

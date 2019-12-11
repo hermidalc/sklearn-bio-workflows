@@ -250,9 +250,9 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
         elif metric == 'average_precision':
             scores[metric] = average_precision_score(
                 y_test, y_score, sample_weight=test_sample_weights)
-            scores['pre'], scores['rec'], _ = (
-                precision_recall_curve(y_test, y_score, pos_label=1,
-                                       sample_weight=test_sample_weights))
+            scores['pre'], scores['rec'], _ = precision_recall_curve(
+                y_test, y_score, pos_label=1,
+                sample_weight=test_sample_weights)
             scores['pr_auc'] = auc(scores['rec'], scores['pre'])
     return scores
 
@@ -737,6 +737,11 @@ def run_model_selection():
                     split_result['scores']['cv'][metric])
                 scores['te'][metric].append(
                     split_result['scores']['te'][metric])
+                if metric == 'average_precision':
+                    if 'pr_auc' not in scores['te']:
+                        scores['te']['pr_auc'] = []
+                    scores['te']['pr_auc'].append(
+                        split_result['scores']['te']['pr_auc'])
             num_features.append(split_result['feature_idxs'].size)
         print('Dataset:', dataset_name, X.shape, end=' ')
         for metric in args.scv_scoring:
@@ -744,7 +749,7 @@ def run_model_selection():
                 metric_label[metric], np.mean(scores['cv'][metric]),
                 np.mean(scores['te'][metric])), end=' ')
             if metric == 'average_precision':
-                print(' PR AUC Test: {:.4f}'.format(
+                print(' Mean PR AUC Test: {:.4f}'.format(
                     np.mean(scores['te']['pr_auc'])), end=' ')
         if num_features and pipe_props['has_selector']:
             print(' Mean Features: {:.0f}'.format(np.mean(num_features)))

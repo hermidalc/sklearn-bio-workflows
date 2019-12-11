@@ -97,8 +97,8 @@ def setup_pipe_and_param_grid():
                     estimator = pipe_config[step_key]['estimator']
                 else:
                     run_cleanup()
-                    raise ValueError('No pipeline config exists for {}'
-                                     .format(step_key))
+                    raise RuntimeError('No pipeline config exists for {}'
+                                       .format(step_key))
                 if isinstance(estimator, (SelectorMixin,
                                           ExtendedSelectorMixin)):
                     step_type = 'slr'
@@ -112,12 +112,12 @@ def setup_pipe_and_param_grid():
                     step_type = 'rgr'
                 else:
                     run_cleanup()
-                    raise ValueError('Unsupported estimator type {}'
-                                     .format(estimator))
+                    raise RuntimeError('Unsupported estimator type {}'
+                                       .format(estimator))
                 if step_idx < len(pipe_steps):
                     if step_type != pipe_step_types[step_idx]:
                         run_cleanup()
-                        raise ValueError(
+                        raise RuntimeError(
                             'Different step estimator types: {} {}'
                             .format(step_type, pipe_step_types[step_idx]))
                 else:
@@ -197,8 +197,8 @@ def load_dataset(dataset_file):
             eset = r_base.readRDS(dataset_file)
     else:
         run_cleanup()
-        raise ValueError('File does not exist/invalid: {}'
-                         .format(dataset_file))
+        raise IOError('File does not exist/invalid: {}'
+                      .format(dataset_file))
     X = np.array(r_base.t(r_biobase.exprs(eset)), dtype=(
         int if r_base.typeof(r_biobase.exprs(eset))[0] == 'integer'
         else float))
@@ -361,7 +361,7 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                 mean_cv_scores[metric] = np.ravel(param_metric_scores)
                 std_cv_scores[metric] = np.ravel(param_metric_stdev)
         plt.figure()
-        param_type = re.sub(r'^(\w+)\d+', r'\1', param)
+        param_type = re.sub(r'^([a-z]+)\d+', r'\1', param, count=1)
         if param_type in params_num_xticks:
             x_axis = param_grid_dict[param]
             plt.xticks(x_axis)
@@ -373,6 +373,9 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                             and v is not None else str(v)
                             for v in param_grid_dict[param]]
             plt.xticks(x_axis, xtick_labels)
+        else:
+            raise RuntimeError('No ticks config exists for {}'
+                               .format(param_type))
         plt.xlim([min(x_axis), max(x_axis)])
         plt.title('{}\n{}\nEffect of {} on CV Performance Metrics'.format(
             dataset_name, pipe_name, param), fontsize=args.title_font_size)
@@ -1283,8 +1286,8 @@ if cv_params['slr_col_file']:
             cv_params['slr_col_names'].append(feature_names)
         else:
             run_cleanup()
-            raise ValueError('File does not exist/invalid: {}'
-                             .format(feature_file))
+            raise IOError('File does not exist/invalid: {}'
+                          .format(feature_file))
 for cv_param, cv_param_values in cv_params.items():
     if cv_param_values is None:
         continue
@@ -1637,6 +1640,7 @@ params_num_xticks = [
     'slr__sample_size',
     'slr__n_features_to_select',
     'clf__degree',
+    'clf__l1_ratio',
     'clf__n_neighbors',
     'clf__n_estimators']
 params_fixed_xticks = [
@@ -1659,6 +1663,7 @@ params_fixed_xticks = [
     'clf__C',
     'clf__class_weight',
     'clf__kernel',
+    'clf__loss',
     'clf__gamma',
     'clf__weights',
     'clf__max_depth',

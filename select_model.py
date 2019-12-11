@@ -461,7 +461,7 @@ def run_model_selection():
             pipe_fit_params['feature_meta'] = feature_meta
         if 'sample_weight' in search_param_routing['estimator']:
             pipe_fit_params['sample_weight'] = sample_weights
-        search_fit_params = pipe_fit_params
+        search_fit_params = pipe_fit_params.copy()
         if groups is not None:
             search_fit_params['groups'] = groups
         with parallel_backend(args.parallel_backend):
@@ -642,7 +642,7 @@ def run_model_selection():
                 pipe_fit_params['sample_weight'] = (
                     sample_weights[train_idxs] if sample_weights is not None
                     else None)
-            search_fit_params = pipe_fit_params
+            search_fit_params = pipe_fit_params.copy()
             if groups is not None:
                 search_fit_params['groups'] = groups[train_idxs]
             with parallel_backend(args.parallel_backend):
@@ -656,8 +656,7 @@ def run_model_selection():
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
                             X[train_idxs], y[train_idxs], pipe_steps,
-                            pipe_param_routing, pipe_params,
-                            pipe_fit_params)
+                            pipe_param_routing, pipe_params, pipe_fit_params)
                         for pipe_params in [best_params])[0]
             else:
                 best_index = search.best_index_

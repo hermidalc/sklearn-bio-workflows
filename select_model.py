@@ -783,19 +783,23 @@ def run_model_selection():
             feature_mean_scores.append(np.mean(
                 scores_cv_matrix[args.scv_refit][idx]))
         if args.verbose > 0:
-            print('Overall Feature Ranking:')
             selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
-            if args.feature_rank_meth == 'weight':
-                selected_feature_meta['Mean Weight'] = feature_mean_weights
-                print(tabulate(selected_feature_meta.sort_values(
-                    by='Mean Weight', ascending=False), floatfmt='.6e',
-                               headers='keys'))
-            elif args.feature_rank_meth == 'score':
-                header = 'Mean {}'.format(metric_label[args.scv_refit])
-                selected_feature_meta[header] = feature_mean_scores
-                print(tabulate(selected_feature_meta.sort_values(
-                    by=header, ascending=False), floatfmt='.4f',
-                               headers='keys'))
+            if np.any(feature_mean_weights):
+                print('Overall Feature Ranking:')
+                if args.feature_rank_meth == 'weight':
+                    selected_feature_meta['Mean Weight'] = feature_mean_weights
+                    print(tabulate(selected_feature_meta.sort_values(
+                        by='Mean Weight', ascending=False), floatfmt='.6e',
+                                   headers='keys'))
+                elif args.feature_rank_meth == 'score':
+                    header = 'Mean {}'.format(metric_label[args.scv_refit])
+                    selected_feature_meta[header] = feature_mean_scores
+                    print(tabulate(selected_feature_meta.sort_values(
+                        by=header, ascending=False), floatfmt='.4f',
+                                   headers='keys'))
+            else:
+                print('Overall Features:')
+                print(tabulate(selected_feature_meta, headers='keys'))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         # plot roc and pr curves

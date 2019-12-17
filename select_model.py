@@ -888,8 +888,8 @@ def run_model_selection():
 def run_cleanup():
     if args.pipe_memory:
         rmtree(cachedir)
-    if glob.glob('/tmp/Rtmp*'):
-        for rtmp in glob.glob('/tmp/Rtmp*'):
+    if glob.glob('{}/Rtmp*'.format(gettempdir())):
+        for rtmp in glob.glob('{}/Rtmp*'.format(gettempdir())):
             rmtree(rtmp)
 
 

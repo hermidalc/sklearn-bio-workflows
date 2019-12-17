@@ -17,10 +17,10 @@ if [[ ! -v n_jobs ]]; then
     n_jobs=64
     args+=("--n-jobs" "$n_jobs")
 fi
-mem="$((n_jobs*2))g"
 sbatch \
+--chdir="$(realpath $SCRIPT_PATH/../)" \
 --cpus-per-task=$n_jobs \
---mem=$mem \
+--mem="$((n_jobs*2))g" \
 --partition=ccr,norm \
 --time=48:00:00 \
 $SCRIPT_PATH/run_select_model_slurm.sh "${args[@]}"

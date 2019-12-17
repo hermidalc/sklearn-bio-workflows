@@ -888,9 +888,7 @@ def run_model_selection():
 def run_cleanup():
     if args.pipe_memory:
         rmtree(cachedir)
-    if glob.glob('{}/Rtmp*'.format(gettempdir())):
-        for rtmp in glob.glob('{}/Rtmp*'.format(gettempdir())):
-            rmtree(rtmp)
+    rmtree(r_base.tempdir()[0])
 
 
 def get_logspace(v_min, v_max):

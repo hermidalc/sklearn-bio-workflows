@@ -9,7 +9,7 @@ from argparse import ArgumentParser, ArgumentTypeError
 from itertools import product
 from pprint import pprint
 from shutil import rmtree
-from tempfile import mkdtemp
+from tempfile import mkdtemp, gettempdir
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1184,8 +1184,8 @@ parser.add_argument('--parallel-backend', type=str, default='loky',
                     help='joblib parallel backend')
 parser.add_argument('--pipe-memory', default=False, action='store_true',
                     help='turn on pipeline memory')
-parser.add_argument('--cache-dir', type=str, default='/tmp',
-                    help='cache dir')
+parser.add_argument('--tmp-dir', type=str, default=gettempdir(),
+                    help='tmp dir')
 parser.add_argument('--random-seed', type=int, default=777,
                     help='random state seed')
 parser.add_argument('--jvm-heap-size', type=int, default=500,
@@ -1261,7 +1261,7 @@ robjects.r('options(\'java.parameters\'="-Xmx{:d}m")'
            .format(args.jvm_heap_size))
 
 if args.pipe_memory:
-    cachedir = mkdtemp(dir=args.cache_dir)
+    cachedir = mkdtemp(dir=args.tmp_dir)
     memory = Memory(location=cachedir, verbose=0)
     slr_anova_scorer = CachedANOVAFScorerClassification(memory=memory)
     slr_chi2_scorer = CachedChi2Scorer(memory=memory)

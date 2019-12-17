@@ -1038,16 +1038,18 @@ parser.add_argument('--clf-svm-c-max', type=float,
                     help='clf svm c max')
 parser.add_argument('--clf-svm-cw', type=str, nargs='+',
                     help='clf svm class weight')
-parser.add_argument('--clf-svm-kern', type=str, nargs='+',
-                    help='clf svm kernel')
-parser.add_argument('--clf-svm-deg', type=int, nargs='+',
-                    help='clf svm poly degree')
-parser.add_argument('--clf-svm-g', type=str, nargs='+',
-                    help='clf svm gamma')
+parser.add_argument('--clf-svc-kern', type=str, nargs='+',
+                    help='clf svc kernel')
+parser.add_argument('--clf-svc-deg', type=int, nargs='+',
+                    help='clf svc poly degree')
+parser.add_argument('--clf-svc-g', type=str, nargs='+',
+                    help='clf svc gamma')
+parser.add_argument('--clf-lsvc-max-iter', type=int, default=1000,
+                    help='clf linearsvc max_iter')
 parser.add_argument('--clf-lsvc-tol', type=float, default=1e-2,
-                    help='linearsvc tol')
+                    help='clf linearsvc tol')
 parser.add_argument('--clf-svc-cache', type=int, default=2000,
-                    help='svc cache size')
+                    help='clf svc cache size')
 parser.add_argument('--clf-knn-k', type=int, nargs='+',
                     help='clf knn neighbors')
 parser.add_argument('--clf-knn-w', type=str, nargs='+',
@@ -1102,15 +1104,6 @@ parser.add_argument('--clf-sgd-a-min', type=float,
                     help='clf sgd alpha min')
 parser.add_argument('--clf-sgd-a-max', type=float,
                     help='clf sgd alpha max')
-parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
-                    choices=['hinge', 'log', 'modified_huber', 'squared_hinge',
-                             'perceptron', 'squared_loss', 'huber',
-                             'epsilon_insensitive',
-                             'squared_epsilon_insensitive'],
-                    help='clf sgd loss')
-parser.add_argument('--clf-sgd-penalty', type=str,
-                    choices=['l1', 'l2', 'elasticnet'], default='l2',
-                    help='clf sgd penalty')
 parser.add_argument('--clf-sgd-l1r', type=float, nargs='+',
                     help='clf sgd l1 ratio')
 parser.add_argument('--clf-sgd-l1r-min', type=float,
@@ -1121,6 +1114,17 @@ parser.add_argument('--clf-sgd-l1r-step', type=float, default=0.05,
                     help='clf sgd l1 ratio step')
 parser.add_argument('--clf-sgd-cw', type=str, nargs='+',
                     help='clf sgd class weight')
+parser.add_argument('--clf-sgd-loss', type=str, nargs='+',
+                    choices=['hinge', 'log', 'modified_huber', 'squared_hinge',
+                             'perceptron', 'squared_loss', 'huber',
+                             'epsilon_insensitive',
+                             'squared_epsilon_insensitive'],
+                    help='clf sgd loss')
+parser.add_argument('--clf-sgd-penalty', type=str,
+                    choices=['l1', 'l2', 'elasticnet'], default='l2',
+                    help='clf sgd penalty')
+parser.add_argument('--clf-sgd-max-iter', type=int, default=1000,
+                    help='clf sgd max_iter')
 parser.add_argument('--edger-prior-count', type=int, default=1,
                     help='edger prior count')
 parser.add_argument('--limma-robust', default=False, action='store_true',
@@ -1187,7 +1191,7 @@ parser.add_argument('--random-seed', type=int, default=777,
 parser.add_argument('--jvm-heap-size', type=int, default=500,
                     help='rjava jvm heap size')
 parser.add_argument('--filter-warnings', type=str, nargs='+',
-                    choices=['lsvc', 'qda', 'joblib'],
+                    choices=['convergence', 'joblib', 'qda'],
                     help='filter warnings')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
@@ -1203,36 +1207,47 @@ if args.scv_verbose is None:
     args.scv_verbose = args.verbose
 if args.filter_warnings:
     if args.parallel_backend == 'multiprocessing':
-        if 'lsvc' in args.filter_warnings:
-            # ignore LinearSVC convergence warnings
-            warnings.filterwarnings('ignore', category=ConvergenceWarning,
-                                    message='^Liblinear failed to converge',
-                                    module='sklearn.svm.base')
-        if 'qda' in args.filter_warnings:
-            # ignore QDA collinearity warnings
-            warnings.filterwarnings('ignore', category=UserWarning,
-                                    message='^Variables are collinear',
-                                    module='sklearn.discriminant_analysis')
+        if 'convergence' in args.filter_warnings:
+            # filter LinearSVC convergence warnings
+            warnings.filterwarnings(
+                'ignore', category=ConvergenceWarning,
+                message='^Liblinear failed to converge',
+                module='sklearn.svm.base')
+            # filter SGDClassifier convergence warnings
+            warnings.filterwarnings(
+                'ignore', category=ConvergenceWarning,
+                message='^Maximum number of iteration',
+                module='sklearn.linear_model.stochastic_gradient')
         if 'joblib' in args.filter_warnings:
-            # ignore joblib peristence time warnings
-            warnings.filterwarnings('ignore', category=UserWarning,
-                                    message='^Persisting input arguments took',
-                                    module='sklearn_extensions.pipeline')
+            # filter joblib peristence time warnings
+            warnings.filterwarnings(
+                'ignore', category=UserWarning,
+                message='^Persisting input arguments took',
+                module='sklearn_extensions.pipeline')
+        if 'qda' in args.filter_warnings:
+            # filter QDA collinearity warnings
+            warnings.filterwarnings(
+                'ignore', category=UserWarning,
+                message='^Variables are collinear',
+                module='sklearn.discriminant_analysis')
     else:
         python_warnings = ([os.environ['PYTHONWARNINGS']]
                            if 'PYTHONWARNINGS' in os.environ else [])
-        if 'lsvc' in args.filter_warnings:
+        if 'convergence' in args.filter_warnings:
             python_warnings.append(
                 'ignore:Liblinear failed to converge:'
                 'UserWarning:sklearn.svm.base')
-        if 'qda' in args.filter_warnings:
             python_warnings.append(
-                'ignore:Variables are collinear:'
-                'UserWarning:sklearn.discriminant_analysis')
+                'ignore:Maximum number of iteration:'
+                'UserWarning:sklearn.linear_model.stochastic_gradient')
         if 'joblib' in args.filter_warnings:
             python_warnings.append(
                 'ignore:Persisting input arguments took:'
                 'UserWarning:sklearn_extensions.pipeline')
+        if 'qda' in args.filter_warnings:
+            python_warnings.append(
+                'ignore:Variables are collinear:'
+                'UserWarning:sklearn.discriminant_analysis')
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 
 # suppress linux conda qt5 wayland warning
@@ -1253,10 +1268,11 @@ if args.pipe_memory:
     slr_mi_scorer = CachedMutualInfoScorerClassification(
         memory=memory, random_state=args.random_seed)
     slr_svm_estimator = CachedLinearSVC(
-        memory=memory, random_state=args.random_seed, tol=args.clf_lsvc_tol)
-    slr_sfm_svm_estimator = CachedLinearSVC(
-        memory=memory, penalty='l1', dual=False,
+        max_iter=args.clf_lsvc_max_iter, memory=memory,
         random_state=args.random_seed, tol=args.clf_lsvc_tol)
+    slr_sfm_svm_estimator = CachedLinearSVC(
+        dual=False, max_iter=args.clf_lsvc_max_iter, memory=memory,
+        penalty='l1', random_state=args.random_seed, tol=args.clf_lsvc_tol)
     slr_rf_estimator = CachedRandomForestClassifier(
         memory=memory, random_state=args.random_seed)
     slr_ext_estimator = CachedExtraTreesClassifier(
@@ -1270,10 +1286,11 @@ else:
     slr_mi_scorer = MutualInfoScorerClassification(
         random_state=args.random_seed)
     slr_svm_estimator = LinearSVC(
-        random_state=args.random_seed, tol=args.clf_lsvc_tol)
-    slr_sfm_svm_estimator = LinearSVC(
-        penalty='l1', dual=False, random_state=args.random_seed,
+        max_iter=args.clf_lsvc_max_iter, random_state=args.random_seed,
         tol=args.clf_lsvc_tol)
+    slr_sfm_svm_estimator = LinearSVC(
+        dual=False, max_iter=args.clf_lsvc_max_iter, penalty='l1',
+        random_state=args.random_seed, tol=args.clf_lsvc_tol)
     slr_rf_estimator = RandomForestClassifier(
         random_state=args.random_seed)
     slr_ext_estimator = ExtraTreesClassifier(
@@ -1307,8 +1324,8 @@ for cv_param, cv_param_values in cv_params.items():
                     'slr_sfm_grb_d', 'slr_rfe_svm_c', 'slr_rfe_rf_e',
                     'slr_rfe_ext_e', 'slr_rfe_grb_e', 'slr_rfe_grb_d',
                     'slr_rfe_step', 'slr_rlf_n', 'slr_rlf_s', 'trf_mms_fr',
-                    'trf_de_mb', 'clf_svm_c', 'clf_svm_kern', 'clf_svm_deg',
-                    'clf_svm_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
+                    'trf_de_mb', 'clf_svm_c', 'clf_svc_kern', 'clf_svc_deg',
+                    'clf_svc_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
                     'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
                     'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act', 'clf_mlp_slvr',
                     'clf_mlp_a', 'clf_mlp_lr', 'clf_sgd_a', 'clf_sgd_loss',
@@ -1552,7 +1569,8 @@ pipe_config = {
         'param_routing': ['sample_meta']},
     # classifiers
     'LinearSVC': {
-        'estimator': LinearSVC(random_state=args.random_seed,
+        'estimator': LinearSVC(max_iter=args.clf_lsvc_max_iter,
+                               random_state=args.random_seed,
                                tol=args.clf_lsvc_tol),
         'param_grid': {
             'C': cv_params['clf_svm_c'],
@@ -1564,9 +1582,9 @@ pipe_config = {
         'param_grid': {
             'C': cv_params['clf_svm_c'],
             'class_weight': cv_params['clf_svm_cw'],
-            'kernel': cv_params['clf_svm_kern'],
-            'degree': cv_params['clf_svm_deg'],
-            'gamma': cv_params['clf_svm_g']},
+            'kernel': cv_params['clf_svc_kern'],
+            'degree': cv_params['clf_svc_deg'],
+            'gamma': cv_params['clf_svc_g']},
         'param_routing': ['sample_weight']},
     'KNeighborsClassifier': {
         'estimator': KNeighborsClassifier(),
@@ -1631,7 +1649,8 @@ pipe_config = {
             'alpha': cv_params['clf_mlp_a'],
             'learning_rate': cv_params['clf_mlp_lr']}},
     'SGDClassifier': {
-        'estimator': SGDClassifier(penalty=args.clf_sgd_penalty,
+        'estimator': SGDClassifier(max_iter=args.clf_sgd_max_iter,
+                                   penalty=args.clf_sgd_penalty,
                                    random_state=args.random_seed),
         'param_grid': {
             'alpha': cv_params['clf_sgd_a'],

@@ -2,6 +2,12 @@
 
 SCRIPT_PATH=$(dirname $(realpath -s $0))
 
+CONDA_BASE=$(conda info --base)
+source $CONDA_BASE/etc/profile.d/conda.sh
+while [[ -v CONDA_DEFAULT_ENV ]]; do
+    conda deactivate
+done
+
 args=()
 get_n_jobs=false
 for (( i=1; i<=$#; i++ )); do

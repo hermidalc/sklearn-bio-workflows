@@ -19,12 +19,14 @@ for (( i=1; i<=$#; i++ )); do
         get_n_jobs=false
     fi
 done
+
 if [[ ! -v n_jobs ]]; then
     n_jobs=64
     args+=("--n-jobs" "$n_jobs")
 fi
 # one more cpu for parent process
 n_jobs=$(($n_jobs+1))
+
 sbatch \
 --chdir="$(realpath $SCRIPT_PATH/../)" \
 --cpus-per-task=$n_jobs \

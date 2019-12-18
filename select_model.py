@@ -1214,14 +1214,14 @@ if args.filter_warnings:
             # filter SGDClassifier convergence warnings
             warnings.filterwarnings(
                 'ignore', category=ConvergenceWarning,
-                message='^Maximum number of iteration',
+                message=('^Maximum number of iteration reached before '
+                         'convergence'),
                 module='sklearn.linear_model.stochastic_gradient')
         if 'joblib' in args.filter_warnings:
             # filter joblib peristence time warnings
             warnings.filterwarnings(
                 'ignore', category=UserWarning,
-                message='^Persisting input arguments took',
-                module='sklearn_extensions.pipeline')
+                message='^Persisting input arguments took')
         if 'qda' in args.filter_warnings:
             # filter QDA collinearity warnings
             warnings.filterwarnings(
@@ -1236,12 +1236,12 @@ if args.filter_warnings:
                 'ignore:Liblinear failed to converge:'
                 'UserWarning:sklearn.svm.base')
             python_warnings.append(
-                'ignore:Maximum number of iteration:'
-                'UserWarning:sklearn.linear_model.stochastic_gradient')
+                'ignore:Maximum number of iteration reached before '
+                'convergence:UserWarning:'
+                'sklearn.linear_model.stochastic_gradient')
         if 'joblib' in args.filter_warnings:
             python_warnings.append(
-                'ignore:Persisting input arguments took:'
-                'UserWarning:sklearn_extensions.pipeline')
+                'ignore:Persisting input arguments took:UserWarning')
         if 'qda' in args.filter_warnings:
             python_warnings.append(
                 'ignore:Variables are collinear:'

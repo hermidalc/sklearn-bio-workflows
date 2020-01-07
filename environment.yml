@@ -18,12 +18,12 @@ dependencies:
   - libopenblas
   - matplotlib
   - natsort
-  - numpy=1.17
-  - pandas=0.25
+  - numpy
+  - pandas
   - pillow
-  - python=3.7
+  - python
   - r-argparse
-  - r-base=3.6
+  - r-base
   - r-corpcor
   - r-devtools
   - r-essentials

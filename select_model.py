@@ -467,7 +467,8 @@ def run_model_selection():
         search_fit_params = pipe_fit_params.copy()
         if groups is not None:
             search_fit_params['groups'] = groups
-        with parallel_backend(args.parallel_backend):
+        with parallel_backend(args.parallel_backend,
+                              inner_max_num_threads=inner_max_num_threads):
             search.fit(X, y, **search_fit_params)
         param_cv_scores = add_param_cv_scores(search, param_grid_dict)
         feature_idxs, feature_weights = get_feature_idxs_and_weights(
@@ -647,7 +648,8 @@ def run_model_selection():
             search_fit_params = pipe_fit_params.copy()
             if groups is not None:
                 search_fit_params['groups'] = groups[train_idxs]
-            with parallel_backend(args.parallel_backend):
+            with parallel_backend(args.parallel_backend,
+                                  inner_max_num_threads=inner_max_num_threads):
                 search.fit(X[train_idxs], y[train_idxs], **search_fit_params)
             if pipe_props['uses_rjava']:
                 best_index = np.argmin(
@@ -1259,6 +1261,7 @@ if args.filter_warnings:
                 'ignore:Variables are collinear:'
                 'UserWarning:sklearn.discriminant_analysis')
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
+inner_max_num_threads = 1 if args.parallel_backend in ('loky') else None
 
 # suppress linux conda qt5 wayland warning
 if sys.platform.startswith('linux'):

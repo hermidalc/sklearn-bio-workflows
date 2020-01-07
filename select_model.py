@@ -441,13 +441,13 @@ def run_model_selection():
         print('{}:'.format(type(search).__name__))
         pprint({k: vars(v) if k == 'estimator' else v
                 for k, v in vars(search).items()})
-    if args.verbose > 1 and param_grid_dict:
-        print('Param grid dict:')
-        pprint(param_grid_dict)
+        if param_grid_dict:
+            print('Param grid dict:')
+            pprint(param_grid_dict)
     if args.verbose > 0 or args.scv_verbose > 0:
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
               X.shape)
-    if args.verbose > 1 and groups is not None:
+    if args.verbose > 0 and groups is not None:
         print('Groups:')
         pprint(groups)
         print('Sample weights:')

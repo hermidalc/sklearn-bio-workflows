@@ -360,7 +360,7 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
             else:
                 mean_cv_scores[metric] = np.ravel(param_metric_scores)
                 std_cv_scores[metric] = np.ravel(param_metric_stdev)
-        plt.figure()
+        plt.figure(figsize=(args.fig_width, args.fig_height))
         param_type = re.sub(r'^([a-z]+)\d+', r'\1', param, count=1)
         if param_type in params_num_xticks:
             x_axis = param_grid_dict[param]
@@ -495,14 +495,13 @@ def run_model_selection():
                 print('Features:')
                 print(tabulate(selected_feature_meta, headers='keys'))
         if args.save_model:
-            os.makedirs(args.results_dir, mode=0o755, exist_ok=True)
-            dump(search, '{}/{}_search.pkl'.format(args.results_dir,
+            dump(search, '{}/{}_search.pkl'.format(args.out_dir,
                                                    dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         # plot top-ranked selected features vs test performance metrics
         if np.any(feature_weights):
-            _, ax_slr = plt.subplots()
+            _, ax_slr = plt.subplots(figsize=(args.fig_width, args.fig_height))
             ax_slr.set_title(('{}\n{}\nEffect of Number of Top-Ranked Features'
                               'Selected on Test Performance Metrics')
                              .format(dataset_name, pipe_name),
@@ -515,7 +514,7 @@ def run_model_selection():
             ax_slr.set_xticks(x_axis)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
-            _, ax_roc = plt.subplots()
+            _, ax_roc = plt.subplots(figsize=(args.fig_width, args.fig_height))
             ax_roc.set_title('{}\n{}\nROC Curves'.format(
                 dataset_name, pipe_name), fontsize=args.title_font_size)
             ax_roc.set_xlabel('False Positive Rate',
@@ -525,7 +524,7 @@ def run_model_selection():
             ax_roc.set_xlim([-0.01, 1.01])
             ax_roc.set_ylim([-0.01, 1.01])
         if 'average_precision' in args.scv_scoring:
-            _, ax_pre = plt.subplots()
+            _, ax_pre = plt.subplots(figsize=(args.fig_width, args.fig_height))
             ax_pre.set_title('{}\n{}\nPR Curves'.format(
                 dataset_name, pipe_name), fontsize=args.title_font_size)
             ax_pre.set_xlabel('Recall', fontsize=args.axis_font_size)
@@ -721,11 +720,10 @@ def run_model_selection():
             if args.pipe_memory:
                 memory.clear(warn=False)
         if args.save_results:
-            os.makedirs(args.results_dir, mode=0o755, exist_ok=True)
             dump(split_results, '{}/{}_split_results.pkl'.format(
-                args.results_dir, dataset_name))
+                args.out_dir, dataset_name))
             dump(param_cv_scores, '{}/{}_param_cv_scores.pkl'.format(
-                args.results_dir, dataset_name))
+                args.out_dir, dataset_name))
         scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
@@ -805,7 +803,7 @@ def run_model_selection():
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
             sns.set_palette(sns.color_palette('hls', 2))
-            plt.figure()
+            plt.figure(figsize=(args.fig_width, args.fig_height))
             plt.title('{}\n{}\nROC Curve'.format(
                 dataset_name, pipe_name), fontsize=args.title_font_size)
             plt.xlabel('False Positive Rate', fontsize=args.axis_font_size)
@@ -845,7 +843,7 @@ def run_model_selection():
             plt.grid(False)
         if 'average_precision' in args.scv_scoring:
             sns.set_palette(sns.color_palette('hls', 10))
-            plt.figure()
+            plt.figure(figsize=(args.fig_width, args.fig_height))
             plt.title('{}\n{}\nPR Curve'.format(
                 dataset_name, pipe_name), fontsize=args.title_font_size)
             plt.xlabel('Recall', fontsize=args.axis_font_size)
@@ -913,6 +911,13 @@ def str_bool(arg):
     if arg.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     raise ArgumentTypeError('Boolean value expected.')
+
+
+def dir_path(path):
+    if os.path.isdir(path):
+        return path
+    else:
+        raise ArgumentTypeError('{} is not a valid path'.format(path))
 
 
 parser = ArgumentParser()
@@ -1166,6 +1171,13 @@ parser.add_argument('--axis-font-size', type=int, default=14,
                     help='figure axis font size')
 parser.add_argument('--long-label-names', default=False, action='store_true',
                     help='figure long label names')
+parser.add_argument('--fig-width', type=float, default=10,
+                    help='figure width')
+parser.add_argument('--fig-height', type=float, default=10,
+                    help='figure height')
+parser.add_argument('--fig-format', type=str, nargs='+',
+                    choices=['png', 'pdf', 'svg', 'tif'], default=['png'],
+                    help='figure format')
 parser.add_argument('--save-figs', default=False, action='store_true',
                     help='save figures')
 parser.add_argument('--show-figs', default=False, action='store_true',
@@ -1174,15 +1186,15 @@ parser.add_argument('--save-model', default=False, action='store_true',
                     help='save model')
 parser.add_argument('--save-results', default=False, action='store_true',
                     help='save results')
-parser.add_argument('--results-dir', type=str, default='results',
-                    help='results dir')
 parser.add_argument('--n-jobs', type=int, default=-1,
                     help='num parallel jobs')
 parser.add_argument('--parallel-backend', type=str, default='loky',
                     help='joblib parallel backend')
 parser.add_argument('--pipe-memory', default=False, action='store_true',
                     help='turn on pipeline memory')
-parser.add_argument('--tmp-dir', type=str, default=gettempdir(),
+parser.add_argument('--out-dir', type=dir_path, default=os.getcwd(),
+                    help='output dir')
+parser.add_argument('--tmp-dir', type=dir_path, default=gettempdir(),
                     help='tmp dir')
 parser.add_argument('--random-seed', type=int, default=777,
                     help='random state seed')
@@ -1702,6 +1714,15 @@ metric_label = {
     'average_precision': 'AVG PRE'}
 
 run_model_selection()
+if args.show_figs or args.save_figs:
+    for fig_num in plt.get_fignums():
+        plt.figure(fig_num)
+        plt.tight_layout(pad=0.5, w_pad=0, h_pad=0)
+        if args.save_figs:
+            for fig_fmt in args.fig_format:
+                plt.savefig('{}/Figure_{:d}.{}'.format(args.out_dir, fig_num,
+                                                       fig_fmt),
+                            bbox_inches='tight', format=fig_fmt)
 if args.show_figs:
     plt.show()
 run_cleanup()

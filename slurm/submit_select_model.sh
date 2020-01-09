@@ -30,7 +30,7 @@ n_jobs=$(($n_jobs+1))
 sbatch \
 --chdir="$(realpath $SCRIPT_PATH/../)" \
 --cpus-per-task=$n_jobs \
---mem-per-cpu=1.5g \
+--mem-per-cpu=1536m \
 --partition=ccr,norm \
 --time=48:00:00 \
 $SCRIPT_PATH/run_select_model.sh "${args[@]}"

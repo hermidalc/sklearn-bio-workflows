@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import glob
 import os
 import re
 import sys
@@ -917,8 +916,7 @@ def str_bool(arg):
 def dir_path(path):
     if os.path.isdir(path):
         return path
-    else:
-        raise ArgumentTypeError('{} is not a valid path'.format(path))
+    raise ArgumentTypeError('{} is not a valid path'.format(path))
 
 
 parser = ArgumentParser()

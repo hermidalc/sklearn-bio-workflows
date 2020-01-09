@@ -49,13 +49,11 @@ from tabulate import tabulate
 numpy2ri.activate()
 pandas2ri.activate()
 
-from sklearn_extensions.base import (
-    TransformerMixin as ExtendedTransformerMixin)
+from sklearn_extensions.base import ExtendedTransformerMixin
 from sklearn_extensions.ensemble import (
     CachedExtraTreesClassifier, CachedGradientBoostingClassifier,
     CachedRandomForestClassifier)
-from sklearn_extensions.feature_selection.base import (
-    SelectorMixin as ExtendedSelectorMixin)
+from sklearn_extensions.feature_selection.base import ExtendedSelectorMixin
 from sklearn_extensions.feature_selection import (
     ANOVAFScorerClassification, CachedANOVAFScorerClassification,
     CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
@@ -63,10 +61,11 @@ from sklearn_extensions.feature_selection import (
     LimmaVoom, MutualInfoScorerClassification, ReliefF, RFE, SelectFromModel,
     SelectKBest, VarianceThreshold)
 from sklearn_extensions.model_selection import (
-    GridSearchCV, RandomizedSearchCV, StratifiedGroupShuffleSplit)
-from sklearn_extensions.pipeline import Pipeline
+    ExtendedGridSearchCV, ExtendedRandomizedSearchCV,
+    StratifiedGroupShuffleSplit)
+from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
-    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaRemoveBatchEffect)
+    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover)
 from sklearn_extensions.svm import CachedLinearSVC
 
 
@@ -172,8 +171,8 @@ def setup_pipe_and_param_grid():
                 if None not in param_grid_dict[uniq_step_name]:
                     param_grid_dict[uniq_step_name].append(None)
         param_grid.append(params)
-    pipe = Pipeline(pipe_steps, memory=memory,
-                    param_routing=pipe_param_routing)
+    pipe = ExtendedPipeline(pipe_steps, memory=memory,
+                            param_routing=pipe_param_routing)
     pipe_name = '->'.join(pipe_step_names)
     for param, param_values in param_grid_dict.items():
         if any(isinstance(v, BaseEstimator) for v in param_values):
@@ -221,7 +220,7 @@ def load_dataset(dataset_file):
 
 
 def fit_pipeline(X, y, steps, param_routing, params, fit_params):
-    pipe = Pipeline(steps, memory=memory, param_routing=param_routing)
+    pipe = ExtendedPipeline(steps, memory=memory, param_routing=param_routing)
     pipe.set_params(**params)
     pipe.fit(X, y, **fit_params)
     if args.scv_verbose == 0:
@@ -425,13 +424,13 @@ def run_model_selection():
             n_splits=args.scv_splits, test_size=args.scv_size,
             random_state=args.random_seed)
     if args.scv_type == 'grid':
-        search = GridSearchCV(
+        search = ExtendedGridSearchCV(
             pipe, cv=cv_splitter, error_score=0, iid=False, n_jobs=args.n_jobs,
             param_grid=param_grid, param_routing=search_param_routing,
             refit=scv_refit, return_train_score=False,
             scoring=args.scv_scoring, verbose=args.scv_verbose)
     elif args.scv_type == 'rand':
-        search = RandomizedSearchCV(
+        search = ExtendedRandomizedSearchCV(
             pipe, cv=cv_splitter, error_score=0, iid=False,
             n_iter=args.scv_n_iter, n_jobs=args.n_jobs,
             param_distributions=param_grid, param_routing=search_param_routing,
@@ -1577,8 +1576,8 @@ pipe_config = {
         'estimator': EdgeRTMMLogCPM(memory=memory,
                                     prior_count=args.edger_prior_count),
         'param_routing': ['sample_meta']},
-    'LimmaRemoveBatchEffect': {
-        'estimator': LimmaRemoveBatchEffect(),
+    'LimmaBatchEffectRemover': {
+        'estimator': LimmaBatchEffectRemover(),
         'param_routing': ['sample_meta']},
     # classifiers
     'LinearSVC': {

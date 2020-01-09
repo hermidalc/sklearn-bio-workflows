@@ -265,7 +265,6 @@ def get_feature_idxs_and_weights(pipe, feature_meta):
     feature_weights = explain_weights_df(
         pipe, feature_names=feature_meta.index.values)
     if feature_weights is not None:
-        feature_weights['weight'].fillna(0, inplace=True)
         feature_weights.set_index('feature', inplace=True,
                                   verify_integrity=True)
         feature_weights.reindex(index=feature_meta.iloc[feature_idxs].index)
@@ -460,6 +459,7 @@ def run_model_selection():
         selected_feature_meta = feature_meta.iloc[feature_idxs]
         if feature_weights is not None:
             selected_feature_meta = selected_feature_meta.join(feature_weights)
+            selected_feature_meta['Weight'].fillna(0, inplace=True)
             selected_feature_meta = selected_feature_meta.iloc[
                 (-selected_feature_meta['Weight'].abs()).argsort()]
         if args.verbose > 0:
@@ -689,6 +689,7 @@ def run_model_selection():
             if feature_weights is not None:
                 selected_feature_meta = (selected_feature_meta
                                          .join(feature_weights))
+                selected_feature_meta['Weight'].fillna(0, inplace=True)
                 selected_feature_meta = selected_feature_meta.iloc[
                     (-selected_feature_meta['Weight'].abs()).argsort()]
             if args.verbose > 1:

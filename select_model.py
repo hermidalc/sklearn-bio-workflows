@@ -18,6 +18,8 @@ r_embedded.set_initoptions(
     ('rpy2', '--quiet', '--no-save', '--max-ppsize=500000'))
 import rpy2.robjects as robjects
 import seaborn as sns
+from eli5 import explain_weights_df
+from eli5.transform import transform_feature_names
 from joblib import Memory, Parallel, delayed, dump, parallel_backend
 from natsort import natsorted
 from rpy2.robjects import numpy2ri, pandas2ri
@@ -255,35 +257,19 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
     return scores
 
 
-def get_feature_idxs_and_weights(pipe, num_total_features):
-    feature_idxs = np.arange(num_total_features)
+def get_feature_idxs_and_weights(pipe, feature_meta):
+    feature_idxs = np.arange(feature_meta.shape[0])
     for step in pipe.named_steps:
         if hasattr(pipe.named_steps[step], 'get_support'):
             feature_idxs = feature_idxs[pipe.named_steps[step].get_support()]
-    feature_weights = np.zeros_like(feature_idxs, dtype=float)
-    final_estimator = pipe.steps[-1][1]
-    if hasattr(final_estimator, 'coef_'):
-        if isinstance(final_estimator, (LinearSVC, SVC)):
-            feature_weights = np.square(final_estimator.coef_[0])
-        else:
-            feature_weights = np.abs(final_estimator.coef_[0])
-    elif hasattr(final_estimator, 'feature_importances_'):
-        feature_weights = final_estimator.feature_importances_
-    else:
-        for estimator in pipe.named_steps.values():
-            if hasattr(estimator, 'estimator_'):
-                if hasattr(estimator.estimator_, 'coef_'):
-                    if isinstance(estimator, (LinearSVC, SVC)):
-                        feature_weights = np.square(
-                            estimator.estimator_.coef_[0])
-                    else:
-                        feature_weights = np.abs(estimator.estimator_.coef_[0])
-                elif hasattr(estimator.estimator_, 'feature_importances_'):
-                    feature_weights = estimator.estimator_.feature_importances_
-            elif hasattr(estimator, 'scores_'):
-                feature_weights = estimator.scores_
-            elif hasattr(estimator, 'feature_importances_'):
-                feature_weights = estimator.feature_importances_
+    feature_weights = explain_weights_df(
+        pipe, feature_names=feature_meta.index.values)
+    if feature_weights is not None:
+        feature_weights['weight'].fillna(0, inplace=True)
+        feature_weights.set_index('feature', inplace=True,
+                                  verify_integrity=True)
+        feature_weights.reindex(index=feature_meta.iloc[feature_idxs].index)
+        feature_weights.columns = map(str.title, feature_weights.columns)
     return feature_idxs, feature_weights
 
 
@@ -470,10 +456,12 @@ def run_model_selection():
             search.fit(X, y, **search_fit_params)
         param_cv_scores = add_param_cv_scores(search, param_grid_dict)
         feature_idxs, feature_weights = get_feature_idxs_and_weights(
-            search.best_estimator_, X.shape[1])
-        selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
-        if np.any(feature_weights):
-            selected_feature_meta['Weight'] = feature_weights
+            search.best_estimator_, feature_meta)
+        selected_feature_meta = feature_meta.iloc[feature_idxs]
+        if feature_weights is not None:
+            selected_feature_meta = selected_feature_meta.join(feature_weights)
+            selected_feature_meta = selected_feature_meta.iloc[
+                (-selected_feature_meta['Weight'].abs()).argsort()]
         if args.verbose > 0:
             print('Train:', dataset_name, end=' ')
             for metric in args.scv_scoring:
@@ -485,10 +473,9 @@ def run_model_selection():
                 k: ('.'.join([type(v).__module__, type(v).__qualname__])
                     if isinstance(v, BaseEstimator) else v)
                 for k, v in search.best_params_.items()})
-            if np.any(feature_weights):
+            if feature_weights is not None:
                 print('Feature Ranking:')
-                print(tabulate(selected_feature_meta.sort_values(
-                    by='Weight', ascending=False), floatfmt='.6e',
+                print(tabulate(selected_feature_meta, floatfmt='.6e',
                                headers='keys'))
             else:
                 print('Features:')
@@ -499,7 +486,7 @@ def run_model_selection():
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         # plot top-ranked selected features vs test performance metrics
-        if np.any(feature_weights):
+        if feature_weights is not None:
             _, ax_slr = plt.subplots(figsize=(args.fig_width, args.fig_height))
             ax_slr.set_title(('{}\n{}\nEffect of Number of Top-Ranked Features'
                               'Selected on Test Performance Metrics')
@@ -555,7 +542,7 @@ def run_model_selection():
                         print(' PR AUC: {:.4f}'.format(test_scores['pr_auc']),
                               end=' ')
                 print()
-            if np.any(feature_weights):
+            if feature_weights is not None:
                 tf_pipe_steps = pipe_steps[:-1]
                 tf_pipe_steps.append(('slrc', ColumnSelector()))
                 tf_pipe_steps.append(pipe_steps[-1])
@@ -564,8 +551,7 @@ def run_model_selection():
                 tf_pipe_param_routing['slrc'] = (
                     pipe_config['ColumnSelector']['param_routing'])
                 tf_name_sets = []
-                for feature_name in selected_feature_meta.sort_values(
-                        by='Weight', ascending=False).index:
+                for feature_name in selected_feature_meta.index:
                     if tf_name_sets:
                         tf_name_sets.append(tf_name_sets[-1] + [feature_name])
                     else:
@@ -667,7 +653,7 @@ def run_model_selection():
             param_cv_scores = add_param_cv_scores(search, param_grid_dict,
                                                   param_cv_scores)
             feature_idxs, feature_weights = get_feature_idxs_and_weights(
-                best_estimator, X[train_idxs].shape[1])
+                best_estimator, feature_meta)
             split_scores = {'cv': {}}
             for metric in args.scv_scoring:
                 split_scores['cv'][metric] = (search.cv_results_
@@ -699,14 +685,16 @@ def run_model_selection():
                     k: ('.'.join([type(v).__module__, type(v).__qualname__])
                         if isinstance(v, BaseEstimator) else v)
                     for k, v in best_params.items()})
-            selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
-            if np.any(feature_weights):
-                selected_feature_meta['Weight'] = feature_weights
+            selected_feature_meta = feature_meta.iloc[feature_idxs]
+            if feature_weights is not None:
+                selected_feature_meta = (selected_feature_meta
+                                         .join(feature_weights))
+                selected_feature_meta = selected_feature_meta.iloc[
+                    (-selected_feature_meta['Weight'].abs()).argsort()]
             if args.verbose > 1:
-                if np.any(feature_weights):
+                if feature_weights is not None:
                     print('Feature Ranking:')
-                    print(tabulate(selected_feature_meta.sort_values(
-                        by='Weight', ascending=False), floatfmt='.6e',
+                    print(tabulate(selected_feature_meta, floatfmt='.6e',
                                    headers='keys'))
                 else:
                     print('Features:')
@@ -770,7 +758,8 @@ def run_model_selection():
         for split_idx, split_result in enumerate(split_results):
             for idx, feature_idx in enumerate(split_result['feature_idxs']):
                 (weights_matrix[feature_matrix_idx[feature_idx]]
-                 [split_idx]) = split_result['feature_weights'][idx]
+                 [split_idx]) = (split_result['feature_weights']
+                                 .iloc[idx]['Weight'])
                 for metric in args.scv_scoring:
                     (scores_cv_matrix[metric]
                      [feature_matrix_idx[feature_idx]][split_idx]) = (
@@ -781,13 +770,15 @@ def run_model_selection():
             feature_mean_scores.append(np.mean(
                 scores_cv_matrix[args.scv_refit][idx]))
         if args.verbose > 0:
-            selected_feature_meta = feature_meta.iloc[feature_idxs].copy()
+            selected_feature_meta = feature_meta.iloc[feature_idxs]
             if np.any(feature_mean_weights):
                 print('Overall Feature Ranking:')
                 if args.feature_rank_meth == 'weight':
                     selected_feature_meta['Mean Weight'] = feature_mean_weights
-                    print(tabulate(selected_feature_meta.sort_values(
-                        by='Mean Weight', ascending=False), floatfmt='.6e',
+                    selected_feature_meta = selected_feature_meta.iloc[
+                        (-selected_feature_meta['Mean Weight'].abs())
+                        .argsort()]
+                    print(tabulate(selected_feature_meta, floatfmt='.6e',
                                    headers='keys'))
                 elif args.feature_rank_meth == 'score':
                     header = 'Mean {}'.format(metric_label[args.scv_refit])
@@ -887,6 +878,13 @@ def run_cleanup():
     if args.pipe_memory:
         rmtree(cachedir)
     rmtree(r_base.tempdir()[0])
+
+
+@transform_feature_names.register(DESeq2RLEVST)
+@transform_feature_names.register(EdgeRTMMLogCPM)
+@transform_feature_names.register(LimmaBatchEffectRemover)
+def _eli5_transformer_feature_names(estimator, in_names):
+    return in_names
 
 
 def get_logspace(v_min, v_max):

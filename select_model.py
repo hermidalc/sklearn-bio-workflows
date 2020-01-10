@@ -269,25 +269,16 @@ def get_feature_idxs_and_weights(pipe, feature_meta):
                                   verify_integrity=True)
         feature_weights.reindex(index=feature_meta.iloc[feature_idxs].index)
         feature_weights.columns = map(str.title, feature_weights.columns)
-    else:
-        for estimator in reversed(pipe.named_steps.values()):
-            if hasattr(estimator, 'coef_'):
-                feature_weights = estimator.coef_[0]
-            elif hasattr(estimator, 'feature_importances_'):
-                feature_weights = estimator.feature_importances_
-            elif hasattr(estimator, 'estimator_'):
-                if hasattr(estimator.estimator_, 'coef_'):
-                    feature_weights = estimator.estimator_.coef_[0]
-                elif hasattr(estimator.estimator_, 'feature_importances_'):
-                    feature_weights = estimator.estimator_.feature_importances_
-            elif hasattr(estimator, 'scores_'):
-                feature_weights = estimator.scores_
-            if feature_weights is not None:
-                break
+    elif hasattr(pipe.steps[-1][1], 'estimator_'):
+        feature_weights = explain_weights_df(
+            pipe.steps[-1][1].estimator_,
+            feature_names=feature_meta.iloc[feature_idxs].index)
         if feature_weights is not None:
-            feature_weights = pd.DataFrame(
-                {'Weight': feature_weights},
-                index=feature_meta.iloc[feature_idxs].index)
+            feature_weights.set_index('feature', inplace=True,
+                                      verify_integrity=True)
+            feature_weights.reindex(index=(feature_meta.iloc[feature_idxs]
+                                           .index))
+            feature_weights.columns = map(str.title, feature_weights.columns)
     return feature_idxs, feature_weights
 
 
@@ -477,7 +468,8 @@ def run_model_selection():
             search.best_estimator_, feature_meta)
         selected_feature_meta = feature_meta.iloc[feature_idxs]
         if feature_weights is not None:
-            selected_feature_meta = selected_feature_meta.join(feature_weights)
+            selected_feature_meta = selected_feature_meta.join(
+                feature_weights, how='left')
             selected_feature_meta['Weight'].fillna(0, inplace=True)
             selected_feature_meta = selected_feature_meta.iloc[
                 (-selected_feature_meta['Weight'].abs()).argsort()]
@@ -706,8 +698,8 @@ def run_model_selection():
                     for k, v in best_params.items()})
             selected_feature_meta = feature_meta.iloc[feature_idxs]
             if feature_weights is not None:
-                selected_feature_meta = (selected_feature_meta
-                                         .join(feature_weights))
+                selected_feature_meta = selected_feature_meta.join(
+                    feature_weights, how='left')
                 selected_feature_meta['Weight'].fillna(0, inplace=True)
                 selected_feature_meta = selected_feature_meta.iloc[
                     (-selected_feature_meta['Weight'].abs()).argsort()]

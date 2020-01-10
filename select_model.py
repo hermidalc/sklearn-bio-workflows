@@ -269,6 +269,25 @@ def get_feature_idxs_and_weights(pipe, feature_meta):
                                   verify_integrity=True)
         feature_weights.reindex(index=feature_meta.iloc[feature_idxs].index)
         feature_weights.columns = map(str.title, feature_weights.columns)
+    else:
+        for estimator in reversed(pipe.named_steps.values()):
+            if hasattr(estimator, 'coef_'):
+                feature_weights = estimator.coef_[0]
+            elif hasattr(estimator, 'feature_importances_'):
+                feature_weights = estimator.feature_importances_
+            elif hasattr(estimator, 'estimator_'):
+                if hasattr(estimator.estimator_, 'coef_'):
+                    feature_weights = estimator.estimator_.coef_[0]
+                elif hasattr(estimator.estimator_, 'feature_importances_'):
+                    feature_weights = estimator.estimator_.feature_importances_
+            elif hasattr(estimator, 'scores_'):
+                feature_weights = estimator.scores_
+            if feature_weights is not None:
+                break
+        if feature_weights is not None:
+            feature_weights = pd.DataFrame(
+                {'Weight': feature_weights},
+                index=feature_meta.iloc[feature_idxs].index)
     return feature_idxs, feature_weights
 
 

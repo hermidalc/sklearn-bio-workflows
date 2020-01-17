@@ -18,7 +18,11 @@ r_embedded.set_initoptions(
     ('rpy2', '--quiet', '--no-save', '--max-ppsize=500000'))
 import rpy2.robjects as robjects
 import seaborn as sns
+warnings.filterwarnings('ignore', category=FutureWarning,
+                        module='sklearn.utils.deprecation')
 from eli5 import explain_weights_df
+warnings.filterwarnings('always', category=FutureWarning,
+                        module='sklearn.utils.deprecation')
 from joblib import Memory, Parallel, delayed, dump, parallel_backend
 from natsort import natsorted
 from rpy2.robjects import numpy2ri, pandas2ri
@@ -31,7 +35,7 @@ from sklearn.ensemble import (
     AdaBoostClassifier, ExtraTreesClassifier, GradientBoostingClassifier,
     RandomForestClassifier)
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.feature_selection.base import SelectorMixin
+from sklearn.feature_selection._base import SelectorMixin
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
@@ -49,11 +53,9 @@ from tabulate import tabulate
 numpy2ri.activate()
 pandas2ri.activate()
 
-from sklearn_extensions.base import ExtendedTransformerMixin
 from sklearn_extensions.ensemble import (
     CachedExtraTreesClassifier, CachedGradientBoostingClassifier,
     CachedRandomForestClassifier)
-from sklearn_extensions.feature_selection.base import ExtendedSelectorMixin
 from sklearn_extensions.feature_selection import (
     ANOVAFScorerClassification, CachedANOVAFScorerClassification,
     CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
@@ -98,12 +100,10 @@ def setup_pipe_and_param_grid():
                     run_cleanup()
                     raise RuntimeError('No pipeline config exists for {}'
                                        .format(step_key))
-                if isinstance(estimator, (SelectorMixin,
-                                          ExtendedSelectorMixin)):
+                if isinstance(estimator, SelectorMixin):
                     step_type = 'slr'
                     pipe_props['has_selector'] = True
-                elif isinstance(estimator, (TransformerMixin,
-                                            ExtendedTransformerMixin)):
+                elif isinstance(estimator, TransformerMixin):
                     step_type = 'trf'
                 elif isinstance(estimator, ClassifierMixin):
                     step_type = 'clf'
@@ -424,17 +424,17 @@ def run_model_selection():
             random_state=args.random_seed)
     if args.scv_type == 'grid':
         search = ExtendedGridSearchCV(
-            pipe, cv=cv_splitter, error_score=0, iid=False, n_jobs=args.n_jobs,
+            pipe, cv=cv_splitter, error_score=0, n_jobs=args.n_jobs,
             param_grid=param_grid, param_routing=search_param_routing,
             refit=scv_refit, return_train_score=False,
             scoring=args.scv_scoring, verbose=args.scv_verbose)
     elif args.scv_type == 'rand':
         search = ExtendedRandomizedSearchCV(
-            pipe, cv=cv_splitter, error_score=0, iid=False,
-            n_iter=args.scv_n_iter, n_jobs=args.n_jobs,
-            param_distributions=param_grid, param_routing=search_param_routing,
-            refit=scv_refit, return_train_score=False,
-            scoring=args.scv_scoring, verbose=args.scv_verbose)
+            pipe, cv=cv_splitter, error_score=0, n_iter=args.scv_n_iter,
+            n_jobs=args.n_jobs, param_distributions=param_grid,
+            param_routing=search_param_routing, refit=scv_refit,
+            return_train_score=False, scoring=args.scv_scoring,
+            verbose=args.scv_verbose)
     if args.verbose > 0:
         print('{}:'.format(type(search).__name__))
         pprint({k: vars(v) if k == 'estimator' else v

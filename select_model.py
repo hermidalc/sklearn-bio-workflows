@@ -45,7 +45,8 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
+from sklearn.preprocessing import (MinMaxScaler, PowerTransformer,
+                                   RobustScaler, StandardScaler)
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier
 from tabulate import tabulate
@@ -1042,6 +1043,9 @@ parser.add_argument('--slr-rlf-s', type=int, nargs='+',
                     help='slr rlf sample size')
 parser.add_argument('--trf-mms-fr', type=int_list, nargs='+',
                     help='trf mms fr')
+parser.add_argument('--trf-pwr-meth', type=str, nargs='+',
+                    choices=['yeo-johnson', 'box-cox'],
+                    help='trf pwr meth')
 parser.add_argument('--trf-de-mb', type=str_bool, nargs='+',
                     help='trf diff expr model batch')
 parser.add_argument('--clf-svm-c', type=float, nargs='+',
@@ -1343,12 +1347,12 @@ for cv_param, cv_param_values in cv_params.items():
                     'slr_sfm_grb_d', 'slr_rfe_svm_c', 'slr_rfe_rf_e',
                     'slr_rfe_ext_e', 'slr_rfe_grb_e', 'slr_rfe_grb_d',
                     'slr_rfe_step', 'slr_rlf_n', 'slr_rlf_s', 'trf_mms_fr',
-                    'trf_de_mb', 'clf_svm_c', 'clf_svc_kern', 'clf_svc_deg',
-                    'clf_svc_g', 'clf_knn_k', 'clf_knn_w', 'clf_rf_e',
-                    'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c', 'clf_grb_e',
-                    'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act', 'clf_mlp_slvr',
-                    'clf_mlp_a', 'clf_mlp_lr', 'clf_sgd_a', 'clf_sgd_loss',
-                    'clf_sgd_l1r'):
+                    'trf_pwr_meth', 'trf_de_mb', 'clf_svm_c', 'clf_svc_kern',
+                    'clf_svc_deg', 'clf_svc_g', 'clf_knn_k', 'clf_knn_w',
+                    'clf_rf_e', 'clf_ext_e', 'clf_ada_e', 'clf_ada_lgr_c',
+                    'clf_grb_e', 'clf_grb_d', 'clf_mlp_hls', 'clf_mlp_act',
+                    'clf_mlp_slvr', 'clf_mlp_a', 'clf_mlp_lr', 'clf_sgd_a',
+                    'clf_sgd_loss', 'clf_sgd_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param == 'slr_skb_k_max':
         if cv_params['slr_skb_k_min'] == 1 and cv_params['slr_skb_k_step'] > 1:
@@ -1574,6 +1578,10 @@ pipe_config = {
         'estimator': StandardScaler()},
     'RobustScaler': {
         'estimator': RobustScaler()},
+    'PowerTransformer': {
+        'estimator': PowerTransformer(),
+        'param_grid': {
+            'method': cv_params['trf_pwr_meth']}},
     'DESeq2RLEVST': {
         'estimator': DESeq2RLEVST(memory=memory),
         'param_grid': {
@@ -1704,6 +1712,7 @@ params_fixed_xticks = [
     'slr__sv',
     'slr__threshold',
     'trf',
+    'trf__method',
     'trf__model_batch',
     'clf',
     'clf__alpha',

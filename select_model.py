@@ -13,6 +13,9 @@ from tempfile import mkdtemp, gettempdir
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.api.types import (
+    is_bool_dtype, is_categorical_dtype, is_integer_dtype, is_float_dtype,
+    is_object_dtype)
 import rpy2.rinterface_lib.embedded as r_embedded
 r_embedded.set_initoptions(
     ('rpy2', '--quiet', '--no-save', '--max-ppsize=500000'))
@@ -29,6 +32,7 @@ from rpy2.robjects import numpy2ri, pandas2ri
 from rpy2.robjects.packages import importr
 from sklearn.base import (BaseEstimator, ClassifierMixin, RegressorMixin,
                           TransformerMixin)
+from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import (
     LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis)
 from sklearn.ensemble import (
@@ -45,8 +49,9 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import (MinMaxScaler, PowerTransformer,
-                                   RobustScaler, StandardScaler)
+from sklearn.preprocessing import (
+    FunctionTransformer, MinMaxScaler, OneHotEncoder, PowerTransformer,
+    RobustScaler, StandardScaler)
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier
 from tabulate import tabulate
@@ -54,6 +59,7 @@ from tabulate import tabulate
 numpy2ri.activate()
 pandas2ri.activate()
 
+from sklearn_extensions.compose import ExtendedColumnTransformer
 from sklearn_extensions.ensemble import (
     CachedExtraTreesClassifier, CachedGradientBoostingClassifier,
     CachedRandomForestClassifier)
@@ -72,7 +78,7 @@ from sklearn_extensions.preprocessing import (
 from sklearn_extensions.svm import CachedLinearSVC
 
 
-def setup_pipe_and_param_grid():
+def setup_pipe_and_param_grid(cmd_pipe_steps):
     pipe_steps = []
     pipe_param_routing = None
     pipe_step_names = []
@@ -81,7 +87,7 @@ def setup_pipe_and_param_grid():
     param_grid_dict = {}
     pipe_step_keys = []
     pipe_step_types = []
-    for step_idx, step_keys in enumerate(args.pipe_steps):
+    for step_idx, step_keys in enumerate(cmd_pipe_steps):
         if any(k.title() == 'None' for k in step_keys):
             pipe_step_keys.append(
                 [k for k in step_keys if k.title() != 'None'] + [None])
@@ -122,7 +128,7 @@ def setup_pipe_and_param_grid():
                             .format(step_type, pipe_step_types[step_idx]))
                 else:
                     pipe_step_types.append(step_type)
-                uniq_step_name = step_type + str(step_idx)
+                uniq_step_name = '{}{:d}'.format(step_type, step_idx)
                 if 'param_grid' in pipe_config[step_key]:
                     for param, param_values in (
                             pipe_config[step_key]['param_grid'].items()):
@@ -174,15 +180,13 @@ def setup_pipe_and_param_grid():
         param_grid.append(params)
     pipe = ExtendedPipeline(pipe_steps, memory=memory,
                             param_routing=pipe_param_routing)
-    pipe_name = '->'.join(pipe_step_names)
     for param, param_values in param_grid_dict.items():
         if any(isinstance(v, BaseEstimator) for v in param_values):
             param_grid_dict[param] = sorted(
                 ['.'.join([type(v).__module__, type(v).__qualname__])
                  if isinstance(v, BaseEstimator) else v for v in param_values],
                 key=lambda x: (x is None, x))
-    return (pipe, pipe_steps, pipe_param_routing, pipe_name, pipe_props,
-            param_grid, param_grid_dict)
+    return pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict
 
 
 def load_dataset(dataset_file):
@@ -199,9 +203,9 @@ def load_dataset(dataset_file):
         run_cleanup()
         raise IOError('File does not exist/invalid: {}'
                       .format(dataset_file))
-    X = np.array(r_base.t(r_biobase.exprs(eset)), dtype=(
-        int if r_base.typeof(r_biobase.exprs(eset))[0] == 'integer'
-        else float))
+    X = pd.DataFrame(r_base.t(r_biobase.exprs(eset)),
+                     columns=r_biobase.featureNames(eset),
+                     index=r_biobase.sampleNames(eset))
     sample_meta = r_biobase.pData(eset)
     y = np.array(sample_meta['Class'], dtype=int)
     if 'Group' in sample_meta.columns:
@@ -216,8 +220,32 @@ def load_dataset(dataset_file):
         feature_meta = r_biobase.fData(eset)
     except ValueError:
         feature_meta = pd.DataFrame(index=r_biobase.featureNames(eset))
+    if args.sample_meta_cols:
+        for sample_meta_col in args.sample_meta_cols:
+            if sample_meta_col in sample_meta.columns:
+                if sample_meta_col not in X.columns:
+                    X[sample_meta_col] = sample_meta[sample_meta_col]
+                else:
+                    raise RuntimeError('{} column already exists in X'
+                                       .format(sample_meta_col))
+            else:
+                raise RuntimeError('{} column does not exist in sample_meta'
+                                   .format(sample_meta_col))
+    col_trf_columns = []
+    if args.trf_col_dtypes:
+        for dtype in args.trf_col_dtypes:
+            if dtype == 'int':
+                col_trf_columns.append(X.dtypes.apply(is_integer_dtype)
+                                       .to_numpy())
+            elif dtype == 'float':
+                col_trf_columns.append(X.dtypes.apply(is_float_dtype)
+                                       .to_numpy())
+            elif dtype == 'category':
+                col_trf_columns.append(X.dtypes.apply(
+                    lambda d: (is_bool_dtype(d) or is_categorical_dtype(d)
+                               or is_object_dtype(d))).to_numpy())
     return (dataset_name, X, y, groups, sample_meta, sample_weights,
-            feature_meta)
+            feature_meta, col_trf_columns)
 
 
 def fit_pipeline(X, y, steps, param_routing, params, fit_params):
@@ -398,18 +426,62 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
 
 
 def run_model_selection():
-    (pipe, pipe_steps, pipe_param_routing, pipe_name, pipe_props, param_grid,
-     param_grid_dict) = setup_pipe_and_param_grid()
-    dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta = (
-        load_dataset(args.train_dataset))
+    pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict = (
+        setup_pipe_and_param_grid(args.pipe_steps))
+    (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
+     col_trf_columns) = load_dataset(args.train_dataset)
+    if (isinstance(pipe.steps[0][1], ColumnTransformer)
+            and args.trf_col_pipe_steps is not None):
+        col_trf_name, col_trf_estimator = pipe.steps[0]
+        col_trf_pipe_names = []
+        col_trf_transformers = []
+        col_trf_param_grids = []
+        col_trf_param_routing = {}
+        for trf_idx, trf_pipe_steps in enumerate(args.trf_col_pipe_steps):
+            (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
+             trf_param_grid_dict) = setup_pipe_and_param_grid(trf_pipe_steps)
+            col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
+            uniq_trf_name = 'trf{:d}'.format(trf_idx)
+            col_trf_transformers.append((uniq_trf_name, trf_pipe,
+                                         col_trf_columns[trf_idx]))
+            if trf_param_grid:
+                col_trf_param_grids.append(
+                    [{'{}__{}__{}'.format(col_trf_name, uniq_trf_name, k): v
+                      for k, v in params.items()}
+                     for params in trf_param_grid])
+                for param, param_value in trf_param_grid_dict.items():
+                    param_grid_dict['{}__{}__{}'.format(
+                        col_trf_name, uniq_trf_name, param)] = param_value
+            if trf_pipe.param_routing is not None:
+                col_trf_param_routing[uniq_trf_name] = list(
+                    {v for l in trf_pipe.param_routing.values()
+                     for v in l})
+            for trf_pipe_prop, trf_pipe_prop_value in trf_pipe_props.items():
+                if trf_pipe_prop_value:
+                    pipe_props[trf_pipe_prop] = trf_pipe_prop_value
+        pipe_step_names[0] = '{}({})'.format(pipe_step_names[0],
+                                             ','.join(col_trf_pipe_names))
+        if col_trf_param_grids:
+            final_estimator_param_grid = param_grid.copy()
+            param_grid = []
+            for param_grid_combo in product(final_estimator_param_grid,
+                                            *col_trf_param_grids):
+                param_grid.append({k: v for params in param_grid_combo
+                                   for k, v in params.items()})
+        col_trf_estimator.set_params(
+            param_routing=col_trf_param_routing,
+            transformers=col_trf_transformers)
+        pipe.param_routing[col_trf_name] = list(
+            {v for l in col_trf_param_routing.values() for v in l})
+    pipe_name = '->'.join(pipe_step_names)
     search_param_routing = ({'cv': 'groups',
                              'estimator': ['sample_weight'],
                              'scoring': ['sample_weight']}
                             if groups is not None else None)
-    if pipe_param_routing:
+    if pipe.param_routing:
         if search_param_routing is None:
             search_param_routing = {'estimator': [], 'scoring': []}
-        for param in [p for l in pipe_param_routing.values() for p in l]:
+        for param in [p for l in pipe.param_routing.values() for p in l]:
             if param not in search_param_routing['estimator']:
                 search_param_routing['estimator'].append(param)
                 search_param_routing['scoring'].append(param)
@@ -437,15 +509,21 @@ def run_model_selection():
             return_train_score=False, scoring=args.scv_scoring,
             verbose=args.scv_verbose)
     if args.verbose > 0:
-        print('{}:'.format(type(search).__name__))
-        pprint({k: vars(v) if k == 'estimator' else v
-                for k, v in vars(search).items()})
+        print(search.__repr__(N_CHAR_MAX=10000))
         if param_grid_dict:
             print('Param grid dict:')
             pprint(param_grid_dict)
     if args.verbose > 0 or args.scv_verbose > 0:
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
-              X.shape)
+              X.shape, end=' ')
+        if col_trf_columns:
+            print('(', ' '.join(
+                ['{}: {:d}'.format(
+                    args.trf_col_dtypes[i],
+                    np.sum(c) if c.dtype == bool else c.shape[0])
+                 for i, c in enumerate(col_trf_columns)]), ')', sep='')
+        else:
+            print()
     if args.verbose > 0 and groups is not None:
         print('Groups:')
         pprint(groups)
@@ -534,7 +612,7 @@ def run_model_selection():
             'hls', len(test_datasets) * len(args.scv_scoring))
         for test_idx, test_dataset in enumerate(test_datasets):
             (test_dataset_name, X_test, y_test, _, test_sample_meta,
-             test_sample_weights, test_feature_meta) = (
+             test_sample_weights, test_feature_meta, test_col_trf_columns) = (
                  load_dataset(test_dataset))
             pipe_predict_params = {}
             if 'sample_meta' in pipe_fit_params:
@@ -554,11 +632,11 @@ def run_model_selection():
                               end=' ')
                 print()
             if 'Weight' in selected_feature_meta.columns:
-                tf_pipe_steps = pipe_steps[:-1]
+                tf_pipe_steps = pipe.steps[:-1]
                 tf_pipe_steps.append(('slrc', ColumnSelector()))
-                tf_pipe_steps.append(pipe_steps[-1])
-                tf_pipe_param_routing = (pipe_param_routing
-                                         if pipe_param_routing else {})
+                tf_pipe_steps.append(pipe.steps[-1])
+                tf_pipe_param_routing = (pipe.param_routing
+                                         if pipe.param_routing else {})
                 tf_pipe_param_routing['slrc'] = (
                     pipe_config['ColumnSelector']['param_routing'])
                 tf_name_sets = []
@@ -645,7 +723,8 @@ def run_model_selection():
                 search_fit_params['groups'] = groups[train_idxs]
             with parallel_backend(args.parallel_backend,
                                   inner_max_num_threads=inner_max_num_threads):
-                search.fit(X[train_idxs], y[train_idxs], **search_fit_params)
+                search.fit(X.iloc[train_idxs], y[train_idxs],
+                           **search_fit_params)
             if pipe_props['uses_rjava']:
                 best_index = np.argmin(
                     search.cv_results_['rank_test_{}'.format(args.scv_refit)])
@@ -654,8 +733,8 @@ def run_model_selection():
                     n_jobs=args.n_jobs, backend=args.parallel_backend,
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
-                            X[train_idxs], y[train_idxs], pipe_steps,
-                            pipe_param_routing, pipe_params, pipe_fit_params)
+                            X.iloc[train_idxs], y[train_idxs], pipe.steps,
+                            pipe.param_routing, pipe_params, pipe_fit_params)
                         for pipe_params in [best_params])[0]
             else:
                 best_index = search.best_index_
@@ -679,7 +758,7 @@ def run_model_selection():
             if 'feature_meta' in pipe_fit_params:
                 pipe_predict_params['feature_meta'] = feature_meta
             split_scores['te'] = calculate_test_scores(
-                best_estimator, X[test_idxs], y[test_idxs],
+                best_estimator, X.iloc[test_idxs], y[test_idxs],
                 pipe_predict_params, test_sample_weights=test_sample_weights)
             if args.verbose > 0:
                 print('Dataset:', dataset_name, ' Split: {:>{width}d}'
@@ -774,13 +853,17 @@ def run_model_selection():
                 feature_scores[metric].rename(columns={metric: split_idx},
                                               inplace=True)
         feature_mean_meta = None
+        feature_mean_meta_floatfmt = ['']
         if feature_weights is not None:
             feature_ranks = feature_weights.abs().rank(
                 ascending=False, method='min', na_option='keep')
             feature_ranks.fillna(feature_ranks.shape[0], inplace=True)
             feature_weights.fillna(0, inplace=True)
-            feature_mean_meta = pd.DataFrame({'Mean Weight Rank':
-                                              feature_ranks.mean(axis=1)})
+            feature_mean_meta = feature_meta.loc[feature_ranks.index]
+            feature_mean_meta_floatfmt.extend([''] * feature_meta.shape[1])
+            feature_mean_meta['Mean Weight Rank'] = feature_ranks.mean(axis=1)
+            feature_mean_meta['Mean Weight'] = feature_weights.mean(axis=1)
+            feature_mean_meta_floatfmt.extend(['.1f', '.6e'])
         for metric in args.scv_scoring:
             if metric in ('roc_auc', 'balanced_accuracy', 'average_precision'):
                 feature_scores[metric].fillna(0.5, inplace=True)
@@ -798,19 +881,18 @@ def run_model_selection():
                             'Mean Test {}'.format(metric_label[metric]):
                                 feature_scores[metric].mean(axis=1)}),
                         how='left')
+            feature_mean_meta_floatfmt.append('.4f')
         if args.verbose > 0 and feature_mean_meta is not None:
             print('Overall Feature Ranking:')
             if feature_weights is not None:
                 print(tabulate(
                     feature_mean_meta.sort_values(by='Mean Weight Rank'),
-                    floatfmt=['', '.1f'] + ['.4f'] * len(args.scv_scoring),
-                    headers='keys'))
+                    floatfmt=feature_mean_meta_floatfmt, headers='keys'))
             else:
                 print(tabulate(
                     feature_mean_meta.sort_values(by='Mean Test {}'.format(
                         metric_label[args.scv_refit]), ascending=False),
-                    floatfmt=[''] + ['.4f'] * len(args.scv_scoring),
-                    headers='keys'))
+                    floatfmt=feature_mean_meta_floatfmt, headers='keys'))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         # plot roc and pr curves
@@ -902,6 +984,10 @@ def run_cleanup():
     rmtree(r_base.tempdir()[0])
 
 
+def shifted_log2(X, shift=1):
+    return np.log2(X + shift)
+
+
 def get_logspace(v_min, v_max):
     log_start = int(np.floor(np.log10(abs(v_min))))
     log_end = int(np.floor(np.log10(abs(v_max))))
@@ -937,6 +1023,16 @@ parser.add_argument('--train-dataset', '--dataset', '--train-eset', '--train',
                     type=str, required=True, help='training dataset')
 parser.add_argument('--pipe-steps', type=str_list, nargs='+', required=True,
                     help='pipeline step names')
+parser.add_argument('--trf-col-pipe-steps', type=str_list, nargs='+',
+                    action='append',
+                    help='column transformer pipeline step names')
+parser.add_argument('--trf-col-columns', type=str, nargs='+',
+                    help='column transformer columns')
+parser.add_argument('--trf-col-dtypes', type=str, nargs='+',
+                    choices=['category', 'float', 'int'],
+                    help='column transformer column dtypes')
+parser.add_argument('--sample-meta-cols', type=str, nargs='+',
+                    help='sample metadata column names')
 parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
                     nargs='+', help='test datasets')
 parser.add_argument('--slr-col-names', type=str_list, nargs='+',
@@ -1151,8 +1247,9 @@ parser.add_argument('--limma-trend', default=False, action='store_true',
                     help='limma trend')
 parser.add_argument('--limma-model-dupcor', default=False, action='store_true',
                     help='limma model dupcor')
-parser.add_argument('--scv-type', type=str, choices=['grid', 'rand'],
-                    default='grid', help='scv type')
+parser.add_argument('--scv-type', type=str,
+                    choices=['grid', 'rand'], default='grid',
+                    help='scv type')
 parser.add_argument('--scv-splits', type=int, default=10,
                     help='scv splits')
 parser.add_argument('--scv-size', type=float, default=0.2,
@@ -1164,9 +1261,10 @@ parser.add_argument('--scv-scoring', type=str, nargs='+',
                              'average_precision'],
                     default=['roc_auc', 'balanced_accuracy'],
                     help='scv scoring metric')
-parser.add_argument('--scv-refit', type=str, default='roc_auc',
+parser.add_argument('--scv-refit', type=str,
                     choices=['roc_auc', 'balanced_accuracy',
                              'average_precision'],
+                    default='roc_auc',
                     help='scv refit scoring metric')
 parser.add_argument('--scv-n-iter', type=int, default=100,
                     help='randomized scv num iterations')
@@ -1570,18 +1668,26 @@ pipe_config = {
     'CFS': {
         'estimator': CFS()},
     # transformers
-    'MinMaxScaler': {
-        'estimator': MinMaxScaler(),
-        'param_grid': {
-            'feature_range': cv_params['trf_mms_fr']}},
-    'StandardScaler': {
-        'estimator': StandardScaler()},
-    'RobustScaler': {
-        'estimator': RobustScaler()},
+    'ColumnTransformer': {
+        'estimator': ExtendedColumnTransformer([], n_jobs=1,
+                                               remainder='passthrough')},
+    'OneHotEncoder': {
+        'estimator':  OneHotEncoder(sparse=False)},
+    'ShiftedLog2Transformer': {
+        'estimator':  FunctionTransformer(shifted_log2, check_inverse=False,
+                                          validate=True)},
     'PowerTransformer': {
         'estimator': PowerTransformer(),
         'param_grid': {
             'method': cv_params['trf_pwr_meth']}},
+    'MinMaxScaler': {
+        'estimator': MinMaxScaler(),
+        'param_grid': {
+            'feature_range': cv_params['trf_mms_fr']}},
+    'RobustScaler': {
+        'estimator': RobustScaler()},
+    'StandardScaler': {
+        'estimator': StandardScaler()},
     'DESeq2RLEVST': {
         'estimator': DESeq2RLEVST(memory=memory),
         'param_grid': {

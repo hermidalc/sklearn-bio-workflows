@@ -232,7 +232,12 @@ def load_dataset(dataset_file):
                 raise RuntimeError('{} column does not exist in sample_meta'
                                    .format(sample_meta_col))
     col_trf_columns = []
-    if args.trf_col_dtypes:
+    if args.trf_col_patterns:
+        for pattern in args.trf_col_patterns:
+            col_trf_columns.append(
+                X.columns[X.columns.str.contains(pattern, regex=True)]
+                .to_numpy())
+    elif args.trf_col_dtypes:
         for dtype in args.trf_col_dtypes:
             if dtype == 'int':
                 col_trf_columns.append(X.dtypes.apply(is_integer_dtype)
@@ -519,7 +524,7 @@ def run_model_selection():
         if col_trf_columns:
             print('(', ' '.join(
                 ['{}: {:d}'.format(
-                    args.trf_col_dtypes[i],
+                    col_trf_estimator.transformers[i][0],
                     np.sum(c) if c.dtype == bool else c.shape[0])
                  for i, c in enumerate(col_trf_columns)]), ')', sep='')
         else:
@@ -1026,8 +1031,8 @@ parser.add_argument('--pipe-steps', type=str_list, nargs='+', required=True,
 parser.add_argument('--trf-col-pipe-steps', type=str_list, nargs='+',
                     action='append',
                     help='column transformer pipeline step names')
-parser.add_argument('--trf-col-columns', type=str, nargs='+',
-                    help='column transformer columns')
+parser.add_argument('--trf-col-patterns', type=str, nargs='+',
+                    help='column transformer column patterns')
 parser.add_argument('--trf-col-dtypes', type=str, nargs='+',
                     choices=['category', 'float', 'int'],
                     help='column transformer column dtypes')

@@ -76,6 +76,7 @@ from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
     DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover)
 from sklearn_extensions.svm import CachedLinearSVC
+from sklearn_extensions.utils import _determine_key_type
 
 
 def setup_pipe_and_param_grid(cmd_pipe_steps):
@@ -225,6 +226,9 @@ def load_dataset(dataset_file):
             if sample_meta_col in sample_meta.columns:
                 if sample_meta_col not in X.columns:
                     X[sample_meta_col] = sample_meta[sample_meta_col]
+                    feature_meta = feature_meta.append(
+                        pd.Series(name=sample_meta_col), verify_integrity=True)
+                    feature_meta.loc[sample_meta_col].fillna('', inplace=True)
                 else:
                     raise RuntimeError('{} column already exists in X'
                                        .format(sample_meta_col))
@@ -236,7 +240,7 @@ def load_dataset(dataset_file):
         for pattern in args.col_trf_patterns:
             col_trf_columns.append(
                 X.columns[X.columns.str.contains(pattern, regex=True)]
-                .to_numpy())
+                .to_numpy(dtype=str))
     elif args.col_trf_dtypes:
         for dtype in args.col_trf_dtypes:
             if dtype == 'int':
@@ -291,12 +295,55 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
 
 
 def get_selected_feature_meta(pipe, feature_meta):
-    selected_feature_meta = feature_meta.copy()
-    for step in pipe.named_steps:
-        if hasattr(pipe.named_steps[step], 'get_support'):
-            selected_feature_meta = selected_feature_meta.loc[
-                pipe.named_steps[step].get_support()]
-    final_estimator = pipe.steps[-1][1]
+    selected_feature_meta = None
+    for estimator in pipe:
+        if isinstance(estimator, ColumnTransformer):
+            for _, trf_pipe, trf_columns in estimator.transformers_:
+                trf_feature_meta = feature_meta.loc[trf_columns]
+                for trf_estimator in trf_pipe:
+                    if hasattr(trf_estimator, 'get_support'):
+                        trf_feature_meta = trf_feature_meta.loc[
+                            trf_estimator.get_support()]
+                    elif hasattr(trf_estimator, 'get_feature_names'):
+                        trf_new_feature_names = (
+                            trf_estimator.get_feature_names(
+                                input_features=trf_feature_meta.index.values)
+                            .astype(str))
+                        trf_feature_meta = pd.DataFrame(
+                            np.repeat(trf_feature_meta.values, [
+                                np.sum(np.char.startswith(
+                                    trf_new_feature_names,
+                                    '{}_'.format(feature_name)))
+                                for feature_name in trf_feature_meta.index],
+                                      axis=0),
+                            columns=trf_feature_meta.columns,
+                            index=trf_new_feature_names)
+                if selected_feature_meta is None:
+                    selected_feature_meta = trf_feature_meta
+                else:
+                    selected_feature_meta = pd.concat(
+                        [selected_feature_meta, trf_feature_meta], axis=0)
+        else:
+            if selected_feature_meta is None:
+                selected_feature_meta = feature_meta
+            if hasattr(estimator, 'get_support'):
+                selected_feature_meta = selected_feature_meta.loc[
+                    estimator.get_support()]
+            elif hasattr(estimator, 'get_feature_names'):
+                new_feature_names = (
+                    estimator.get_feature_names(
+                        input_features=selected_feature_meta.index.values)
+                    .astype(str))
+                selected_feature_meta = pd.DataFrame(
+                    np.repeat(selected_feature_meta.values, [
+                        np.sum(np.char.startswith(
+                            new_feature_names,
+                            '{}_'.format(feature_name)))
+                        for feature_name in selected_feature_meta.index],
+                              axis=0),
+                    columns=selected_feature_meta.columns,
+                    index=new_feature_names)
+    final_estimator = pipe[-1]
     feature_weights = explain_weights_df(
         final_estimator, feature_names=selected_feature_meta.index.values)
     if feature_weights is not None:
@@ -436,7 +483,7 @@ def run_model_selection():
         setup_pipe_and_param_grid(args.pipe_steps))
     (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
      col_trf_columns) = load_dataset(args.train_dataset)
-    if (isinstance(pipe.steps[0][1], ColumnTransformer)
+    if (isinstance(pipe[0], ColumnTransformer)
             and args.col_trf_pipe_steps is not None):
         col_trf_name, col_trf_estimator = pipe.steps[0]
         col_trf_pipe_names = []
@@ -526,7 +573,8 @@ def run_model_selection():
             print('(', ' '.join(
                 ['{}: {:d}'.format(
                     col_trf_estimator.transformers[i][0],
-                    np.sum(c) if c.dtype == bool else c.shape[0])
+                    np.sum(c) if _determine_key_type(c) == 'bool' else
+                    c.shape[0])
                  for i, c in enumerate(col_trf_columns)]), ')', sep='')
         else:
             print()

@@ -307,8 +307,8 @@ def get_selected_feature_meta(pipe, feature_meta):
                     elif hasattr(trf_estimator, 'get_feature_names'):
                         trf_new_feature_names = (
                             trf_estimator.get_feature_names(
-                                input_features=trf_feature_meta.index.values)
-                            .astype(str))
+                                input_features=trf_feature_meta.index.values
+                            ).astype(str))
                         trf_feature_meta = pd.DataFrame(
                             np.repeat(trf_feature_meta.values, [
                                 np.sum(np.char.startswith(
@@ -330,10 +330,9 @@ def get_selected_feature_meta(pipe, feature_meta):
                 selected_feature_meta = selected_feature_meta.loc[
                     estimator.get_support()]
             elif hasattr(estimator, 'get_feature_names'):
-                new_feature_names = (
-                    estimator.get_feature_names(
-                        input_features=selected_feature_meta.index.values)
-                    .astype(str))
+                new_feature_names = estimator.get_feature_names(
+                    input_features=selected_feature_meta.index.values
+                ).astype(str)
                 selected_feature_meta = pd.DataFrame(
                     np.repeat(selected_feature_meta.values, [
                         np.sum(np.char.startswith(

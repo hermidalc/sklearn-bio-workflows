@@ -1385,13 +1385,13 @@ if args.filter_warnings:
             warnings.filterwarnings(
                 'ignore', category=ConvergenceWarning,
                 message='^Liblinear failed to converge',
-                module='sklearn.svm.base')
+                module='sklearn.svm._base')
             # filter SGDClassifier convergence warnings
             warnings.filterwarnings(
                 'ignore', category=ConvergenceWarning,
                 message=('^Maximum number of iteration reached before '
                          'convergence'),
-                module='sklearn.linear_model.stochastic_gradient')
+                module='sklearn.linear_model._stochastic_gradient')
         if 'joblib' in args.filter_warnings:
             # filter joblib peristence time warnings
             warnings.filterwarnings(
@@ -1409,11 +1409,11 @@ if args.filter_warnings:
         if 'convergence' in args.filter_warnings:
             python_warnings.append(
                 'ignore:Liblinear failed to converge:'
-                'UserWarning:sklearn.svm.base')
+                'UserWarning:sklearn.svm._base')
             python_warnings.append(
                 'ignore:Maximum number of iteration reached before '
                 'convergence:UserWarning:'
-                'sklearn.linear_model.stochastic_gradient')
+                'sklearn.linear_model._stochastic_gradient')
         if 'joblib' in args.filter_warnings:
             python_warnings.append(
                 'ignore:Persisting input arguments took:UserWarning')

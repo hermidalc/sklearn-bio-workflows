@@ -1725,7 +1725,7 @@ pipe_config = {
         'estimator': ExtendedColumnTransformer([], n_jobs=1,
                                                remainder='passthrough')},
     'OneHotEncoder': {
-        'estimator':  OneHotEncoder(sparse=False)},
+        'estimator':  OneHotEncoder(handle_unknown='ignore', sparse=False)},
     'ShiftedLog2Transformer': {
         'estimator':  FunctionTransformer(shifted_log2, check_inverse=False,
                                           validate=True)},

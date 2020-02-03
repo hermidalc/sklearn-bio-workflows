@@ -915,7 +915,8 @@ def run_model_selection():
                 ascending=False, method='min', na_option='keep')
             feature_ranks.fillna(feature_ranks.shape[0], inplace=True)
             feature_weights.fillna(0, inplace=True)
-            feature_mean_meta = feature_meta.loc[feature_ranks.index]
+            feature_mean_meta = feature_meta.reindex(index=feature_ranks.index,
+                                                     fill_value='')
             feature_mean_meta_floatfmt.extend([''] * feature_meta.shape[1])
             feature_mean_meta['Mean Weight Rank'] = feature_ranks.mean(axis=1)
             feature_mean_meta['Mean Weight'] = feature_weights.mean(axis=1)

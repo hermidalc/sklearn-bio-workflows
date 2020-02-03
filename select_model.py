@@ -362,6 +362,9 @@ def get_selected_feature_meta(pipe, feature_meta):
     if feature_weights is not None:
         selected_feature_meta = selected_feature_meta.join(feature_weights,
                                                            how='left')
+        selected_feature_meta['Target'].fillna(0, inplace=True)
+        selected_feature_meta['Target'] = (
+            selected_feature_meta['Target'].astype(int))
         selected_feature_meta['Weight'].fillna(0, inplace=True)
     selected_feature_meta.index.rename('Feature', inplace=True)
     return selected_feature_meta

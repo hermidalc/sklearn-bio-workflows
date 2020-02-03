@@ -30,6 +30,7 @@ n_jobs=$(($n_jobs+1))
 sbatch \
 --chdir="$(realpath $SCRIPT_PATH/../)" \
 --cpus-per-task=$n_jobs \
+--gres=lscratch:20 \
 --mem-per-cpu=1536m \
 --partition=ccr,norm \
 --time=48:00:00 \

@@ -416,7 +416,7 @@ def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
 
 def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                           param_cv_scores):
-    sns.set_palette(sns.color_palette('hls', len(args.scv_scoring)))
+    cv_metric_colors = sns.color_palette('hls', len(args.scv_scoring))
     for param in param_cv_scores:
         mean_cv_scores, std_cv_scores = {}, {}
         for metric in args.scv_scoring:
@@ -453,17 +453,18 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         plt.xlabel(param, fontsize=args.axis_font_size)
         plt.ylabel('CV Score', fontsize=args.axis_font_size)
         for metric_idx, metric in enumerate(args.scv_scoring):
-            plt.plot(x_axis, mean_cv_scores[metric], lw=2, alpha=0.8,
+            plt.plot(x_axis, mean_cv_scores[metric],
+                     color=cv_metric_colors[metric_idx], lw=2, alpha=0.8,
                      label='Mean {}'.format(metric_label[metric]))
             plt.fill_between(x_axis,
                              [m - s for m, s in zip(mean_cv_scores[metric],
                                                     std_cv_scores[metric])],
                              [m + s for m, s in zip(mean_cv_scores[metric],
                                                     std_cv_scores[metric])],
-                             alpha=0.2, color='grey', label=(
-                                 r'$\pm$ 1 std. dev.'
-                                 if metric_idx == len(args.scv_scoring) - 1
-                                 else None))
+                             alpha=0.1, color=cv_metric_colors[metric_idx],
+                             label=(r'$\pm$ 1 std. dev.'
+                                    if metric_idx == len(args.scv_scoring) - 1
+                                    else None))
         plt.legend(loc='lower right', fontsize='medium')
         plt.tick_params(labelsize=args.axis_font_size)
         plt.grid(True, alpha=0.3)

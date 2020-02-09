@@ -10,7 +10,6 @@ dependencies:
   - bioconductor-biobase
   - bioconductor-deseq2
   - bioconductor-edger
-  - bioconductor-gcrma
   - bioconductor-limma
   - bioconductor-sva
   - bioconductor-variancepartition

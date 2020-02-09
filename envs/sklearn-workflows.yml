@@ -4,7 +4,6 @@ channels:
   - bioconda
 dependencies:
   - bioconductor-affy
-  - bioconductor-affyio
   - bioconductor-affyplm
   - bioconductor-apeglm
   - bioconductor-biobase

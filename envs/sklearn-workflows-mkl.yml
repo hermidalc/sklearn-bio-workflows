@@ -1,4 +1,4 @@
-name: sklearn-bio-workflows
+name: sklearn-workflows
 channels:
   - conda-forge
   - bioconda

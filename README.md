@@ -38,6 +38,13 @@ Install non-conda packages into environment:
 
 ## Updates
 
+Update the git repository and submodules:
+
+```bash
+git pull
+git submodule update --recursive
+```
+
 To update the conda environment on Intel architecture hardware:
 
 ```bash

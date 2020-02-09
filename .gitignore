@@ -167,7 +167,7 @@ vignettes/*.pdf
 # Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
 rsconnect/
 
-ories and files
+# Custom directories and files
 data/
 results/
 test*

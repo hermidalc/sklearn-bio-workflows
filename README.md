@@ -30,20 +30,6 @@ Activate the environment:
 conda activate sklearn-workflows
 ```
 
-Add channels to config:
-
-```bash
-conda config --env --add channels bioconda
-conda config --env --add channels conda-forge
-```
-
-Pin fixed package versions/builds:
-
-```bash
-echo 'libblas[build=*mkl]' >> "$(conda info --base)/envs/sklearn-workflows/conda-meta/pinned"
-echo 'scikit-learn=0.22.1' >> "$(conda info --base)/envs/sklearn-workflows/conda-meta/pinned"
-```
-
 Install non-conda packages into environment:
 
 ```bash

@@ -30,6 +30,13 @@ Activate the environment:
 conda activate sklearn-workflows
 ```
 
+Add channels to config:
+
+```bash
+conda config --env --add channels bioconda
+conda config --env --add channels conda-forge
+```
+
 Pin fixed package versions/builds:
 
 ```bash
@@ -41,4 +48,18 @@ Install non-conda packages into environment:
 
 ```bash
 ./utils/install_nonconda_r_pkgs.R
+```
+
+## Updates
+
+To update the conda environment on Intel architecture hardware:
+
+```bash
+conda env update -f envs/sklearn-workflows-mkl.yml
+```
+
+Otherwise:
+
+```bash
+conda env update -f envs/sklearn-workflows.yml
 ```

@@ -435,8 +435,14 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                 mean_cv_scores[metric] = np.ravel(param_metric_scores)
                 std_cv_scores[metric] = np.ravel(param_metric_stdev)
         plt.figure(figsize=(args.fig_width, args.fig_height))
-        param_type = re.sub(r'^([a-z]+)\d+', r'\1',
-                            '__'.join(param.split('__')[-2:]), count=1)
+        pipe_step_type_regex = re.compile(
+            r'^({})\d+$'.format('|'.join(pipeline_step_types)))
+        param_parts = param.split('__')
+        param_parts_start_idx = [i for i, p in enumerate(param_parts)
+                                 if pipe_step_type_regex.match(p)][-1]
+        param_parts[param_parts_start_idx] = pipe_step_type_regex.sub(
+            r'\1', param_parts[param_parts_start_idx])
+        param_type = '__'.join(param_parts[param_parts_start_idx:])
         if param_type in params_num_xticks:
             x_axis = param_grid_dict[param]
             plt.xticks(x_axis)

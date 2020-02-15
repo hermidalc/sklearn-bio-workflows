@@ -1410,20 +1410,20 @@ if args.filter_warnings:
         python_warnings = ([os.environ['PYTHONWARNINGS']]
                            if 'PYTHONWARNINGS' in os.environ else [])
         if 'convergence' in args.filter_warnings:
-            python_warnings.append(
-                'ignore:Liblinear failed to converge:'
-                'UserWarning:sklearn.svm._base')
-            python_warnings.append(
-                'ignore:Maximum number of iteration reached before '
-                'convergence:UserWarning:'
-                'sklearn.linear_model._stochastic_gradient')
+            python_warnings.append(':'.join([
+                'ignore', 'Liblinear failed to converge', 'UserWarning',
+                'sklearn.svm._base']))
+            python_warnings.append(':'.join([
+                'ignore',
+                'Maximum number of iteration reached before convergence',
+                'UserWarning', 'sklearn.linear_model._stochastic_gradient']))
         if 'joblib' in args.filter_warnings:
-            python_warnings.append(
-                'ignore:Persisting input arguments took:UserWarning')
+            python_warnings.append(':'.join([
+                'ignore', 'Persisting input arguments took', 'UserWarning']))
         if 'qda' in args.filter_warnings:
-            python_warnings.append(
-                'ignore:Variables are collinear:'
-                'UserWarning:sklearn.discriminant_analysis')
+            python_warnings.append(':'.join([
+                'ignore', 'Variables are collinear',
+                'UserWarning', 'sklearn.discriminant_analysis']))
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 inner_max_num_threads = 1 if args.parallel_backend in ('loky') else None
 

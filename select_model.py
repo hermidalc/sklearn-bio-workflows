@@ -31,8 +31,6 @@ from natsort import natsorted
 warnings.filterwarnings('ignore', category=FutureWarning,
                         module='rpy2.robjects.pandas2ri')
 from rpy2.robjects import numpy2ri, pandas2ri
-warnings.filterwarnings('ignore', category=FutureWarning,
-                        module='rpy2.robjects.pandas2ri')
 from rpy2.robjects.packages import importr
 from sklearn.base import (BaseEstimator, ClassifierMixin, RegressorMixin,
                           TransformerMixin)
@@ -1381,6 +1379,13 @@ if args.scv_size >= 1.0:
     args.scv_size = int(args.scv_size)
 if args.scv_verbose is None:
     args.scv_verbose = args.verbose
+
+if args.parallel_backend != 'multiprocessing':
+    python_warnings = ([os.environ['PYTHONWARNINGS']]
+                       if 'PYTHONWARNINGS' in os.environ else [])
+    python_warnings.append(':'.join([
+        'ignore', '', 'FutureWarning', 'rpy2.robjects.pandas2ri']))
+    os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 if args.filter_warnings:
     if args.parallel_backend == 'multiprocessing':
         if 'convergence' in args.filter_warnings:
@@ -1425,6 +1430,7 @@ if args.filter_warnings:
                 'ignore', 'Variables are collinear',
                 'UserWarning', 'sklearn.discriminant_analysis']))
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
+
 inner_max_num_threads = 1 if args.parallel_backend in ('loky') else None
 
 # suppress linux conda qt5 wayland warning

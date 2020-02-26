@@ -589,12 +589,13 @@ def run_model_selection():
     # train w/ independent test sets
     if args.test_dataset:
         pipe_fit_params = {}
-        if 'sample_meta' in search_param_routing['estimator']:
-            pipe_fit_params['sample_meta'] = sample_meta
-        if 'feature_meta' in search_param_routing['estimator']:
-            pipe_fit_params['feature_meta'] = feature_meta
-        if 'sample_weight' in search_param_routing['estimator']:
-            pipe_fit_params['sample_weight'] = sample_weights
+        if search_param_routing:
+            if 'sample_meta' in search_param_routing['estimator']:
+                pipe_fit_params['sample_meta'] = sample_meta
+            if 'feature_meta' in search_param_routing['estimator']:
+                pipe_fit_params['feature_meta'] = feature_meta
+            if 'sample_weight' in search_param_routing['estimator']:
+                pipe_fit_params['sample_weight'] = sample_weights
         search_fit_params = pipe_fit_params.copy()
         if groups is not None:
             search_fit_params['groups'] = groups
@@ -763,14 +764,16 @@ def run_model_selection():
         for split_idx, (train_idxs, test_idxs) in enumerate(
                 test_splitter.split(X, y, groups)):
             pipe_fit_params = {}
-            if 'sample_meta' in search_param_routing['estimator']:
-                pipe_fit_params['sample_meta'] = sample_meta.iloc[train_idxs]
-            if 'feature_meta' in search_param_routing['estimator']:
-                pipe_fit_params['feature_meta'] = feature_meta
-            if 'sample_weight' in search_param_routing['estimator']:
-                pipe_fit_params['sample_weight'] = (
-                    sample_weights[train_idxs] if sample_weights is not None
-                    else None)
+            if search_param_routing:
+                if 'sample_meta' in search_param_routing['estimator']:
+                    pipe_fit_params['sample_meta'] = (
+                        sample_meta.iloc[train_idxs])
+                if 'feature_meta' in search_param_routing['estimator']:
+                    pipe_fit_params['feature_meta'] = feature_meta
+                if 'sample_weight' in search_param_routing['estimator']:
+                    pipe_fit_params['sample_weight'] = (
+                        sample_weights[train_idxs]
+                        if sample_weights is not None else None)
             search_fit_params = pipe_fit_params.copy()
             if groups is not None:
                 search_fit_params['groups'] = groups[train_idxs]

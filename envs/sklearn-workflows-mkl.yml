@@ -38,7 +38,7 @@ dependencies:
   - r-rcpparmadillo
   - r-rjava
   - r-statmod
-  - rpy2=3.1
+  - rpy2
   - scikit-learn=0.22.1
   - seaborn
   - tabulate

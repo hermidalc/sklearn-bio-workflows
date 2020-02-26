@@ -41,7 +41,7 @@ from sklearn.ensemble import (
     AdaBoostClassifier, ExtraTreesClassifier, GradientBoostingClassifier,
     RandomForestClassifier)
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.feature_selection._base import SelectorMixin
+from sklearn.feature_selection.base import SelectorMixin
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
@@ -616,12 +616,10 @@ def run_model_selection():
                     if isinstance(v, BaseEstimator) else v)
                 for k, v in search.best_params_.items()})
             if 'Weight' in final_feature_meta.columns:
-                print('Feature Ranking:')
                 print(tabulate(final_feature_meta.iloc[
                     (-final_feature_meta['Weight'].abs()).argsort()],
                                floatfmt='.6e', headers='keys'))
             else:
-                print('Features:')
                 print(tabulate(final_feature_meta, headers='keys'))
         if args.save_model:
             dump(search, '{}/{}_search.pkl'.format(args.out_dir,
@@ -832,12 +830,10 @@ def run_model_selection():
                     for k, v in best_params.items()})
             if args.verbose > 1:
                 if 'Weight' in final_feature_meta.columns:
-                    print('Feature Ranking:')
                     print(tabulate(final_feature_meta.iloc[
                         (-final_feature_meta['Weight'].abs()).argsort()],
                                    floatfmt='.6e', headers='keys'))
                 else:
-                    print('Features:')
                     print(tabulate(final_feature_meta, headers='keys'))
             split_results.append({
                 'model': best_estimator if args.save_model else None,
@@ -928,16 +924,16 @@ def run_model_selection():
                                    'for {}'.format(metric))
             if feature_scores[metric].mean(axis=1).nunique() > 1:
                 if feature_mean_meta is None:
-                    feature_mean_meta = pd.DataFrame({
+                    feature_mean_meta = feature_meta.reindex(
+                        index=feature_scores[metric].index, fill_value='')
+                    feature_mean_meta_floatfmt.extend(
+                        [''] * feature_meta.shape[1])
+                feature_mean_meta = feature_mean_meta.join(
+                    pd.DataFrame({
                         'Mean Test {}'.format(metric_label[metric]):
-                            feature_scores[metric].mean(axis=1)})
-                else:
-                    feature_mean_meta = feature_mean_meta.join(
-                        pd.DataFrame({
-                            'Mean Test {}'.format(metric_label[metric]):
-                                feature_scores[metric].mean(axis=1)}),
-                        how='left')
-            feature_mean_meta_floatfmt.append('.4f')
+                            feature_scores[metric].mean(axis=1)}),
+                    how='left')
+                feature_mean_meta_floatfmt.append('.4f')
         if args.verbose > 0 and feature_mean_meta is not None:
             print('Overall Feature Ranking:')
             if feature_weights is not None:
@@ -1755,7 +1751,7 @@ pipe_config = {
                                     prior_count=args.edger_prior_count),
         'param_routing': ['sample_meta']},
     'LimmaBatchEffectRemover': {
-        'estimator': LimmaBatchEffectRemover(),
+        'estimator': LimmaBatchEffectRemover(preserve_design=True),
         'param_routing': ['sample_meta']},
     # classifiers
     'LinearSVC': {

@@ -1144,36 +1144,6 @@ parser.add_argument('--sfm-slr-grb-d', type=int, nargs='+',
                     help='SelectFromModel grb max depth')
 parser.add_argument('--sfm-slr-grb-f', type=str, nargs='+',
                     help='SelectFromModel grb max features')
-parser.add_argument('--rfe-slr-svc-ce', type=int, nargs='+',
-                    help='RFE SVC C exp')
-parser.add_argument('--rfe-slr-svc-ce-min', type=int,
-                    help='RFE SVC C exp min')
-parser.add_argument('--rfe-slr-svc-ce-max', type=int,
-                    help='RFE SVC C exp max')
-parser.add_argument('--rfe-slr-svc-cw', type=str, nargs='+',
-                    help='RFE SVC class weight')
-parser.add_argument('--rfe-slr-rf-e', type=int, nargs='+',
-                    help='RFE rf n estimators')
-parser.add_argument('--rfe-slr-rf-d', type=str, nargs='+',
-                    help='RFE rf max depth')
-parser.add_argument('--rfe-slr-rf-f', type=str, nargs='+',
-                    help='RFE rf max features')
-parser.add_argument('--rfe-slr-rf-cw', type=str, nargs='+',
-                    help='RFE rf class weight')
-parser.add_argument('--rfe-slr-ext-e', type=int, nargs='+',
-                    help='RFE ext n estimators')
-parser.add_argument('--rfe-slr-ext-d', type=str, nargs='+',
-                    help='RFE ext max depth')
-parser.add_argument('--rfe-slr-ext-f', type=str, nargs='+',
-                    help='RFE ext max features')
-parser.add_argument('--rfe-slr-ext-cw', type=str, nargs='+',
-                    help='RFE ext class weight')
-parser.add_argument('--rfe-slr-grb-e', type=int, nargs='+',
-                    help='RFE grb n estimators')
-parser.add_argument('--rfe-slr-grb-d', type=int, nargs='+',
-                    help='RFE grb max depth')
-parser.add_argument('--rfe-slr-grb-f', type=str, nargs='+',
-                    help='RFE grb max features')
 parser.add_argument('--rfe-slr-step', type=float, nargs='+',
                     help='RFE step')
 parser.add_argument('--rfe-slr-tune-step-at', type=int,
@@ -1498,21 +1468,20 @@ if cv_params['col_slr_file']:
                           .format(feature_file))
 for cv_param, cv_param_values in cv_params.copy().items():
     if cv_param_values is None:
-        if cv_param in ('sfm_slr_svc_ce', 'rfe_slr_svc_ce', 'svc_clf_ce',
-                        'ada_clf_lgr_ce', 'sgd_clf_ae'):
+        if cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'ada_clf_lgr_ce',
+                        'sgd_clf_ae'):
             cv_params[cv_param[:-1]] = None
         continue
     if cv_param in ('col_slr_cols', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
                     'de_slr_pv', 'de_slr_fc', 'de_slr_mb', 'sfm_slr_thres',
                     'sfm_slr_rf_thres', 'sfm_slr_rf_e', 'sfm_slr_ext_thres',
                     'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_d',
-                    'rfe_slr_rf_e', 'rfe_slr_ext_e', 'rfe_slr_grb_e',
-                    'rfe_slr_grb_d', 'rfe_slr_step', 'rlf_slr_n', 'rlf_slr_s',
-                    'pwr_trf_meth', 'de_trf_mb', 'svc_clf_kern', 'svc_clf_deg',
-                    'svc_clf_g', 'knn_clf_k', 'knn_clf_w', 'rf_clf_e',
-                    'ext_clf_e', 'ada_clf_e', 'grb_clf_e', 'grb_clf_d',
-                    'mlp_clf_hls', 'mlp_clf_act', 'mlp_clf_slvr', 'mlp_clf_a',
-                    'mlp_clf_lr', 'sgd_clf_loss', 'sgd_clf_l1r'):
+                    'rfe_slr_step', 'rlf_slr_n', 'rlf_slr_s', 'pwr_trf_meth',
+                    'de_trf_mb', 'svc_clf_kern', 'svc_clf_deg', 'svc_clf_g',
+                    'knn_clf_k', 'knn_clf_w', 'rf_clf_e', 'ext_clf_e',
+                    'ada_clf_e', 'grb_clf_e', 'grb_clf_d', 'mlp_clf_hls',
+                    'mlp_clf_act', 'mlp_clf_slvr', 'mlp_clf_a', 'mlp_clf_lr',
+                    'sgd_clf_loss', 'sgd_clf_l1r'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param == 'skb_slr_k_max':
         if cv_params['skb_slr_k_min'] == 1 and cv_params['skb_slr_k_step'] > 1:
@@ -1524,12 +1493,11 @@ for cv_param, cv_param_values in cv_params.copy().items():
                 cv_params['skb_slr_k_min'],
                 cv_params['skb_slr_k_max'] + cv_params['skb_slr_k_step'],
                 cv_params['skb_slr_k_step']))
-    elif cv_param in ('sfm_slr_svc_ce', 'rfe_slr_svc_ce', 'svc_clf_ce',
-                      'ada_clf_lgr_ce', 'sgd_clf_ae'):
+    elif cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'ada_clf_lgr_ce',
+                      'sgd_clf_ae'):
         cv_params[cv_param[:-1]] = 10 ** cv_param_values
-    elif cv_param in ('sfm_slr_svc_ce_max', 'rfe_slr_svc_ce_max',
-                      'svc_clf_ce_max', 'ada_clf_lgr_ce_max',
-                      'sgd_clf_ae_max'):
+    elif cv_param in ('sfm_slr_svc_ce_max', 'svc_clf_ce_max',
+                      'ada_clf_lgr_ce_max', 'sgd_clf_ae_max'):
         cv_param = '_'.join(cv_param.split('_')[:-1])
         cv_param_v_min = cv_params['{}_min'.format(cv_param)]
         cv_param_v_max = cv_param_values
@@ -1543,17 +1511,15 @@ for cv_param, cv_param_values in cv_params.copy().items():
                 (cv_params['sgd_clf_l1r_max'] - cv_params['sgd_clf_l1r_min'])
                 / cv_params['sgd_clf_l1r_step'])) + 1)
     elif cv_param in ('sfm_slr_svc_cw', 'sfm_slr_rf_cw', 'sfm_slr_ext_cw',
-                      'rfe_slr_svc_cw', 'rfe_slr_rf_cw', 'rfe_slr_ext_cw',
                       'sfm_slr_rf_f', 'sfm_slr_ext_f', 'sfm_slr_grb_f',
-                      'rfe_slr_rf_f', 'rfe_slr_ext_f', 'rfe_slr_grb_f',
                       'svc_clf_cw', 'dt_clf_f', 'dt_clf_cw', 'rf_clf_f',
                       'rf_clf_cw', 'ext_clf_f', 'ext_clf_cw', 'ada_clf_lgr_cw',
                       'grb_clf_f', 'sgd_clf_cw'):
         cv_params[cv_param] = sorted([None if v.title() == 'None' else v
                                       for v in cv_param_values],
                                      key=lambda x: (x is None, x))
-    elif cv_param in ('sfm_slr_rf_d', 'sfm_slr_ext_d', 'rfe_slr_rf_d',
-                      'rfe_slr_ext_d', 'dt_clf_d', 'rf_clf_d', 'ext_clf_d'):
+    elif cv_param in ('sfm_slr_rf_d', 'sfm_slr_ext_d', 'dt_clf_d', 'rf_clf_d',
+                      'ext_clf_d'):
         cv_params[cv_param] = sorted([None if v.title() == 'None' else int(v)
                                       for v in cv_param_values],
                                      key=lambda x: (x is None, x))
@@ -1624,8 +1590,8 @@ pipe_config = {
                          reducing_step=args.rfe_slr_reducing_step,
                          verbose=args.rfe_slr_verbose),
         'param_grid': {
-            'estimator__C': cv_params['rfe_slr_svc_c'],
-            'estimator__class_weight': cv_params['rfe_slr_svc_cw'],
+            'estimator__C': cv_params['svc_clf_c'],
+            'estimator__class_weight': cv_params['svc_clf_cw'],
             'step': cv_params['rfe_slr_step'],
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},
@@ -1634,10 +1600,10 @@ pipe_config = {
                          reducing_step=args.rfe_slr_reducing_step,
                          verbose=args.rfe_slr_verbose),
         'param_grid': {
-            'estimator__n_estimators': cv_params['rfe_slr_rf_e'],
-            'estimator__max_depth': cv_params['rfe_slr_rf_d'],
-            'estimator__max_features': cv_params['rfe_slr_rf_f'],
-            'estimator__class_weight': cv_params['rfe_slr_rf_cw'],
+            'estimator__n_estimators': cv_params['rf_clf_e'],
+            'estimator__max_depth': cv_params['rf_clf_d'],
+            'estimator__max_features': cv_params['rf_clf_f'],
+            'estimator__class_weight': cv_params['rf_clf_cw'],
             'step': cv_params['rfe_slr_step'],
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},
@@ -1646,10 +1612,10 @@ pipe_config = {
                          reducing_step=args.rfe_slr_reducing_step,
                          verbose=args.rfe_slr_verbose),
         'param_grid': {
-            'estimator__n_estimators': cv_params['rfe_slr_ext_e'],
-            'estimator__max_depth': cv_params['rfe_slr_ext_d'],
-            'estimator__max_features': cv_params['rfe_slr_ext_f'],
-            'estimator__class_weight': cv_params['rfe_slr_ext_cw'],
+            'estimator__n_estimators': cv_params['ext_clf_e'],
+            'estimator__max_depth': cv_params['ext_clf_d'],
+            'estimator__max_features': cv_params['ext_clf_f'],
+            'estimator__class_weight': cv_params['ext_clf_cw'],
             'step': cv_params['rfe_slr_step'],
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},
@@ -1658,9 +1624,9 @@ pipe_config = {
                          reducing_step=args.rfe_slr_reducing_step,
                          verbose=args.rfe_slr_verbose),
         'param_grid': {
-            'estimator__n_estimators': cv_params['rfe_slr_grb_e'],
-            'estimator__max_depth': cv_params['rfe_slr_grb_d'],
-            'estimator__max_features': cv_params['rfe_slr_grb_f'],
+            'estimator__n_estimators': cv_params['grb_clf_e'],
+            'estimator__max_depth': cv_params['grb_clf_d'],
+            'estimator__max_features': cv_params['grb_clf_f'],
             'step': cv_params['rfe_slr_step'],
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},

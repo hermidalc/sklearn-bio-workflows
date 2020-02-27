@@ -333,8 +333,7 @@ def get_final_feature_meta(pipe, feature_meta):
                     estimator.get_support()]
             elif hasattr(estimator, 'get_feature_names'):
                 new_feature_names = estimator.get_feature_names(
-                    input_features=final_feature_meta.index.values
-                ).astype(str)
+                    input_features=final_feature_meta.index.values).astype(str)
                 final_feature_meta = pd.DataFrame(
                     np.repeat(final_feature_meta.values, [
                         np.sum(np.char.startswith(

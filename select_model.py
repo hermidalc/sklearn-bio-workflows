@@ -229,7 +229,8 @@ def load_dataset(dataset_file):
                 if sample_meta_col not in X.columns:
                     X[sample_meta_col] = sample_meta[sample_meta_col]
                     feature_meta = feature_meta.append(
-                        pd.Series(name=sample_meta_col), verify_integrity=True)
+                        pd.Series(name=sample_meta_col, dtype=str),
+                        verify_integrity=True)
                     feature_meta.loc[sample_meta_col].fillna('', inplace=True)
                 else:
                     raise RuntimeError('{} column already exists in X'
@@ -337,10 +338,8 @@ def get_final_feature_meta(pipe, feature_meta):
                 final_feature_meta = pd.DataFrame(
                     np.repeat(final_feature_meta.values, [
                         np.sum(np.char.startswith(
-                            new_feature_names,
-                            '{}_'.format(feature_name)))
-                        for feature_name in final_feature_meta.index],
-                              axis=0),
+                            new_feature_names, '{}_'.format(feature_name)))
+                        for feature_name in final_feature_meta.index], axis=0),
                     columns=final_feature_meta.columns,
                     index=new_feature_names)
     final_estimator = pipe[-1]
@@ -1642,7 +1641,7 @@ pipe_config = {
             'sv': cv_params['de_slr_pv'],
             'fc': cv_params['de_slr_fc'],
             'model_batch': cv_params['de_slr_mb']},
-        'param_routing': ['sample_meta', 'feature_meta']},
+        'param_routing': ['sample_meta']},
     'EdgeR': {
         'estimator': EdgeR(memory=memory, prior_count=args.edger_prior_count),
         'param_grid': {
@@ -1650,12 +1649,12 @@ pipe_config = {
             'pv': cv_params['de_slr_pv'],
             'fc': cv_params['de_slr_fc'],
             'model_batch': cv_params['de_slr_mb']},
-        'param_routing': ['sample_meta', 'feature_meta']},
+        'param_routing': ['sample_meta']},
     'EdgeRFilterByExpr': {
         'estimator': EdgeRFilterByExpr(),
         'param_grid': {
             'model_batch': cv_params['de_slr_mb']},
-        'param_routing': ['sample_meta', 'feature_meta']},
+        'param_routing': ['sample_meta']},
     'LimmaVoom': {
         'estimator': LimmaVoom(memory=memory,
                                model_dupcor=args.limma_model_dupcor,
@@ -1665,7 +1664,7 @@ pipe_config = {
             'pv': cv_params['de_slr_pv'],
             'fc': cv_params['de_slr_fc'],
             'model_batch': cv_params['de_slr_mb']},
-        'param_routing': ['sample_meta', 'feature_meta']},
+        'param_routing': ['sample_meta']},
     'DreamVoom': {
         'estimator': DreamVoom(memory=memory,
                                prior_count=args.edger_prior_count),
@@ -1674,7 +1673,7 @@ pipe_config = {
             'pv': cv_params['de_slr_pv'],
             'fc': cv_params['de_slr_fc'],
             'model_batch': cv_params['de_slr_mb']},
-        'param_routing': ['sample_meta', 'feature_meta']},
+        'param_routing': ['sample_meta']},
     'Limma': {
         'estimator': Limma(memory=memory, robust=args.limma_robust,
                            trend=args.limma_trend),
@@ -1683,7 +1682,7 @@ pipe_config = {
             'pv': cv_params['de_slr_pv'],
             'fc': cv_params['de_slr_fc'],
             'model_batch': cv_params['de_slr_mb']},
-        'param_routing': ['sample_meta', 'feature_meta']},
+        'param_routing': ['sample_meta']},
     'FCBF': {
         'estimator': FCBF(memory=memory),
         'param_grid': {

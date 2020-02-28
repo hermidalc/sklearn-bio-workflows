@@ -488,7 +488,7 @@ def run_model_selection():
         col_trf_pipe_names = []
         col_trf_transformers = []
         col_trf_param_grids = []
-        col_trf_param_routing = {}
+        col_trf_param_routing = None
         for trf_idx, trf_pipe_steps in enumerate(args.col_trf_pipe_steps):
             (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
              trf_param_grid_dict) = setup_pipe_and_param_grid(trf_pipe_steps)
@@ -505,6 +505,8 @@ def run_model_selection():
                     param_grid_dict['{}__{}__{}'.format(
                         col_trf_name, uniq_trf_name, param)] = param_value
             if trf_pipe.param_routing is not None:
+                if col_trf_param_routing is None:
+                    col_trf_param_routing = {}
                 col_trf_param_routing[uniq_trf_name] = list(
                     {v for l in trf_pipe.param_routing.values()
                      for v in l})
@@ -523,8 +525,12 @@ def run_model_selection():
         col_trf_estimator.set_params(
             param_routing=col_trf_param_routing,
             transformers=col_trf_transformers)
-        pipe.param_routing[col_trf_name] = list(
-            {v for l in col_trf_param_routing.values() for v in l})
+        if col_trf_param_routing is not None:
+            pipe_param_routing = (pipe.param_routing if pipe.param_routing
+                                  else {})
+            pipe_param_routing[col_trf_name] = list(
+                {v for l in col_trf_param_routing.values() for v in l})
+            pipe.set_params(param_routing=pipe_param_routing)
     pipe_name = '->'.join(pipe_step_names)
     search_param_routing = ({'cv': 'groups',
                              'estimator': ['sample_weight'],

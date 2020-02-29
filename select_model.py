@@ -1499,7 +1499,7 @@ for cv_param, cv_param_values in cv_params.copy().items():
                 cv_params['skb_slr_k_step']))
     elif cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'ada_clf_lgr_ce',
                       'sgd_clf_ae'):
-        cv_params[cv_param[:-1]] = 10 ** cv_param_values
+        cv_params[cv_param[:-1]] = 10. ** np.asarray(cv_param_values)
     elif cv_param in ('sfm_slr_svc_ce_max', 'svc_clf_ce_max',
                       'ada_clf_lgr_ce_max', 'sgd_clf_ae_max'):
         cv_param = '_'.join(cv_param.split('_')[:-1])

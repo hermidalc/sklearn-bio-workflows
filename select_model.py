@@ -691,11 +691,21 @@ def run_model_selection():
             if 'Weight' in final_feature_meta.columns:
                 tf_pipe_steps = pipe.steps[:-1]
                 tf_pipe_steps.append(('slrc', ColumnSelector()))
-                tf_pipe_steps.append(pipe.steps[-1])
+                if isinstance(pipe[-1], RFE):
+                    tf_pipe_steps.append((pipe.steps[-1][0],
+                                          pipe.steps[-1][1].estimator))
+                    best_params = {k.replace('__estimator__', '__', 1): v
+                                   for k, v in search.best_params_.items()
+                                   if '__estimator__' in k}
+                else:
+                    tf_pipe_steps.append(pipe.steps[-1])
+                    best_params = search.best_params_
                 tf_pipe_param_routing = (pipe.param_routing
                                          if pipe.param_routing else {})
                 tf_pipe_param_routing['slrc'] = (
                     pipe_config['ColumnSelector']['param_routing'])
+                if 'feature_meta' not in pipe_fit_params:
+                    pipe_fit_params['feature_meta'] = feature_meta
                 tf_name_sets = []
                 for feature_name in final_feature_meta.iloc[
                         (-final_feature_meta['Weight'].abs()).argsort()].index:
@@ -708,9 +718,8 @@ def run_model_selection():
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
                             X, y, tf_pipe_steps, tf_pipe_param_routing,
-                            {**search.best_params_,
-                             'slrc__cols': feature_names}, pipe_fit_params)
-                        for feature_names in tf_name_sets)
+                            {**best_params, 'slrc__cols': feature_names},
+                            pipe_fit_params) for feature_names in tf_name_sets)
                 tf_test_scores = {}
                 for tf_pipe in tf_pipes:
                     test_scores = calculate_test_scores(

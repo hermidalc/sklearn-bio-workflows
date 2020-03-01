@@ -52,8 +52,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import (
-    FunctionTransformer, MinMaxScaler, OneHotEncoder, PowerTransformer,
-    RobustScaler, StandardScaler)
+    MinMaxScaler, OneHotEncoder, PowerTransformer, RobustScaler,
+    StandardScaler)
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier
 from tabulate import tabulate
@@ -76,7 +76,8 @@ from sklearn_extensions.model_selection import (
     StratifiedGroupShuffleSplit)
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
-    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover)
+    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover,
+    ShiftedLogTransformer)
 from sklearn_extensions.svm import CachedLinearSVC
 from sklearn_extensions.utils import _determine_key_type
 
@@ -1062,10 +1063,6 @@ def run_cleanup():
     rmtree(r_base.tempdir()[0])
 
 
-def shifted_log2(X, shift=1):
-    return np.log2(X + shift)
-
-
 def int_list(arg):
     return list(map(int, arg.split(',')))
 
@@ -1720,9 +1717,8 @@ pipe_config = {
                                                remainder='passthrough')},
     'OneHotEncoder': {
         'estimator':  OneHotEncoder(handle_unknown='ignore', sparse=False)},
-    'ShiftedLog2Transformer': {
-        'estimator':  FunctionTransformer(shifted_log2, check_inverse=False,
-                                          validate=True)},
+    'ShiftedLogTransformer': {
+        'estimator':  ShiftedLogTransformer(base=2, shift=1)},
     'PowerTransformer': {
         'estimator': PowerTransformer(),
         'param_grid': {

@@ -514,7 +514,7 @@ def run_model_selection():
             for trf_pipe_prop, trf_pipe_prop_value in trf_pipe_props.items():
                 if trf_pipe_prop_value:
                     pipe_props[trf_pipe_prop] = trf_pipe_prop_value
-        pipe_step_names[0] = '{}'.format(';'.join(col_trf_pipe_names))
+        pipe_step_names[0] = ';'.join(col_trf_pipe_names)
         if col_trf_param_grids:
             final_estimator_param_grid = param_grid.copy()
             param_grid = []

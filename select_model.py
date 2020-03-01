@@ -10,6 +10,11 @@ from pprint import pprint
 from shutil import rmtree
 from tempfile import mkdtemp, gettempdir
 
+warnings.filterwarnings('ignore', category=FutureWarning,
+                        module='sklearn.utils.deprecation')
+warnings.filterwarnings('ignore', category=FutureWarning,
+                        module='rpy2.robjects.pandas2ri')
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -17,19 +22,15 @@ from pandas.api.types import (
     is_bool_dtype, is_categorical_dtype, is_integer_dtype, is_float_dtype,
     is_object_dtype)
 import rpy2.rinterface_lib.embedded as r_embedded
+
 r_embedded.set_initoptions(
     ('rpy2', '--quiet', '--no-save', '--max-ppsize=500000'))
+
 import rpy2.robjects as robjects
 import seaborn as sns
-warnings.filterwarnings('ignore', category=FutureWarning,
-                        module='sklearn.utils.deprecation')
 from eli5 import explain_weights_df
-warnings.filterwarnings('always', category=FutureWarning,
-                        module='sklearn.utils.deprecation')
 from joblib import Memory, Parallel, delayed, dump, parallel_backend
 from natsort import natsorted
-warnings.filterwarnings('ignore', category=FutureWarning,
-                        module='rpy2.robjects.pandas2ri')
 from rpy2.robjects import numpy2ri, pandas2ri
 from rpy2.robjects.packages import importr
 from sklearn.base import (BaseEstimator, ClassifierMixin, RegressorMixin,

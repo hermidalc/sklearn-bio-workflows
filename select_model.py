@@ -454,8 +454,10 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
             raise RuntimeError('No ticks config exists for {}'
                                .format(param_type))
         plt.xlim([min(x_axis), max(x_axis)])
-        plt.title('{}\n{}\nEffect of {} on CV Performance Metrics'.format(
-            dataset_name, pipe_name, param), fontsize=args.title_font_size)
+        plt.suptitle('Effect of {} on CV Performance Metrics'.format(param),
+                     fontsize=args.title_font_size)
+        plt.title('{}\n{}'.format(dataset_name, pipe_name),
+                  fontsize=args.title_font_size - 2)
         plt.xlabel(param, fontsize=args.axis_font_size)
         plt.ylabel('CV Score', fontsize=args.axis_font_size)
         for metric_idx, metric in enumerate(args.scv_scoring):
@@ -512,8 +514,7 @@ def run_model_selection():
             for trf_pipe_prop, trf_pipe_prop_value in trf_pipe_props.items():
                 if trf_pipe_prop_value:
                     pipe_props[trf_pipe_prop] = trf_pipe_prop_value
-        pipe_step_names[0] = '{}({})'.format(pipe_step_names[0],
-                                             ','.join(col_trf_pipe_names))
+        pipe_step_names[0] = '{}'.format(';'.join(col_trf_pipe_names))
         if col_trf_param_grids:
             final_estimator_param_grid = param_grid.copy()
             param_grid = []
@@ -530,7 +531,8 @@ def run_model_selection():
             pipe_param_routing[col_trf_name] = list(
                 {v for l in col_trf_param_routing.values() for v in l})
             pipe.set_params(param_routing=pipe_param_routing)
-    pipe_name = '->'.join(pipe_step_names)
+    pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
+                                pipe_step_names[-1])
     search_param_routing = ({'cv': 'groups',
                              'estimator': ['sample_weight'],
                              'scoring': ['sample_weight']}
@@ -633,11 +635,13 @@ def run_model_selection():
                               param_cv_scores)
         # plot top-ranked selected features vs test performance metrics
         if 'Weight' in final_feature_meta.columns:
-            _, ax_slr = plt.subplots(figsize=(args.fig_width, args.fig_height))
-            ax_slr.set_title(('{}\n{}\nEffect of Number of Top-Ranked Features'
-                              'Selected on Test Performance Metrics')
-                             .format(dataset_name, pipe_name),
+            fig_slr, ax_slr = plt.subplots(figsize=(args.fig_width,
+                                                    args.fig_height))
+            fig_slr.suptitle('Effect of Number of Top-Ranked Selected '
+                             'Features on Test Performance Metrics',
                              fontsize=args.title_font_size)
+            ax_slr.set_title('{}\n{}'.format(dataset_name, pipe_name),
+                             fontsize=args.title_font_size - 2)
             ax_slr.set_xlabel('Number of top-ranked features selected',
                               fontsize=args.axis_font_size)
             ax_slr.set_ylabel('Test Score', fontsize=args.axis_font_size)
@@ -646,9 +650,11 @@ def run_model_selection():
             ax_slr.set_xticks(x_axis)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
-            _, ax_roc = plt.subplots(figsize=(args.fig_width, args.fig_height))
-            ax_roc.set_title('{}\n{}\nROC Curves'.format(
-                dataset_name, pipe_name), fontsize=args.title_font_size)
+            fig_roc, ax_roc = plt.subplots(figsize=(args.fig_width,
+                                                    args.fig_height))
+            fig_roc.suptitle('ROC Curves', fontsize=args.title_font_size)
+            ax_roc.set_title('{}\n{}'.format(dataset_name, pipe_name),
+                             fontsize=args.title_font_size - 2)
             ax_roc.set_xlabel('False Positive Rate',
                               fontsize=args.axis_font_size)
             ax_roc.set_ylabel('True Positive Rate',
@@ -656,9 +662,11 @@ def run_model_selection():
             ax_roc.set_xlim([-0.01, 1.01])
             ax_roc.set_ylim([-0.01, 1.01])
         if 'average_precision' in args.scv_scoring:
-            _, ax_pre = plt.subplots(figsize=(args.fig_width, args.fig_height))
-            ax_pre.set_title('{}\n{}\nPR Curves'.format(
-                dataset_name, pipe_name), fontsize=args.title_font_size)
+            fig_pre, ax_pre = plt.subplots(figsize=(args.fig_width,
+                                                    args.fig_height))
+            fig_pre.suptitle('PR Curves', fontsize=args.title_font_size)
+            ax_pre.set_title('{}\n{}'.format(dataset_name, pipe_name),
+                             fontsize=args.title_font_size - 2)
             ax_pre.set_xlabel('Recall', fontsize=args.axis_font_size)
             ax_pre.set_ylabel('Precision', fontsize=args.axis_font_size)
             ax_pre.set_xlim([-0.01, 1.01])
@@ -967,8 +975,9 @@ def run_model_selection():
         if 'roc_auc' in args.scv_scoring:
             sns.set_palette(sns.color_palette('hls', 2))
             plt.figure(figsize=(args.fig_width, args.fig_height))
-            plt.title('{}\n{}\nROC Curve'.format(
-                dataset_name, pipe_name), fontsize=args.title_font_size)
+            plt.suptitle('ROC Curve', fontsize=args.title_font_size)
+            plt.title('{}\n{}'.format(dataset_name, pipe_name),
+                      fontsize=args.title_font_size - 2)
             plt.xlabel('False Positive Rate', fontsize=args.axis_font_size)
             plt.ylabel('True Positive Rate', fontsize=args.axis_font_size)
             plt.xlim([-0.01, 1.01])
@@ -1007,8 +1016,9 @@ def run_model_selection():
         if 'average_precision' in args.scv_scoring:
             sns.set_palette(sns.color_palette('hls', 10))
             plt.figure(figsize=(args.fig_width, args.fig_height))
-            plt.title('{}\n{}\nPR Curve'.format(
-                dataset_name, pipe_name), fontsize=args.title_font_size)
+            plt.suptitle('PR Curve', fontsize=args.title_font_size)
+            plt.title('{}\n{}'.format(dataset_name, pipe_name),
+                      fontsize=args.title_font_size - 2)
             plt.xlabel('Recall', fontsize=args.axis_font_size)
             plt.ylabel('Precision', fontsize=args.axis_font_size)
             plt.xlim([-0.01, 1.01])
@@ -1876,8 +1886,7 @@ metric_label = {
 run_model_selection()
 if args.show_figs or args.save_figs:
     for fig_num in plt.get_fignums():
-        plt.figure(fig_num)
-        plt.tight_layout(pad=0.5, w_pad=0, h_pad=0)
+        plt.figure(fig_num, constrained_layout=True)
         if args.save_figs:
             for fig_fmt in args.fig_format:
                 plt.savefig('{}/Figure_{:d}.{}'.format(args.out_dir, fig_num,

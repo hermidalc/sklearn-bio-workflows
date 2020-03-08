@@ -77,8 +77,7 @@ from sklearn_extensions.model_selection import (
     StratifiedGroupShuffleSplit)
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
-    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover,
-    ShiftedLogTransformer)
+    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover, LogTransformer)
 from sklearn_extensions.svm import CachedLinearSVC
 from sklearn_extensions.utils import _determine_key_type
 
@@ -1718,8 +1717,8 @@ pipe_config = {
                                                remainder='passthrough')},
     'OneHotEncoder': {
         'estimator':  OneHotEncoder(handle_unknown='ignore', sparse=False)},
-    'ShiftedLogTransformer': {
-        'estimator':  ShiftedLogTransformer(base=2, shift=1)},
+    'LogTransformer': {
+        'estimator':  LogTransformer(base=2, shift=1)},
     'PowerTransformer': {
         'estimator': PowerTransformer(),
         'param_grid': {

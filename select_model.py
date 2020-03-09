@@ -1529,11 +1529,13 @@ for cv_param, cv_param_values in cv_params.copy().items():
             cv_param_v_min, cv_param_v_max,
             cv_param_v_max - cv_param_v_min + 1, base=10)
     elif cv_param == 'sgd_clf_l1r_max':
-        cv_params['sgd_clf_l1r'] = np.linspace(
-            cv_params['sgd_clf_l1r_min'], cv_params['sgd_clf_l1r_max'],
-            int(np.floor(
-                (cv_params['sgd_clf_l1r_max'] - cv_params['sgd_clf_l1r_min'])
-                / cv_params['sgd_clf_l1r_step'])) + 1)
+        cv_param = '_'.join(cv_param.split('_')[:3])
+        cv_params[cv_param] = np.linspace(
+            cv_params['{}_min'.format(cv_param)],
+            cv_params['{}_max'.format(cv_param)],
+            int(np.floor((cv_params['{}_max'.format(cv_param)]
+                          - cv_params['{}_min'.format(cv_param)])
+                         / cv_params['{}_step'.format(cv_param)])) + 1)
     elif cv_param in ('sfm_slr_svc_cw', 'sfm_slr_rf_cw', 'sfm_slr_ext_cw',
                       'sfm_slr_rf_f', 'sfm_slr_ext_f', 'sfm_slr_grb_f',
                       'svc_clf_cw', 'dt_clf_f', 'dt_clf_cw', 'rf_clf_f',

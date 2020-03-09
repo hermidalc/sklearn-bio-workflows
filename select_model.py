@@ -1533,7 +1533,7 @@ for cv_param, cv_param_values in cv_params.copy().items():
         cv_params[cv_param] = np.linspace(
             cv_params['{}_min'.format(cv_param)],
             cv_params['{}_max'.format(cv_param)],
-            int(np.floor((cv_params['{}_max'.format(cv_param)]
+            int(np.round((cv_params['{}_max'.format(cv_param)]
                           - cv_params['{}_min'.format(cv_param)])
                          / cv_params['{}_step'.format(cv_param)])) + 1)
     elif cv_param in ('sfm_slr_svc_cw', 'sfm_slr_rf_cw', 'sfm_slr_ext_cw',

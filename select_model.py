@@ -264,9 +264,14 @@ def load_dataset(dataset_file):
             feature_meta, col_trf_columns)
 
 
-def fit_pipeline(X, y, steps, param_routing, params, fit_params):
+def fit_pipeline(X, y, steps, param_routing=None, params=None,
+                 fit_params=None):
     pipe = ExtendedPipeline(steps, memory=memory, param_routing=param_routing)
+    if params is None:
+        params = {}
     pipe.set_params(**params)
+    if fit_params is None:
+        fit_params = {}
     pipe.fit(X, y, **fit_params)
     if args.scv_verbose == 0:
         print('.', end='', flush=True)
@@ -735,9 +740,12 @@ def run_model_selection():
                     n_jobs=args.n_jobs, backend=args.parallel_backend,
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
-                            X, y, tf_pipe_steps, tf_pipe_param_routing,
-                            {**best_params, 'slrc__cols': feature_names},
-                            pipe_fit_params) for feature_names in tf_name_sets)
+                            X, y, tf_pipe_steps,
+                            param_routing=tf_pipe_param_routing,
+                            params={**best_params,
+                                    'slrc__cols': feature_names},
+                            fit_params=pipe_fit_params)
+                        for feature_names in tf_name_sets)
                 tf_test_scores = {}
                 for tf_pipe in tf_pipes:
                     test_scores = calculate_test_scores(
@@ -821,7 +829,8 @@ def run_model_selection():
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
                             X.iloc[train_idxs], y[train_idxs], pipe.steps,
-                            pipe.param_routing, pipe_params, pipe_fit_params)
+                            param_routing=pipe.param_routing,
+                            params=pipe_params, fit_params=pipe_fit_params)
                         for pipe_params in [best_params])[0]
             else:
                 best_index = search.best_index_

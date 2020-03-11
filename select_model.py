@@ -705,19 +705,21 @@ def run_model_selection():
                               end=' ')
                 print()
             if 'Weight' in final_feature_meta.columns:
-                tf_pipe_steps = pipe.steps[:-1]
+                tf_pipe_steps = search.best_estimator_.steps[:-1]
                 tf_pipe_steps.append(('slrc', ColumnSelector()))
-                if isinstance(pipe[-1], RFE):
-                    tf_pipe_steps.append((pipe.steps[-1][0],
-                                          pipe.steps[-1][1].estimator))
+                if isinstance(search.best_estimator_[-1], RFE):
+                    tf_pipe_steps.append((
+                        search.best_estimator_.steps[-1][0],
+                        search.best_estimator_.steps[-1][1].estimator))
                     best_params = {k.replace('__estimator__', '__', 1): v
                                    for k, v in search.best_params_.items()
                                    if '__estimator__' in k}
                 else:
-                    tf_pipe_steps.append(pipe.steps[-1])
+                    tf_pipe_steps.append(search.best_estimator_.steps[-1])
                     best_params = search.best_params_
-                tf_pipe_param_routing = (pipe.param_routing
-                                         if pipe.param_routing else {})
+                tf_pipe_param_routing = (
+                    search.best_estimator_.param_routing
+                    if search.best_estimator_.param_routing else {})
                 tf_pipe_param_routing['slrc'] = (
                     pipe_config['ColumnSelector']['param_routing'])
                 if 'feature_meta' not in pipe_fit_params:

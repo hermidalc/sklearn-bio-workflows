@@ -184,13 +184,16 @@ def setup_pipe_and_param_grid(cmd_pipe_steps):
         param_grid.append(params)
     pipe = ExtendedPipeline(pipe_steps, memory=memory,
                             param_routing=pipe_param_routing)
+    param_grid_estimators = {}
     for param, param_values in param_grid_dict.items():
         if any(isinstance(v, BaseEstimator) for v in param_values):
+            param_grid_estimators[param] = param_values
             param_grid_dict[param] = sorted(
                 ['.'.join([type(v).__module__, type(v).__qualname__])
                  if isinstance(v, BaseEstimator) else v for v in param_values],
                 key=lambda x: (x is None, x))
-    return pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict
+    return (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
+            param_grid_estimators)
 
 
 def load_dataset(dataset_file):
@@ -480,8 +483,8 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
 
 
 def run_model_selection():
-    pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict = (
-        setup_pipe_and_param_grid(args.pipe_steps))
+    (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
+     param_grid_estimators) = setup_pipe_and_param_grid(args.pipe_steps)
     (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
      col_trf_columns) = load_dataset(args.train_dataset)
     if (isinstance(pipe[0], ColumnTransformer)
@@ -493,7 +496,8 @@ def run_model_selection():
         col_trf_param_routing = None
         for trf_idx, trf_pipe_steps in enumerate(args.col_trf_pipe_steps):
             (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
-             trf_param_grid_dict) = setup_pipe_and_param_grid(trf_pipe_steps)
+             trf_param_grid_dict, trf_param_grid_estimators) = (
+                 setup_pipe_and_param_grid(trf_pipe_steps))
             col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
             uniq_trf_name = 'trf{:d}'.format(trf_idx)
             col_trf_transformers.append((uniq_trf_name, trf_pipe,
@@ -506,6 +510,9 @@ def run_model_selection():
                 for param, param_value in trf_param_grid_dict.items():
                     param_grid_dict['{}__{}__{}'.format(
                         col_trf_name, uniq_trf_name, param)] = param_value
+                for param, estimator in trf_param_grid_estimators.items():
+                    param_grid_estimators['{}__{}__{}'.format(
+                        col_trf_name, uniq_trf_name, param)] = estimator
             if trf_pipe.param_routing is not None:
                 if col_trf_param_routing is None:
                     col_trf_param_routing = {}

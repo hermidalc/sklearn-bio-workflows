@@ -264,7 +264,7 @@ def load_dataset(dataset_file):
             feature_meta, col_trf_columns)
 
 
-def fit_pipeline(X, y, steps, param_routing=None, params=None,
+def fit_pipeline(X, y, steps, params=None, param_routing=None,
                  fit_params=None):
     pipe = ExtendedPipeline(steps, memory=memory, param_routing=param_routing)
     if params is None:
@@ -741,9 +741,9 @@ def run_model_selection():
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
                             X, y, tf_pipe_steps,
-                            param_routing=tf_pipe_param_routing,
                             params={**best_params,
                                     'slrc__cols': feature_names},
+                            param_routing=tf_pipe_param_routing,
                             fit_params=pipe_fit_params)
                         for feature_names in tf_name_sets)
                 tf_test_scores = {}
@@ -829,8 +829,9 @@ def run_model_selection():
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
                             X.iloc[train_idxs], y[train_idxs], pipe.steps,
+                            params=pipe_params,
                             param_routing=pipe.param_routing,
-                            params=pipe_params, fit_params=pipe_fit_params)
+                            fit_params=pipe_fit_params)
                         for pipe_params in [best_params])[0]
             else:
                 best_index = search.best_index_
@@ -1548,12 +1549,13 @@ for cv_param, cv_param_values in cv_params.copy().items():
             cv_param_v_max - cv_param_v_min + 1, base=10)
     elif cv_param == 'sgd_clf_l1r_max':
         cv_param = '_'.join(cv_param.split('_')[:3])
-        cv_params[cv_param] = np.linspace(
-            cv_params['{}_min'.format(cv_param)],
-            cv_params['{}_max'.format(cv_param)],
-            int(np.round((cv_params['{}_max'.format(cv_param)]
-                          - cv_params['{}_min'.format(cv_param)])
-                         / cv_params['{}_step'.format(cv_param)])) + 1)
+        cv_params[cv_param] = np.round(
+            np.linspace(cv_params['{}_min'.format(cv_param)],
+                        cv_params['{}_max'.format(cv_param)],
+                        int(np.round((cv_params['{}_max'.format(cv_param)]
+                                      - cv_params['{}_min'.format(cv_param)])
+                                     / cv_params['{}_step'.format(cv_param)]))
+                        + 1), decimals=2)
     elif cv_param in ('sfm_slr_svc_cw', 'sfm_slr_rf_cw', 'sfm_slr_ext_cw',
                       'sfm_slr_rf_f', 'sfm_slr_ext_f', 'sfm_slr_grb_f',
                       'svc_clf_cw', 'dt_clf_f', 'dt_clf_cw', 'rf_clf_f',

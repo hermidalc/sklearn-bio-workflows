@@ -48,7 +48,8 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     auc, average_precision_score, balanced_accuracy_score,
     precision_recall_curve, roc_auc_score, roc_curve)
-from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import (GroupKFold, StratifiedKFold,
+                                     StratifiedShuffleSplit)
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -560,13 +561,20 @@ def run_model_selection():
     scv_refit = (args.scv_refit if args.test_dataset
                  or not pipe_props['uses_rjava'] else False)
     if groups is None:
-        cv_splitter = StratifiedShuffleSplit(
-            n_splits=args.scv_splits, test_size=args.scv_size,
-            random_state=args.random_seed)
-    else:
+        if args.scv_use_ssplit:
+            cv_splitter = StratifiedShuffleSplit(n_splits=args.scv_splits,
+                                                 test_size=args.scv_size,
+                                                 random_state=args.random_seed)
+        else:
+            cv_splitter = StratifiedKFold(n_splits=args.scv_splits,
+                                          random_state=args.random_seed,
+                                          shuffle=True)
+    elif args.scv_use_ssplit:
         cv_splitter = StratifiedGroupShuffleSplit(
             n_splits=args.scv_splits, test_size=args.scv_size,
             random_state=args.random_seed)
+    else:
+        cv_splitter = GroupKFold(n_splits=args.scv_splits)
     if args.scv_type == 'grid':
         search = ExtendedGridSearchCV(
             pipe, cv=cv_splitter, error_score=0, n_jobs=args.n_jobs,
@@ -793,13 +801,20 @@ def run_model_selection():
         split_results = []
         param_cv_scores = {}
         if groups is None:
-            test_splitter = StratifiedShuffleSplit(
-                n_splits=args.test_splits, test_size=args.test_size,
-                random_state=args.random_seed)
-        else:
+            if args.scv_use_ssplit:
+                test_splitter = StratifiedShuffleSplit(
+                    n_splits=args.test_splits, test_size=args.test_size,
+                    random_state=args.random_seed)
+            else:
+                test_splitter = StratifiedKFold(n_splits=args.test_splits,
+                                                random_state=args.random_seed,
+                                                shuffle=True)
+        elif args.scv_use_ssplit:
             test_splitter = StratifiedGroupShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
+        else:
+            test_splitter = GroupKFold(n_splits=args.test_splits)
         for split_idx, (train_idxs, test_idxs) in enumerate(
                 test_splitter.split(X, y, groups)):
             pipe_fit_params = {}
@@ -1330,6 +1345,8 @@ parser.add_argument('--scv-refit', type=str,
                     help='scv refit scoring metric')
 parser.add_argument('--scv-n-iter', type=int, default=100,
                     help='randomized scv num iterations')
+parser.add_argument('--scv-use-ssplit', default=False, action='store_true',
+                    help='scv use ShuffleSplit variants instead of KFold')
 parser.add_argument('--test-splits', type=int, default=10,
                     help='num outer splits')
 parser.add_argument('--test-size', type=float, default=0.2,

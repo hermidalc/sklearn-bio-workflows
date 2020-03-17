@@ -449,9 +449,13 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         param_parts[param_parts_start_idx] = pipe_step_type_regex.sub(
             r'\1', param_parts[param_parts_start_idx])
         param_type = '__'.join(param_parts[param_parts_start_idx:])
-        if param_type in params_num_xticks:
+        if param_type in params_lin_xticks:
             x_axis = param_grid_dict[param]
-            plt.xticks(x_axis)
+            if len(x_axis) <= 30:
+                plt.xticks(x_axis)
+        elif param_type in params_log_xticks:
+            x_axis = param_grid_dict[param]
+            plt.xscale('log')
         elif param_type in params_fixed_xticks:
             x_axis = range(len(param_grid_dict[param]))
             xtick_labels = [v.split('.')[-1]
@@ -668,7 +672,8 @@ def run_model_selection():
             ax_slr.set_ylabel('Test Score', fontsize=args.axis_font_size)
             x_axis = range(1, final_feature_meta.shape[0] + 1)
             ax_slr.set_xlim([min(x_axis), max(x_axis)])
-            ax_slr.set_xticks(x_axis)
+            if len(x_axis) <= 30:
+                ax_slr.set_xticks(x_axis)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
             fig_roc, ax_roc = plt.subplots(figsize=(args.fig_width,
@@ -1876,7 +1881,7 @@ pipe_config = {
             'class_weight': cv_params['sgd_clf_cw']},
         'param_routing': ['sample_weight']}}
 
-params_num_xticks = [
+params_lin_xticks = [
     'slr__k',
     'slr__max_features',
     'slr__score_func__n_neighbors',
@@ -1889,11 +1894,15 @@ params_num_xticks = [
     'clf__l1_ratio',
     'clf__n_neighbors',
     'clf__n_estimators']
+params_log_xticks = [
+    'slr__alpha',
+    'slr__estimator__C',
+    'clf__alpha',
+    'clf__C',
+    'clf__base_estimator__C']
 params_fixed_xticks = [
     'slr',
     'slr__cols',
-    'slr__alpha',
-    'slr__estimator__C',
     'slr__estimator__class_weight',
     'slr__estimator__max_depth',
     'slr__estimator__max_features',
@@ -1906,15 +1915,12 @@ params_fixed_xticks = [
     'trf__method',
     'trf__model_batch',
     'clf',
-    'clf__alpha',
-    'clf__C',
     'clf__class_weight',
     'clf__kernel',
     'clf__loss',
     'clf__gamma',
     'clf__weights',
     'clf__max_depth',
-    'clf__base_estimator__C',
     'clf__base_estimator__class_weight',
     'clf__max_features']
 metric_label = {

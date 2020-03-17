@@ -532,7 +532,6 @@ def run_model_selection():
             for trf_pipe_prop, trf_pipe_prop_value in trf_pipe_props.items():
                 if trf_pipe_prop_value:
                     pipe_props[trf_pipe_prop] = trf_pipe_prop_value
-        pipe_step_names[0] = ';'.join(col_trf_pipe_names)
         if col_trf_param_grids:
             final_estimator_param_grid = param_grid.copy()
             param_grid = []
@@ -549,8 +548,13 @@ def run_model_selection():
             pipe_param_routing[col_trf_name] = list(
                 {v for l in col_trf_param_routing.values() for v in l})
             pipe.set_params(param_routing=pipe_param_routing)
-    pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
-                                pipe_step_names[-1])
+        pipe_step_names[0] = ';'.join(col_trf_pipe_names)
+        pipe_name = '{}\n{}\n{}'.format(pipe_step_names[0],
+                                        '->'.join(pipe_step_names[1:-1]),
+                                        pipe_step_names[-1])
+    else:
+        pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
+                                    pipe_step_names[-1])
     search_param_routing = ({'cv': 'groups',
                              'estimator': ['sample_weight'],
                              'scoring': ['sample_weight']}

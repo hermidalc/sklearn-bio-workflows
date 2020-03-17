@@ -21,7 +21,7 @@ for (( i=1; i<=$#; i++ )); do
 done
 
 if [[ ! -v n_jobs ]]; then
-    n_jobs=64
+    n_jobs=55
     args+=("--n-jobs" "$n_jobs")
 fi
 # one more cpu for parent process
@@ -30,7 +30,7 @@ n_jobs=$(($n_jobs+1))
 sbatch \
 --chdir="$(realpath $SCRIPT_PATH/../)" \
 --cpus-per-task=$n_jobs \
---gres=lscratch:20 \
+--gres=lscratch:50 \
 --mem-per-cpu=1536m \
 --partition=ccr,norm \
 --time=48:00:00 \

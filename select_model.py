@@ -33,8 +33,7 @@ from joblib import Memory, Parallel, delayed, dump, parallel_backend
 from natsort import natsorted
 from rpy2.robjects import numpy2ri, pandas2ri
 from rpy2.robjects.packages import importr
-from sklearn.base import (BaseEstimator, ClassifierMixin, RegressorMixin,
-                          TransformerMixin)
+from sklearn.base import BaseEstimator, is_classifier, is_regressor
 from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import (
     LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis)
@@ -42,7 +41,6 @@ from sklearn.ensemble import (
     AdaBoostClassifier, ExtraTreesClassifier, GradientBoostingClassifier,
     RandomForestClassifier)
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.feature_selection.base import SelectorMixin
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
@@ -112,14 +110,14 @@ def setup_pipe_and_param_grid(cmd_pipe_steps):
                     run_cleanup()
                     raise RuntimeError('No pipeline config exists for {}'
                                        .format(step_key))
-                if isinstance(estimator, SelectorMixin):
+                if hasattr(estimator, 'get_support'):
                     step_type = 'slr'
                     pipe_props['has_selector'] = True
-                elif isinstance(estimator, TransformerMixin):
+                elif hasattr(estimator, 'fit_transform'):
                     step_type = 'trf'
-                elif isinstance(estimator, ClassifierMixin):
+                elif is_classifier(estimator):
                     step_type = 'clf'
-                elif isinstance(estimator, RegressorMixin):
+                elif is_regressor(estimator):
                     step_type = 'rgr'
                 else:
                     run_cleanup()

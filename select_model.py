@@ -5,6 +5,7 @@ import re
 import sys
 import warnings
 from argparse import ArgumentParser, ArgumentTypeError
+from glob import glob
 from itertools import product
 from pprint import pprint
 from shutil import rmtree
@@ -1101,7 +1102,11 @@ def run_model_selection():
 def run_cleanup():
     if args.pipe_memory:
         rmtree(cachedir)
-    rmtree(r_base.tempdir()[0])
+    if args.parallel_backend == 'loky':
+        for rtmp_dir in glob('{}/Rtmp*/'.format(args.tmp_dir)):
+            rmtree(rtmp_dir)
+    else:
+        rmtree(r_base.tempdir()[0])
 
 
 def int_list(arg):

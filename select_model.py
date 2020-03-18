@@ -1558,12 +1558,12 @@ for cv_param, cv_param_values in cv_params.copy().items():
         cv_param = '_'.join(cv_param.split('_')[:3])
         if (cv_params['{}_min'.format(cv_param)] == 1
                 and cv_params['{}_step'.format(cv_param)] > 1):
-            cv_params[cv_param] = [1] + list(range(
+            cv_params[cv_param] = np.array([1] + list(range(
                 0, cv_params['{}_max'.format(cv_param)]
                 + cv_params['{}_step'.format(cv_param)],
-                cv_params['{}_step'.format(cv_param)]))[1:]
+                cv_params['{}_step'.format(cv_param)]))[1:])
         else:
-            cv_params[cv_param] = list(range(
+            cv_params[cv_param] = np.array(range(
                 cv_params['{}_min'.format(cv_param)],
                 cv_params['{}_max'.format(cv_param)]
                 + cv_params['{}_step'.format(cv_param)],

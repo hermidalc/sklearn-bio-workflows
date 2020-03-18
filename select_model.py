@@ -47,8 +47,7 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     auc, average_precision_score, balanced_accuracy_score,
     precision_recall_curve, roc_auc_score, roc_curve)
-from sklearn.model_selection import (GroupKFold, StratifiedKFold,
-                                     StratifiedShuffleSplit)
+from sklearn.model_selection import StratifiedKFold StratifiedShuffleSplit
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -73,7 +72,7 @@ from sklearn_extensions.feature_selection import (
     LimmaVoom, MutualInfoScorerClassification, ReliefF, RFE, SelectFromModel,
     SelectKBest, VarianceThreshold)
 from sklearn_extensions.model_selection import (
-    ExtendedGridSearchCV, ExtendedRandomizedSearchCV,
+    ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedGroupShuffleSplit)
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
@@ -581,7 +580,9 @@ def run_model_selection():
             n_splits=args.scv_splits, test_size=args.scv_size,
             random_state=args.random_seed)
     else:
-        cv_splitter = GroupKFold(n_splits=args.scv_splits)
+        cv_splitter = StratifiedGroupKFold(n_splits=args.scv_splits,
+                                           random_state=args.random_seed,
+                                           shuffle=True)
     if args.scv_type == 'grid':
         search = ExtendedGridSearchCV(
             pipe, cv=cv_splitter, error_score=0, n_jobs=args.n_jobs,
@@ -822,7 +823,9 @@ def run_model_selection():
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
         else:
-            test_splitter = GroupKFold(n_splits=args.test_splits)
+            test_splitter = StratifiedGroupKFold(n_splits=args.scv_splits,
+                                                 random_state=args.random_seed,
+                                                 shuffle=True)
         for split_idx, (train_idxs, test_idxs) in enumerate(
                 test_splitter.split(X, y, groups)):
             pipe_fit_params = {}

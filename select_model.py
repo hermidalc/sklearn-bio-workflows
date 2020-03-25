@@ -47,7 +47,7 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     auc, average_precision_score, balanced_accuracy_score,
     precision_recall_curve, roc_auc_score, roc_curve)
-from sklearn.model_selection import StratifiedKFold StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier

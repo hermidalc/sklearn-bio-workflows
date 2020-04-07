@@ -76,7 +76,7 @@ while [[ -v CONDA_DEFAULT_ENV ]]; do
 done
 
 sbatch \
---chdir=\"$(realpath $SCRIPT_PATH/../)\" \
+--chdir="$(realpath $SCRIPT_PATH/../)" \
 --cpus-per-task=$N_JOBS \
 $SBATCH_OPTS \
 $SCRIPT_PATH/run_select_model.sh "${SELECT_MODEL_OPTS[@]}"

@@ -110,15 +110,19 @@ def setup_pipe_and_param_grid(cmd_pipe_steps):
                     run_cleanup()
                     raise RuntimeError('No pipeline config exists for {}'
                                        .format(step_key))
-                if hasattr(estimator, 'get_support'):
+                if is_classifier(estimator):
+                    step_type = 'clf'
+                    if hasattr(estimator, 'get_support'):
+                        pipe_props['has_selector'] = True
+                elif is_regressor(estimator):
+                    step_type = 'rgr'
+                    if hasattr(estimator, 'get_support'):
+                        pipe_props['has_selector'] = True
+                elif hasattr(estimator, 'get_support'):
                     step_type = 'slr'
                     pipe_props['has_selector'] = True
                 elif hasattr(estimator, 'fit_transform'):
                     step_type = 'trf'
-                elif is_classifier(estimator):
-                    step_type = 'clf'
-                elif is_regressor(estimator):
-                    step_type = 'rgr'
                 else:
                     run_cleanup()
                     raise RuntimeError('Unsupported estimator type {}'
@@ -227,20 +231,22 @@ def load_dataset(dataset_file):
     except ValueError:
         feature_meta = pd.DataFrame(index=r_biobase.featureNames(eset))
     if args.sample_meta_cols:
+        new_feature_names = []
         for sample_meta_col in args.sample_meta_cols:
             if sample_meta_col in sample_meta.columns:
                 if sample_meta_col not in X.columns:
                     X[sample_meta_col] = sample_meta[sample_meta_col]
-                    feature_meta = feature_meta.append(
-                        pd.Series(name=sample_meta_col, dtype=str),
-                        verify_integrity=True)
-                    feature_meta.loc[sample_meta_col].fillna('', inplace=True)
+                    new_feature_names.append(sample_meta_col)
                 else:
                     raise RuntimeError('{} column already exists in X'
                                        .format(sample_meta_col))
             else:
                 raise RuntimeError('{} column does not exist in sample_meta'
                                    .format(sample_meta_col))
+        new_feature_meta = pd.DataFrame('', index=new_feature_names,
+                                        columns=feature_meta.columns)
+        feature_meta = feature_meta.append(new_feature_meta,
+                                           verify_integrity=True)
     col_trf_columns = []
     if args.col_trf_patterns:
         for pattern in args.col_trf_patterns:
@@ -305,7 +311,7 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
     return scores
 
 
-def get_final_feature_meta(pipe, feature_meta):
+def transform_feature_meta(pipe, feature_meta):
     final_feature_meta = None
     for estimator in pipe:
         if isinstance(estimator, ColumnTransformer):
@@ -491,10 +497,10 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
 
 
 def run_model_selection():
-    (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
-     param_grid_estimators) = setup_pipe_and_param_grid(args.pipe_steps)
     (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
      col_trf_columns) = load_dataset(args.train_dataset)
+    (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
+     param_grid_estimators) = setup_pipe_and_param_grid(args.pipe_steps)
     if (isinstance(pipe[0], ColumnTransformer)
             and args.col_trf_pipe_steps is not None):
         col_trf_name, col_trf_estimator = pipe.steps[0]
@@ -537,9 +543,8 @@ def run_model_selection():
                                             *col_trf_param_grids):
                 param_grid.append({k: v for params in param_grid_combo
                                    for k, v in params.items()})
-        col_trf_estimator.set_params(
-            param_routing=col_trf_param_routing,
-            transformers=col_trf_transformers)
+        col_trf_estimator.set_params(param_routing=col_trf_param_routing,
+                                     transformers=col_trf_transformers)
         if col_trf_param_routing is not None:
             pipe_param_routing = (pipe.param_routing if pipe.param_routing
                                   else {})
@@ -638,7 +643,7 @@ def run_model_selection():
                               inner_max_num_threads=inner_max_num_threads):
             search.fit(X, y, **search_fit_params)
         param_cv_scores = add_param_cv_scores(search, param_grid_dict)
-        final_feature_meta = get_final_feature_meta(search.best_estimator_,
+        final_feature_meta = transform_feature_meta(search.best_estimator_,
                                                     feature_meta)
         if args.verbose > 0:
             print('Train:', dataset_name, end=' ')
@@ -733,12 +738,8 @@ def run_model_selection():
                     tf_pipe_steps.append((
                         search.best_estimator_.steps[-1][0],
                         search.best_estimator_.steps[-1][1].estimator))
-                    best_params = {k.replace('__estimator__', '__', 1): v
-                                   for k, v in search.best_params_.items()
-                                   if '__estimator__' in k}
                 else:
                     tf_pipe_steps.append(search.best_estimator_.steps[-1])
-                    best_params = search.best_params_
                 tf_pipe_param_routing = (
                     search.best_estimator_.param_routing
                     if search.best_estimator_.param_routing else {})
@@ -758,8 +759,7 @@ def run_model_selection():
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
                             X, y, tf_pipe_steps,
-                            params={**best_params,
-                                    'slrc__cols': feature_names},
+                            params={'slrc__cols': feature_names},
                             param_routing=tf_pipe_param_routing,
                             fit_params=pipe_fit_params)
                         for feature_names in tf_name_sets)
@@ -865,7 +865,7 @@ def run_model_selection():
                 best_estimator = search.best_estimator_
             param_cv_scores = add_param_cv_scores(search, param_grid_dict,
                                                   param_cv_scores)
-            final_feature_meta = get_final_feature_meta(best_estimator,
+            final_feature_meta = transform_feature_meta(best_estimator,
                                                         feature_meta)
             split_scores = {'cv': {}}
             for metric in args.scv_scoring:
@@ -1164,13 +1164,13 @@ parser.add_argument('--vrt-slr-thres', type=float, nargs='+',
 parser.add_argument('--mui-slr-n', type=int, nargs='+',
                     help='MutualInfoScorer n neighbors')
 parser.add_argument('--skb-slr-k', type=int, nargs='+',
-                    help='SelectKBest k')
+                    help='Selector k')
 parser.add_argument('--skb-slr-k-min', type=int, default=1,
-                    help='SelectKBest k min')
+                    help='Selector k min')
 parser.add_argument('--skb-slr-k-max', type=int,
-                    help='SelectKBest k max')
+                    help='Selector k max')
 parser.add_argument('--skb-slr-k-step', type=int, default=1,
-                    help='SelectKBest k step')
+                    help='Selector k step')
 parser.add_argument('--de-slr-pv', type=float, nargs='+',
                     help='diff expr slr adj p-value')
 parser.add_argument('--de-slr-fc', type=float, nargs='+',
@@ -1213,14 +1213,6 @@ parser.add_argument('--sfm-slr-grb-d', type=int, nargs='+',
                     help='SelectFromModel grb max depth')
 parser.add_argument('--sfm-slr-grb-f', type=str, nargs='+',
                     help='SelectFromModel grb max features')
-parser.add_argument('--rfe-slr-step', type=float, nargs='+',
-                    help='RFE step')
-parser.add_argument('--rfe-slr-tune-step-at', type=int,
-                    help='RFE tune step at')
-parser.add_argument('--rfe-slr-reducing-step', default=False,
-                    action='store_true', help='RFE reducing step')
-parser.add_argument('--rfe-slr-verbose', type=int, default=0,
-                    help='RFE verbosity')
 parser.add_argument('--rlf-slr-n', type=int, nargs='+',
                     help='ReliefF n neighbors')
 parser.add_argument('--rlf-slr-s', type=int, nargs='+',
@@ -1232,6 +1224,14 @@ parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
                     help='PowerTransformer meth')
 parser.add_argument('--de-trf-mb', type=str_bool, nargs='+',
                     help='diff expr trf model batch')
+parser.add_argument('--rfe-clf-step', type=float, nargs='+',
+                    help='RFE step')
+parser.add_argument('--rfe-clf-tune-step-at', type=int,
+                    help='RFE tune step at')
+parser.add_argument('--rfe-clf-reducing-step', default=False,
+                    action='store_true', help='RFE reducing step')
+parser.add_argument('--rfe-clf-verbose', type=int, default=0,
+                    help='RFE verbosity')
 parser.add_argument('--svc-clf-ce', type=int, nargs='+',
                     help='SVC/LinearSVC C exp')
 parser.add_argument('--svc-clf-ce-min', type=int,
@@ -1423,8 +1423,8 @@ if args.scv_verbose is None:
 if args.parallel_backend != 'multiprocessing':
     python_warnings = ([os.environ['PYTHONWARNINGS']]
                        if 'PYTHONWARNINGS' in os.environ else [])
-    python_warnings.append(':'.join([
-        'ignore', '', 'FutureWarning', 'rpy2.robjects.pandas2ri']))
+    python_warnings.append(':'.join(
+        ['ignore', '', 'FutureWarning', 'rpy2.robjects.pandas2ri']))
     os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 if args.filter_warnings:
     if args.parallel_backend == 'multiprocessing':
@@ -1455,20 +1455,20 @@ if args.filter_warnings:
         python_warnings = ([os.environ['PYTHONWARNINGS']]
                            if 'PYTHONWARNINGS' in os.environ else [])
         if 'convergence' in args.filter_warnings:
-            python_warnings.append(':'.join([
-                'ignore', 'Liblinear failed to converge', 'UserWarning',
-                'sklearn.svm._base']))
-            python_warnings.append(':'.join([
-                'ignore',
-                'Maximum number of iteration reached before convergence',
-                'UserWarning', 'sklearn.linear_model._stochastic_gradient']))
+            python_warnings.append(':'.join(
+                ['ignore', 'Liblinear failed to converge', 'UserWarning',
+                 'sklearn.svm._base']))
+            python_warnings.append(':'.join(
+                ['ignore',
+                 'Maximum number of iteration reached before convergence',
+                 'UserWarning', 'sklearn.linear_model._stochastic_gradient']))
         if 'joblib' in args.filter_warnings:
-            python_warnings.append(':'.join([
-                'ignore', 'Persisting input arguments took', 'UserWarning']))
+            python_warnings.append(':'.join(
+                ['ignore', 'Persisting input arguments took', 'UserWarning']))
         if 'qda' in args.filter_warnings:
-            python_warnings.append(':'.join([
-                'ignore', 'Variables are collinear',
-                'UserWarning', 'sklearn.discriminant_analysis']))
+            python_warnings.append(':'.join(
+                ['ignore', 'Variables are collinear',
+                 'UserWarning', 'sklearn.discriminant_analysis']))
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 
 inner_max_num_threads = 1 if args.parallel_backend in ('loky') else None
@@ -1547,8 +1547,8 @@ for cv_param, cv_param_values in cv_params.copy().items():
                     'de_slr_pv', 'de_slr_fc', 'de_slr_mb', 'sfm_slr_thres',
                     'sfm_slr_rf_thres', 'sfm_slr_rf_e', 'sfm_slr_ext_thres',
                     'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_d',
-                    'rfe_slr_step', 'rlf_slr_n', 'rlf_slr_s', 'pwr_trf_meth',
-                    'de_trf_mb', 'svc_clf_kern', 'svc_clf_deg', 'svc_clf_g',
+                    'rlf_slr_n', 'rlf_slr_s', 'pwr_trf_meth', 'de_trf_mb',
+                    'rfe_clf_step', 'svc_clf_kern', 'svc_clf_deg', 'svc_clf_g',
                     'knn_clf_k', 'knn_clf_w', 'rf_clf_e', 'ext_clf_e',
                     'ada_clf_e', 'grb_clf_e', 'grb_clf_d', 'mlp_clf_hls',
                     'mlp_clf_act', 'mlp_clf_slvr', 'mlp_clf_a', 'mlp_clf_lr',
@@ -1663,51 +1663,6 @@ pipe_config = {
             'max_features': cv_params['skb_slr_k'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
-    'RFE-LinearSVC': {
-        'estimator': RFE(lsvc_clf, tune_step_at=args.rfe_slr_tune_step_at,
-                         reducing_step=args.rfe_slr_reducing_step,
-                         verbose=args.rfe_slr_verbose),
-        'param_grid': {
-            'estimator__C': cv_params['svc_clf_c'],
-            'estimator__class_weight': cv_params['svc_clf_cw'],
-            'step': cv_params['rfe_slr_step'],
-            'n_features_to_select': cv_params['skb_slr_k']},
-        'param_routing': ['sample_weight']},
-    'RFE-RandomForestClassifier': {
-        'estimator': RFE(rf_clf, tune_step_at=args.rfe_slr_tune_step_at,
-                         reducing_step=args.rfe_slr_reducing_step,
-                         verbose=args.rfe_slr_verbose),
-        'param_grid': {
-            'estimator__n_estimators': cv_params['rf_clf_e'],
-            'estimator__max_depth': cv_params['rf_clf_d'],
-            'estimator__max_features': cv_params['rf_clf_f'],
-            'estimator__class_weight': cv_params['rf_clf_cw'],
-            'step': cv_params['rfe_slr_step'],
-            'n_features_to_select': cv_params['skb_slr_k']},
-        'param_routing': ['sample_weight']},
-    'RFE-ExtraTreesClassifier': {
-        'estimator': RFE(ext_clf, tune_step_at=args.rfe_slr_tune_step_at,
-                         reducing_step=args.rfe_slr_reducing_step,
-                         verbose=args.rfe_slr_verbose),
-        'param_grid': {
-            'estimator__n_estimators': cv_params['ext_clf_e'],
-            'estimator__max_depth': cv_params['ext_clf_d'],
-            'estimator__max_features': cv_params['ext_clf_f'],
-            'estimator__class_weight': cv_params['ext_clf_cw'],
-            'step': cv_params['rfe_slr_step'],
-            'n_features_to_select': cv_params['skb_slr_k']},
-        'param_routing': ['sample_weight']},
-    'RFE-GradientBoostingClassifier': {
-        'estimator': RFE(grb_clf, tune_step_at=args.rfe_slr_tune_step_at,
-                         reducing_step=args.rfe_slr_reducing_step,
-                         verbose=args.rfe_slr_verbose),
-        'param_grid': {
-            'estimator__n_estimators': cv_params['grb_clf_e'],
-            'estimator__max_depth': cv_params['grb_clf_d'],
-            'estimator__max_features': cv_params['grb_clf_f'],
-            'step': cv_params['rfe_slr_step'],
-            'n_features_to_select': cv_params['skb_slr_k']},
-        'param_routing': ['sample_weight']},
     'DESeq2': {
         'estimator': DESeq2(memory=memory),
         'param_grid': {
@@ -1800,6 +1755,51 @@ pipe_config = {
         'estimator': LimmaBatchEffectRemover(preserve_design=True),
         'param_routing': ['sample_meta']},
     # classifiers
+    'RFE-LinearSVC': {
+        'estimator': RFE(lsvc_clf, tune_step_at=args.rfe_clf_tune_step_at,
+                         reducing_step=args.rfe_clf_reducing_step,
+                         verbose=args.rfe_clf_verbose),
+        'param_grid': {
+            'estimator__C': cv_params['svc_clf_c'],
+            'estimator__class_weight': cv_params['svc_clf_cw'],
+            'step': cv_params['rfe_clf_step'],
+            'n_features_to_select': cv_params['skb_slr_k']},
+        'param_routing': ['sample_weight']},
+    'RFE-RandomForestClassifier': {
+        'estimator': RFE(rf_clf, tune_step_at=args.rfe_clf_tune_step_at,
+                         reducing_step=args.rfe_clf_reducing_step,
+                         verbose=args.rfe_clf_verbose),
+        'param_grid': {
+            'estimator__n_estimators': cv_params['rf_clf_e'],
+            'estimator__max_depth': cv_params['rf_clf_d'],
+            'estimator__max_features': cv_params['rf_clf_f'],
+            'estimator__class_weight': cv_params['rf_clf_cw'],
+            'step': cv_params['rfe_clf_step'],
+            'n_features_to_select': cv_params['skb_slr_k']},
+        'param_routing': ['sample_weight']},
+    'RFE-ExtraTreesClassifier': {
+        'estimator': RFE(ext_clf, tune_step_at=args.rfe_clf_tune_step_at,
+                         reducing_step=args.rfe_clf_reducing_step,
+                         verbose=args.rfe_clf_verbose),
+        'param_grid': {
+            'estimator__n_estimators': cv_params['ext_clf_e'],
+            'estimator__max_depth': cv_params['ext_clf_d'],
+            'estimator__max_features': cv_params['ext_clf_f'],
+            'estimator__class_weight': cv_params['ext_clf_cw'],
+            'step': cv_params['rfe_clf_step'],
+            'n_features_to_select': cv_params['skb_slr_k']},
+        'param_routing': ['sample_weight']},
+    'RFE-GradientBoostingClassifier': {
+        'estimator': RFE(grb_clf, tune_step_at=args.rfe_clf_tune_step_at,
+                         reducing_step=args.rfe_clf_reducing_step,
+                         verbose=args.rfe_clf_verbose),
+        'param_grid': {
+            'estimator__n_estimators': cv_params['grb_clf_e'],
+            'estimator__max_depth': cv_params['grb_clf_d'],
+            'estimator__max_features': cv_params['grb_clf_f'],
+            'step': cv_params['rfe_clf_step'],
+            'n_features_to_select': cv_params['skb_slr_k']},
+        'param_routing': ['sample_weight']},
     'LinearSVC': {
         'estimator': LinearSVC(max_iter=args.lsvc_clf_max_iter,
                                random_state=args.random_seed,
@@ -1896,19 +1896,20 @@ params_lin_xticks = [
     'slr__max_features',
     'slr__score_func__n_neighbors',
     'slr__estimator__n_estimators',
-    'slr__step',
-    'slr__n_features_to_select',
     'slr__n_neighbors',
     'slr__sample_size',
+    'clf__n_features_to_select',
+    'clf__step',
+    'clf__estimator__n_estimators',
     'clf__degree',
     'clf__l1_ratio',
     'clf__n_neighbors',
     'clf__n_estimators']
 params_log_xticks = [
-    'slr__alpha',
     'slr__estimator__C',
     'clf__alpha',
     'clf__C',
+    'clf__estimator__C',
     'clf__base_estimator__C']
 params_fixed_xticks = [
     'slr',
@@ -1931,6 +1932,9 @@ params_fixed_xticks = [
     'clf__gamma',
     'clf__weights',
     'clf__max_depth',
+    'clf__estimator__class_weight',
+    'clf__estimator__max_depth',
+    'clf__estimator__max_features',
     'clf__base_estimator__class_weight',
     'clf__max_features']
 metric_label = {

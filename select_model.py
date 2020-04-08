@@ -1424,6 +1424,8 @@ if args.parallel_backend != 'multiprocessing':
     python_warnings = ([os.environ['PYTHONWARNINGS']]
                        if 'PYTHONWARNINGS' in os.environ else [])
     python_warnings.append(':'.join(
+        ['ignore', '', 'FutureWarning', 'sklearn.utils.deprecation']))
+    python_warnings.append(':'.join(
         ['ignore', '', 'FutureWarning', 'rpy2.robjects.pandas2ri']))
     os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 if args.filter_warnings:

@@ -12,7 +12,6 @@ export MPLBACKEND=agg
 export TMPDIR=/lscratch/$SLURM_JOB_ID
 export JOBLIB_TEMP_FOLDER=$TMPDIR
 export PYTHONUNBUFFERED=1
-export PYTHONWARNINGS='ignore:Persisting input arguments took:UserWarning'
 
 CONDA_BASE=$(conda info --base)
 source $CONDA_BASE/etc/profile.d/conda.sh

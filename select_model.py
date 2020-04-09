@@ -785,11 +785,11 @@ def run_model_selection():
             if 'roc_auc' in args.scv_scoring:
                 ax_roc.plot(test_scores['fpr'], test_scores['tpr'], alpha=0.8,
                             color=test_metric_colors[
-                                test_idx * len(args.scv_scoring)], lw=3,
+                                test_idx * len(args.scv_scoring)], lw=2,
                             label='{} ROC (AUC = {:.4f})'.format(
                                 test_dataset_name, test_scores['roc_auc']))
                 ax_roc.plot([0, 1], [0, 1], alpha=0.2, color='grey',
-                            linestyle='--', lw=3, label=(
+                            linestyle='--', lw=2, label=(
                                 'Chance' if test_idx == len(test_datasets) - 1
                                 else None))
                 ax_roc.legend(loc='lower right', fontsize='medium')
@@ -798,7 +798,7 @@ def run_model_selection():
             if 'average_precision' in args.scv_scoring:
                 ax_pre.step(test_scores['rec'], test_scores['pre'], alpha=0.8,
                             color=test_metric_colors[
-                                test_idx * len(args.scv_scoring)], lw=3,
+                                test_idx * len(args.scv_scoring)], lw=2,
                             label='{} PR (AUC = {:.4f})'.format(
                                 test_dataset_name, test_scores['pr_auc']),
                             where='post')
@@ -1044,7 +1044,7 @@ def run_model_selection():
             std_roc_auc = np.std(scores['te']['roc_auc'])
             mean_num_features = np.mean(num_features)
             std_num_features = np.std(num_features)
-            plt.plot(mean_fpr, mean_tpr, lw=3, alpha=0.8, label=(
+            plt.plot(mean_fpr, mean_tpr, lw=2, alpha=0.8, label=(
                 r'Test Mean ROC (AUC = {:.4f} $\pm$ {:.2f}, '
                 r'Features = {:.0f} $\pm$ {:.0f})').format(
                     mean_roc_auc, std_roc_auc, mean_num_features,
@@ -1052,10 +1052,10 @@ def run_model_selection():
             std_tpr = np.std(tprs, axis=0)
             tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
             tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-            plt.fill_between(mean_fpr, tprs_lower, tprs_upper, alpha=0.2,
+            plt.fill_between(mean_fpr, tprs_lower, tprs_upper, alpha=0.1,
                              color='grey', label=r'$\pm$ 1 std. dev.')
             plt.plot([0, 1], [0, 1], alpha=0.2, color='grey',
-                     linestyle='--', lw=3, label='Chance')
+                     linestyle='--', lw=2, label='Chance')
             plt.legend(loc='lower right', fontsize='medium')
             plt.tick_params(labelsize=args.axis_font_size)
             plt.grid(False)
@@ -1087,7 +1087,7 @@ def run_model_selection():
             std_pr_auc = np.std(scores['te']['pr_auc'])
             mean_num_features = np.mean(num_features)
             std_num_features = np.std(num_features)
-            plt.step(mean_rec, mean_pre, alpha=0.8, lw=3, where='post',
+            plt.step(mean_rec, mean_pre, alpha=0.8, lw=2, where='post',
                      label=(r'Test Mean PR (AUC = {:.4f} $\pm$ {:.2f}, '
                             r'Features = {:.0f} $\pm$ {:.0f})').format(
                                 mean_pr_auc, std_pr_auc, mean_num_features,
@@ -1095,7 +1095,7 @@ def run_model_selection():
             std_pre = np.std(pres, axis=0)
             pres_upper = np.minimum(mean_pre + std_pre, 1)
             pres_lower = np.maximum(mean_pre - std_pre, 0)
-            plt.fill_between(mean_rec, pres_lower, pres_upper, alpha=0.2,
+            plt.fill_between(mean_rec, pres_lower, pres_upper, alpha=0.1,
                              color='grey', label=r'$\pm$ 1 std. dev.')
             plt.legend(loc='lower right', fontsize='medium')
             plt.tick_params(labelsize=args.axis_font_size)

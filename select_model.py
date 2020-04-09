@@ -104,12 +104,11 @@ def setup_pipe_and_param_grid(cmd_pipe_steps):
         params = {}
         for step_idx, step_key in enumerate(pipe_step_combo):
             if step_key:
-                if step_key in pipe_config:
-                    estimator = pipe_config[step_key]['estimator']
-                else:
+                if step_key not in pipe_config:
                     run_cleanup()
                     raise RuntimeError('No pipeline config exists for {}'
                                        .format(step_key))
+                estimator = pipe_config[step_key]['estimator']
                 if is_classifier(estimator):
                     step_type = 'clf'
                     if hasattr(estimator, 'get_support'):
@@ -202,17 +201,15 @@ def setup_pipe_and_param_grid(cmd_pipe_steps):
 def load_dataset(dataset_file):
     dataset_name, file_extension = os.path.splitext(
         os.path.split(dataset_file)[1])
-    if os.path.isfile(dataset_file) and file_extension in (
+    if not os.path.isfile(dataset_file) or file_extension not in (
             '.Rda', '.rda', '.RData', '.Rdata', '.Rds', '.rds'):
-        if file_extension in ('.Rda', '.rda', '.RData', '.Rdata'):
-            r_base.load(dataset_file)
-            eset = robjects.globalenv[dataset_name]
-        else:
-            eset = r_base.readRDS(dataset_file)
-    else:
         run_cleanup()
-        raise IOError('File does not exist/invalid: {}'
-                      .format(dataset_file))
+        raise IOError('File does not exist/invalid: {}'.format(dataset_file))
+    if file_extension in ('.Rda', '.rda', '.RData', '.Rdata'):
+        r_base.load(dataset_file)
+        eset = robjects.globalenv[dataset_name]
+    else:
+        eset = r_base.readRDS(dataset_file)
     X = pd.DataFrame(r_base.t(r_biobase.exprs(eset)),
                      columns=r_biobase.featureNames(eset),
                      index=r_biobase.sampleNames(eset))
@@ -233,16 +230,16 @@ def load_dataset(dataset_file):
     if args.sample_meta_cols:
         new_feature_names = []
         for sample_meta_col in args.sample_meta_cols:
-            if sample_meta_col in sample_meta.columns:
-                if sample_meta_col not in X.columns:
-                    X[sample_meta_col] = sample_meta[sample_meta_col]
-                    new_feature_names.append(sample_meta_col)
-                else:
-                    raise RuntimeError('{} column already exists in X'
-                                       .format(sample_meta_col))
-            else:
+            if sample_meta_col not in sample_meta.columns:
+                run_cleanup()
                 raise RuntimeError('{} column does not exist in sample_meta'
                                    .format(sample_meta_col))
+            if sample_meta_col in X.columns:
+                run_cleanup()
+                raise RuntimeError('{} column already exists in X'
+                                   .format(sample_meta_col))
+            X[sample_meta_col] = sample_meta[sample_meta_col]
+            new_feature_names.append(sample_meta_col)
         new_feature_meta = pd.DataFrame('', index=new_feature_names,
                                         columns=feature_meta.columns)
         feature_meta = feature_meta.append(new_feature_meta,
@@ -469,6 +466,7 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                             for v in param_grid_dict[param]]
             plt.xticks(x_axis, xtick_labels)
         else:
+            run_cleanup()
             raise RuntimeError('No ticks config exists for {}'
                                .format(param_type))
         plt.xlim([min(x_axis), max(x_axis)])
@@ -667,6 +665,29 @@ def run_model_selection():
                                                    dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
+        test_datasets = natsorted(
+            list(set(args.test_dataset) - set(args.train_dataset)))
+        for test_dataset in test_datasets:
+            (test_dataset_name, X_test, y_test, _, test_sample_meta,
+             test_sample_weights, test_feature_meta,
+             test_col_trf_columns) = load_dataset(test_dataset)
+            pipe_predict_params = {}
+            if 'sample_meta' in pipe_fit_params:
+                pipe_predict_params['sample_meta'] = test_sample_meta
+            if 'feature_meta' in pipe_fit_params:
+                pipe_predict_params['feature_meta'] = test_feature_meta
+            test_scores = calculate_test_scores(
+                search, X_test, y_test, pipe_predict_params,
+                test_sample_weights=test_sample_weights)
+            if args.verbose > 0:
+                print('Test:', test_dataset_name, end=' ')
+                for metric in args.scv_scoring:
+                    print(' {}: {:.4f}'.format(
+                        metric_label[metric], test_scores[metric]), end=' ')
+                    if metric == 'average_precision':
+                        print(' PR AUC: {:.4f}'.format(test_scores['pr_auc']),
+                              end=' ')
+                print()
         # plot top-ranked selected features vs test performance metrics
         if 'Weight' in final_feature_meta.columns:
             fig_slr, ax_slr = plt.subplots(figsize=(args.fig_width,
@@ -683,6 +704,34 @@ def run_model_selection():
             ax_slr.set_xlim([min(x_axis), max(x_axis)])
             if len(x_axis) <= 30:
                 ax_slr.set_xticks(x_axis)
+            best_pipe = search.best_estimator_
+            tf_pipe_steps = best_pipe.steps[:-1]
+            tf_pipe_steps.append(('slrc', ColumnSelector()))
+            if isinstance(best_pipe[-1], RFE):
+                tf_pipe_steps.append((best_pipe.steps[-1][0],
+                                      best_pipe.steps[-1][1].estimator))
+            else:
+                tf_pipe_steps.append(best_pipe.steps[-1])
+            tf_pipe_param_routing = (best_pipe.param_routing
+                                     if best_pipe.param_routing else {})
+            tf_pipe_param_routing['slrc'] = (
+                pipe_config['ColumnSelector']['param_routing'])
+            tf_pipe_fit_params = pipe_fit_params.copy()
+            if 'feature_meta' not in pipe_fit_params:
+                tf_pipe_fit_params['feature_meta'] = feature_meta
+            tf_name_sets = []
+            for feature_name in final_feature_meta.iloc[
+                    (-final_feature_meta['Weight'].abs()).argsort()].index:
+                tf_name_sets.append(tf_name_sets[-1] + [feature_name]
+                                    if tf_name_sets else [feature_name])
+            tf_pipes = Parallel(
+                n_jobs=args.n_jobs, backend=args.parallel_backend,
+                verbose=args.scv_verbose)(
+                    delayed(fit_pipeline)(X, y, tf_pipe_steps,
+                                          params={'slrc__cols': feature_names},
+                                          param_routing=tf_pipe_param_routing,
+                                          fit_params=tf_pipe_fit_params)
+                    for feature_names in tf_name_sets)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
             fig_roc, ax_roc = plt.subplots(figsize=(args.fig_width,
@@ -706,63 +755,18 @@ def run_model_selection():
             ax_pre.set_ylabel('Precision', fontsize=args.axis_font_size)
             ax_pre.set_xlim([-0.01, 1.01])
             ax_pre.set_ylim([-0.01, 1.01])
-        test_datasets = natsorted(list(
-            set(args.test_dataset) - set(args.train_dataset)))
         test_metric_colors = sns.color_palette(
             'hls', len(test_datasets) * len(args.scv_scoring))
         for test_idx, test_dataset in enumerate(test_datasets):
             (test_dataset_name, X_test, y_test, _, test_sample_meta,
-             test_sample_weights, test_feature_meta, test_col_trf_columns) = (
-                 load_dataset(test_dataset))
+             test_sample_weights, test_feature_meta,
+             test_col_trf_columns) = load_dataset(test_dataset)
             pipe_predict_params = {}
             if 'sample_meta' in pipe_fit_params:
                 pipe_predict_params['sample_meta'] = test_sample_meta
             if 'feature_meta' in pipe_fit_params:
                 pipe_predict_params['feature_meta'] = test_feature_meta
-            test_scores = calculate_test_scores(
-                search, X_test, y_test, pipe_predict_params,
-                test_sample_weights=test_sample_weights)
-            if args.verbose > 0:
-                print('Test:', test_dataset_name, end=' ')
-                for metric in args.scv_scoring:
-                    print(' {}: {:.4f}'.format(
-                        metric_label[metric], test_scores[metric]), end=' ')
-                    if metric == 'average_precision':
-                        print(' PR AUC: {:.4f}'.format(test_scores['pr_auc']),
-                              end=' ')
-                print()
             if 'Weight' in final_feature_meta.columns:
-                tf_pipe_steps = search.best_estimator_.steps[:-1]
-                tf_pipe_steps.append(('slrc', ColumnSelector()))
-                if isinstance(search.best_estimator_[-1], RFE):
-                    tf_pipe_steps.append((
-                        search.best_estimator_.steps[-1][0],
-                        search.best_estimator_.steps[-1][1].estimator))
-                else:
-                    tf_pipe_steps.append(search.best_estimator_.steps[-1])
-                tf_pipe_param_routing = (
-                    search.best_estimator_.param_routing
-                    if search.best_estimator_.param_routing else {})
-                tf_pipe_param_routing['slrc'] = (
-                    pipe_config['ColumnSelector']['param_routing'])
-                if 'feature_meta' not in pipe_fit_params:
-                    pipe_fit_params['feature_meta'] = feature_meta
-                tf_name_sets = []
-                for feature_name in final_feature_meta.iloc[
-                        (-final_feature_meta['Weight'].abs()).argsort()].index:
-                    if tf_name_sets:
-                        tf_name_sets.append(tf_name_sets[-1] + [feature_name])
-                    else:
-                        tf_name_sets.append([feature_name])
-                tf_pipes = Parallel(
-                    n_jobs=args.n_jobs, backend=args.parallel_backend,
-                    verbose=args.scv_verbose)(
-                        delayed(fit_pipeline)(
-                            X, y, tf_pipe_steps,
-                            params={'slrc__cols': feature_names},
-                            param_routing=tf_pipe_param_routing,
-                            fit_params=pipe_fit_params)
-                        for feature_names in tf_name_sets)
                 tf_test_scores = {}
                 for tf_pipe in tf_pipes:
                     test_scores = calculate_test_scores(
@@ -775,8 +779,8 @@ def run_model_selection():
                             tf_test_scores[metric].append(test_scores[metric])
                 for metric_idx, metric in enumerate(tf_test_scores):
                     ax_slr.plot(x_axis, tf_test_scores[metric], alpha=0.8,
-                                color=test_metric_colors[
-                                    test_idx + metric_idx], lw=2,
+                                lw=2, color=test_metric_colors[test_idx
+                                                               + metric_idx],
                                 label='{} {}'.format(test_dataset_name,
                                                      metric_label[metric]))
                 ax_slr.legend(loc='lower right', fontsize='medium')
@@ -850,7 +854,7 @@ def run_model_selection():
                 best_index = np.argmin(
                     search.cv_results_['rank_test_{}'.format(args.scv_refit)])
                 best_params = search.cv_results_['params'][best_index]
-                best_estimator = Parallel(
+                best_pipe = Parallel(
                     n_jobs=args.n_jobs, backend=args.parallel_backend,
                     verbose=args.scv_verbose)(
                         delayed(fit_pipeline)(
@@ -862,10 +866,10 @@ def run_model_selection():
             else:
                 best_index = search.best_index_
                 best_params = search.best_params_
-                best_estimator = search.best_estimator_
+                best_pipe = search.best_estimator_
             param_cv_scores = add_param_cv_scores(search, param_grid_dict,
                                                   param_cv_scores)
-            final_feature_meta = transform_feature_meta(best_estimator,
+            final_feature_meta = transform_feature_meta(best_pipe,
                                                         feature_meta)
             split_scores = {'cv': {}}
             for metric in args.scv_scoring:
@@ -881,7 +885,7 @@ def run_model_selection():
             if 'feature_meta' in pipe_fit_params:
                 pipe_predict_params['feature_meta'] = feature_meta
             split_scores['te'] = calculate_test_scores(
-                best_estimator, X.iloc[test_idxs], y[test_idxs],
+                best_pipe, X.iloc[test_idxs], y[test_idxs],
                 pipe_predict_params, test_sample_weights=test_sample_weights)
             if args.verbose > 0:
                 print('Dataset:', dataset_name, ' Split: {:>{width}d}'
@@ -906,7 +910,7 @@ def run_model_selection():
                 else:
                     print(tabulate(final_feature_meta, headers='keys'))
             split_results.append({
-                'model': best_estimator if args.save_model else None,
+                'model': best_pipe if args.save_model else None,
                 'feature_meta': final_feature_meta,
                 'scores': split_scores})
             # clear cache (can grow too big if not)
@@ -987,11 +991,12 @@ def run_model_selection():
             feature_mean_meta['Mean Weight'] = feature_weights.mean(axis=1)
             feature_mean_meta_floatfmt.extend(['.1f', '.6e'])
         for metric in args.scv_scoring:
-            if metric in ('roc_auc', 'balanced_accuracy', 'average_precision'):
-                feature_scores[metric].fillna(0.5, inplace=True)
-            else:
+            if metric not in ('roc_auc', 'balanced_accuracy',
+                              'average_precision'):
+                run_cleanup()
                 raise RuntimeError('No feature scores fillna value defined '
                                    'for {}'.format(metric))
+            feature_scores[metric].fillna(0.5, inplace=True)
             if feature_scores[metric].mean(axis=1).nunique() > 1:
                 if feature_mean_meta is None:
                     feature_mean_meta = feature_meta.reindex(
@@ -1141,6 +1146,8 @@ parser.add_argument('--train-dataset', '--dataset', '--train-eset', '--train',
                     type=str, required=True, help='training dataset')
 parser.add_argument('--pipe-steps', type=str_list, nargs='+', required=True,
                     help='Pipeline step names')
+parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
+                    nargs='+', help='test datasets')
 parser.add_argument('--col-trf-pipe-steps', type=str_list, nargs='+',
                     action='append',
                     help='ColumnTransformer pipeline step names')
@@ -1151,8 +1158,6 @@ parser.add_argument('--col-trf-dtypes', type=str, nargs='+',
                     help='ColumnTransformer column dtypes')
 parser.add_argument('--sample-meta-cols', type=str, nargs='+',
                     help='sample metadata columns')
-parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
-                    nargs='+', help='test datasets')
 parser.add_argument('--col-slr-cols', type=str_list, nargs='+',
                     help='ColumnSelector feature or metadata columns')
 parser.add_argument('--col-slr-file', type=str, nargs='+',
@@ -1528,17 +1533,16 @@ cv_params = {k: v for k, v in vars(args).items()
              if '_' in k and k.split('_')[1] in pipeline_step_types}
 if cv_params['col_slr_file']:
     for feature_file in cv_params['col_slr_file']:
-        if os.path.isfile(feature_file):
-            with open(feature_file) as f:
-                feature_names = f.read().splitlines()
-            feature_names = [n.strip() for n in feature_names]
-            if cv_params['col_slr_cols'] is None:
-                cv_params['col_slr_cols'] = []
-            cv_params['col_slr_cols'].append(feature_names)
-        else:
+        if not os.path.isfile(feature_file):
             run_cleanup()
             raise IOError('File does not exist/invalid: {}'
                           .format(feature_file))
+        with open(feature_file) as f:
+            feature_names = f.read().splitlines()
+        feature_names = [n.strip() for n in feature_names]
+        if cv_params['col_slr_cols'] is None:
+            cv_params['col_slr_cols'] = []
+        cv_params['col_slr_cols'].append(feature_names)
 for cv_param, cv_param_values in cv_params.copy().items():
     if cv_param_values is None:
         if cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'ada_clf_lgr_ce',

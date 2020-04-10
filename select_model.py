@@ -452,7 +452,10 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         param_type = '__'.join(param_parts[param_parts_start_idx:])
         if param_type in params_lin_xticks:
             x_axis = param_grid_dict[param]
-            if len(x_axis) <= 30:
+            if all(0 <= x <= 1 for x in x_axis):
+                if len(x_axis) <= 15:
+                    plt.xticks(x_axis)
+            elif len(x_axis) <= 30:
                 plt.xticks(x_axis)
         elif param_type in params_log_xticks:
             x_axis = param_grid_dict[param]
@@ -707,15 +710,22 @@ def run_model_selection():
             best_pipe = search.best_estimator_
             tf_pipe_steps = best_pipe.steps[:-1]
             tf_pipe_steps.append(('slrc', ColumnSelector()))
-            if isinstance(best_pipe[-1], RFE):
-                tf_pipe_steps.append((best_pipe.steps[-1][0],
-                                      best_pipe.steps[-1][1].estimator))
-            else:
-                tf_pipe_steps.append(best_pipe.steps[-1])
             tf_pipe_param_routing = (best_pipe.param_routing
                                      if best_pipe.param_routing else {})
             tf_pipe_param_routing['slrc'] = (
                 pipe_config['ColumnSelector']['param_routing'])
+            if isinstance(best_pipe[-1], RFE):
+                final_step_name = best_pipe.steps[-1][0]
+                final_estimator = best_pipe.steps[-1][1].estimator
+                final_estimator_key = type(final_estimator).__qualname__
+                tf_pipe_steps.append((final_step_name, final_estimator))
+                if 'param_routing' in pipe_config[final_estimator_key]:
+                    tf_pipe_param_routing[final_step_name] = (
+                        pipe_config[final_estimator_key]['param_routing'])
+                else:
+                    del tf_pipe_param_routing[final_step_name]
+            else:
+                tf_pipe_steps.append(best_pipe.steps[-1])
             tf_pipe_fit_params = pipe_fit_params.copy()
             if 'feature_meta' not in pipe_fit_params:
                 tf_pipe_fit_params['feature_meta'] = feature_meta

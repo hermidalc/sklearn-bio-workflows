@@ -225,6 +225,10 @@ def load_dataset(dataset_file):
         sample_weights = None
     try:
         feature_meta = r_biobase.fData(eset)
+        feature_meta_category_cols = (
+            feature_meta.select_dtypes(include='category').columns)
+        feature_meta[feature_meta_category_cols] = (
+            feature_meta[feature_meta_category_cols].astype(str))
     except ValueError:
         feature_meta = pd.DataFrame(index=r_biobase.featureNames(eset))
     if args.sample_meta_cols:

@@ -828,7 +828,7 @@ def run_model_selection():
         split_results = []
         param_cv_scores = {}
         if groups is None:
-            if args.scv_use_ssplit:
+            if args.test_use_ssplit:
                 test_splitter = StratifiedShuffleSplit(
                     n_splits=args.test_splits, test_size=args.test_size,
                     random_state=args.random_seed)
@@ -836,7 +836,7 @@ def run_model_selection():
                 test_splitter = StratifiedKFold(n_splits=args.test_splits,
                                                 random_state=args.random_seed,
                                                 shuffle=True)
-        elif args.scv_use_ssplit:
+        elif args.test_use_ssplit:
             test_splitter = StratifiedGroupShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
@@ -1380,11 +1380,13 @@ parser.add_argument('--scv-refit', type=str,
 parser.add_argument('--scv-n-iter', type=int, default=100,
                     help='randomized scv num iterations')
 parser.add_argument('--scv-use-ssplit', default=False, action='store_true',
-                    help='scv use ShuffleSplit variants instead of KFold')
+                    help='scv ShuffleSplit variants instead of KFold')
 parser.add_argument('--test-splits', type=int, default=10,
                     help='num outer splits')
 parser.add_argument('--test-size', type=float, default=0.2,
                     help='outer splits test size')
+parser.add_argument('--test-use-ssplit', default=False, action='store_true',
+                    help='test ShuffleSplit variants instead of KFold')
 parser.add_argument('--param-cv-score-meth', type=str,
                     choices=['best', 'all'], default='best',
                     help='param cv scores calculation method')

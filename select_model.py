@@ -1566,16 +1566,17 @@ for cv_param, cv_param_values in cv_params.copy().items():
             cv_params[cv_param[:-1]] = None
         continue
     if cv_param in ('col_slr_cols', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
-                    'de_slr_pv', 'de_slr_fc', 'de_slr_mb', 'sfm_slr_thres',
+                    'de_slr_pv', 'de_slr_fc', 'sfm_slr_thres',
                     'sfm_slr_rf_thres', 'sfm_slr_rf_e', 'sfm_slr_ext_thres',
                     'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_d',
-                    'rlf_slr_n', 'rlf_slr_s', 'pwr_trf_meth', 'de_trf_mb',
-                    'rfe_clf_step', 'svc_clf_kern', 'svc_clf_deg', 'svc_clf_g',
-                    'knn_clf_k', 'knn_clf_w', 'rf_clf_e', 'ext_clf_e',
-                    'ada_clf_e', 'grb_clf_e', 'grb_clf_d', 'mlp_clf_hls',
-                    'mlp_clf_act', 'mlp_clf_slvr', 'mlp_clf_a', 'mlp_clf_lr',
-                    'sgd_clf_loss', 'sgd_clf_l1r'):
+                    'rlf_slr_n', 'rlf_slr_s', 'rfe_clf_step', 'svc_clf_deg',
+                    'svc_clf_g', 'knn_clf_k', 'knn_clf_w', 'rf_clf_e',
+                    'ext_clf_e', 'ada_clf_e', 'grb_clf_e', 'grb_clf_d',
+                    'mlp_clf_hls', 'mlp_clf_a', 'mlp_clf_lr', 'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
+    elif cv_param in ('de_slr_mb', 'de_trf_mb', 'pwr_trf_meth', 'svc_clf_kern',
+                      'mlp_clf_act', 'mlp_clf_slvr', 'sgd_clf_loss'):
+        cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param == 'skb_slr_k_max':
         cv_param = '_'.join(cv_param.split('_')[:3])
         if (cv_params['{}_min'.format(cv_param)] == 1

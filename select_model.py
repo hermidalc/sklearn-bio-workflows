@@ -69,14 +69,15 @@ from sklearn_extensions.feature_selection import (
     ANOVAFScorerClassification, CachedANOVAFScorerClassification,
     CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
     ColumnSelector, DESeq2, DreamVoom, EdgeR, EdgeRFilterByExpr, FCBF, Limma,
-    LimmaVoom, MutualInfoScorerClassification, ReliefF, RFE, SelectFromModel,
-    SelectKBest, VarianceThreshold)
+    LimmaVoom, MutualInfoScorerClassification, NanoStringEndogenousSelector,
+    ReliefF, RFE, SelectFromModel, SelectKBest, VarianceThreshold)
 from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedGroupShuffleSplit)
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
-    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover, LogTransformer)
+    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover, LogTransformer,
+    NanoStringNormalizer)
 from sklearn_extensions.svm import CachedLinearSVC
 from sklearn_extensions.utils import _determine_key_type
 
@@ -1243,6 +1244,12 @@ parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
                     help='PowerTransformer meth')
 parser.add_argument('--de-trf-mb', type=str_bool, nargs='+',
                     help='diff expr trf model batch')
+parser.add_argument('--nsn-trf-cc', type=str, nargs='+',
+                    help='NanoStringNormalizer code_count method')
+parser.add_argument('--nsn-trf-bg', type=str, nargs='+',
+                    help='NanoStringNormalizer background method')
+parser.add_argument('--nsn-trf-sc', type=str, nargs='+',
+                    help='NanoStringNormalizer sample_content method')
 parser.add_argument('--rfe-clf-step', type=float, nargs='+',
                     help='RFE step')
 parser.add_argument('--rfe-clf-tune-step-at', type=int,
@@ -1358,6 +1365,8 @@ parser.add_argument('--limma-trend', default=False, action='store_true',
                     help='limma trend')
 parser.add_argument('--limma-model-dupcor', default=False, action='store_true',
                     help='limma model dupcor')
+parser.add_argument('--nano-meta-col', type=str, default='Code.Class',
+                    help='NanoString Code Class feature metadata column name')
 parser.add_argument('--scv-type', type=str,
                     choices=['grid', 'rand'], default='grid',
                     help='scv type')
@@ -1735,6 +1744,9 @@ pipe_config = {
             'fc': cv_params['de_slr_fc'],
             'model_batch': cv_params['de_slr_mb']},
         'param_routing': ['sample_meta']},
+    'NanoStringEndogenousSelector': {
+        'estimator': NanoStringEndogenousSelector(meta_col=args.nano_meta_col),
+        'param_routing': ['feature_meta']},
     'FCBF': {
         'estimator': FCBF(memory=memory),
         'param_grid': {
@@ -1777,6 +1789,13 @@ pipe_config = {
     'LimmaBatchEffectRemover': {
         'estimator': LimmaBatchEffectRemover(preserve_design=True),
         'param_routing': ['sample_meta']},
+    'NanoStringNormalizer': {
+        'estimator': NanoStringNormalizer(meta_col=args.nano_meta_col),
+        'param_grid': {
+            'code_count': cv_params['nsn_trf_cc'],
+            'background': cv_params['nsn_trf_bg'],
+            'sample_content': cv_params['nsn_trf_sc']},
+        'param_routing': ['feature_meta']},
     # classifiers
     'RFE-LinearSVC': {
         'estimator': RFE(lsvc_clf, tune_step_at=args.rfe_clf_tune_step_at,
@@ -1948,6 +1967,9 @@ params_fixed_xticks = [
     'trf',
     'trf__method',
     'trf__model_batch',
+    'trf__code_count',
+    'trf__background',
+    'trf__sample_content',
     'clf',
     'clf__class_weight',
     'clf__kernel',

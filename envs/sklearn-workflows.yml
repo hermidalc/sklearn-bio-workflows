@@ -18,6 +18,7 @@ dependencies:
   - matplotlib
   - natsort
   - numpy
+  - openjdk=8.0.192=h14c3975_1003
   - pandas
   - pillow
   - python

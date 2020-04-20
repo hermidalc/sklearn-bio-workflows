@@ -78,7 +78,7 @@ from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
     DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover, LogTransformer,
     NanoStringNormalizer)
-from sklearn_extensions.svm import CachedLinearSVC
+from sklearn_extensions.svm import CachedLinearSVC, CachedSVC
 from sklearn_extensions.utils import _determine_key_type
 
 
@@ -1272,6 +1272,8 @@ parser.add_argument('--svc-clf-deg', type=int, nargs='+',
                     help='SVC poly degree')
 parser.add_argument('--svc-clf-g', type=str, nargs='+',
                     help='SVC gamma')
+parser.add_argument('--lsvc-clf-loss', type=str, default='squared_hinge',
+                    help='LinearSVC loss')
 parser.add_argument('--lsvc-clf-max-iter', type=int, default=1000,
                     help='LinearSVC max_iter')
 parser.add_argument('--lsvc-clf-tol', type=float, default=1e-2,
@@ -1525,6 +1527,8 @@ if args.pipe_memory:
     lsvc_clf = CachedLinearSVC(
         max_iter=args.lsvc_clf_max_iter, memory=memory,
         random_state=args.random_seed, tol=args.lsvc_clf_tol)
+    svc_clf = CachedSVC(cache_size=args.svc_clf_cache, kernel='linear',
+                        memory=memory, random_state=args.random_seed)
     sfm_lsvc_clf = CachedLinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, memory=memory,
         penalty='l1', random_state=args.random_seed, tol=args.lsvc_clf_tol)
@@ -1543,6 +1547,8 @@ else:
     lsvc_clf = LinearSVC(
         max_iter=args.lsvc_clf_max_iter, random_state=args.random_seed,
         tol=args.lsvc_clf_tol)
+    svc_clf = SVC(cache_size=args.svc_clf_cache, kernel='linear',
+                  random_state=args.random_seed)
     sfm_lsvc_clf = LinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, penalty='l1',
         random_state=args.random_seed, tol=args.lsvc_clf_tol)
@@ -1807,6 +1813,16 @@ pipe_config = {
             'step': cv_params['rfe_clf_step'],
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},
+    'RFE-SVC': {
+        'estimator': RFE(svc_clf, tune_step_at=args.rfe_clf_tune_step_at,
+                         reducing_step=args.rfe_clf_reducing_step,
+                         verbose=args.rfe_clf_verbose),
+        'param_grid': {
+            'estimator__C': cv_params['svc_clf_c'],
+            'estimator__class_weight': cv_params['svc_clf_cw'],
+            'step': cv_params['rfe_clf_step'],
+            'n_features_to_select': cv_params['skb_slr_k']},
+        'param_routing': ['sample_weight']},
     'RFE-RandomForestClassifier': {
         'estimator': RFE(rf_clf, tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
@@ -1843,9 +1859,9 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},
     'LinearSVC': {
-        'estimator': LinearSVC(max_iter=args.lsvc_clf_max_iter,
-                               random_state=args.random_seed,
-                               tol=args.lsvc_clf_tol),
+        'estimator': LinearSVC(
+            loss=args.lsvc_clf_loss, max_iter=args.lsvc_clf_max_iter,
+            random_state=args.random_seed, tol=args.lsvc_clf_tol),
         'param_grid': {
             'C': cv_params['svc_clf_c'],
             'class_weight': cv_params['svc_clf_cw']},

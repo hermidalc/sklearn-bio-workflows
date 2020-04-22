@@ -314,65 +314,75 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
 
 
 def transform_feature_meta(pipe, feature_meta):
-    final_feature_meta = None
+    transformed_feature_meta = None
     for estimator in pipe:
         if isinstance(estimator, ColumnTransformer):
             for _, trf_pipe, trf_columns in estimator.transformers_:
-                trf_feature_meta = feature_meta.loc[trf_columns]
-                for trf_estimator in trf_pipe:
-                    if hasattr(trf_estimator, 'get_support'):
-                        trf_feature_meta = trf_feature_meta.loc[
-                            trf_estimator.get_support()]
-                    elif hasattr(trf_estimator, 'get_feature_names'):
-                        trf_new_feature_names = (
-                            trf_estimator.get_feature_names(
-                                input_features=trf_feature_meta.index.values
-                            ).astype(str))
-                        trf_feature_meta = pd.DataFrame(
-                            np.repeat(trf_feature_meta.values, [
-                                np.sum(np.char.startswith(
-                                    trf_new_feature_names,
-                                    '{}_'.format(feature_name)))
-                                for feature_name in trf_feature_meta.index],
-                                      axis=0),
-                            columns=trf_feature_meta.columns,
-                            index=trf_new_feature_names)
-                if final_feature_meta is None:
-                    final_feature_meta = trf_feature_meta
+                if isinstance(trf_pipe, str) and trf_pipe == 'drop':
+                    trf_feature_meta = feature_meta.iloc[
+                        ~feature_meta.index.isin(trf_columns)]
+                elif ((isinstance(trf_columns, slice)
+                       and (isinstance(trf_columns.start, str)
+                            or isinstance(trf_columns.stop, str)))
+                      or isinstance(trf_columns[0], str)):
+                    trf_feature_meta = feature_meta.loc[trf_columns]
                 else:
-                    final_feature_meta = pd.concat(
-                        [final_feature_meta, trf_feature_meta], axis=0)
+                    trf_feature_meta = feature_meta.iloc[trf_columns]
+                if isinstance(trf_pipe, BaseEstimator):
+                    for trf_estimator in trf_pipe:
+                        if hasattr(trf_estimator, 'get_support'):
+                            trf_feature_meta = trf_feature_meta.loc[
+                                trf_estimator.get_support()]
+                        elif hasattr(trf_estimator, 'get_feature_names'):
+                            trf_new_feature_names = (
+                                trf_estimator.get_feature_names(
+                                    input_features=(trf_feature_meta.index
+                                                    .values)).astype(str))
+                            trf_feature_meta = pd.DataFrame(
+                                np.repeat(trf_feature_meta.values, [
+                                    np.sum(np.char.startswith(
+                                        trf_new_feature_names,
+                                        '{}_'.format(feature_name)))
+                                    for feature_name in trf_feature_meta.index
+                                ], axis=0), columns=trf_feature_meta.columns,
+                                index=trf_new_feature_names)
+                if transformed_feature_meta is None:
+                    transformed_feature_meta = trf_feature_meta
+                else:
+                    transformed_feature_meta = pd.concat(
+                        [transformed_feature_meta, trf_feature_meta], axis=0)
         else:
-            if final_feature_meta is None:
-                final_feature_meta = feature_meta
+            if transformed_feature_meta is None:
+                transformed_feature_meta = feature_meta
             if hasattr(estimator, 'get_support'):
-                final_feature_meta = final_feature_meta.loc[
-                    estimator.get_support()]
+                transformed_feature_meta = (
+                    transformed_feature_meta.loc[estimator.get_support()])
             elif hasattr(estimator, 'get_feature_names'):
                 new_feature_names = estimator.get_feature_names(
-                    input_features=final_feature_meta.index.values).astype(str)
-                final_feature_meta = pd.DataFrame(
-                    np.repeat(final_feature_meta.values, [
+                    input_features=transformed_feature_meta.index.values
+                ).astype(str)
+                transformed_feature_meta = pd.DataFrame(
+                    np.repeat(transformed_feature_meta.values, [
                         np.sum(np.char.startswith(
                             new_feature_names, '{}_'.format(feature_name)))
-                        for feature_name in final_feature_meta.index], axis=0),
-                    columns=final_feature_meta.columns,
+                        for feature_name in transformed_feature_meta.index
+                    ], axis=0), columns=transformed_feature_meta.columns,
                     index=new_feature_names)
     final_estimator = pipe[-1]
     feature_weights = explain_weights_df(
-        final_estimator, feature_names=final_feature_meta.index.values)
+        final_estimator, feature_names=transformed_feature_meta.index.values)
     if feature_weights is None and hasattr(final_estimator, 'estimator_'):
         feature_weights = explain_weights_df(
             final_estimator.estimator_,
-            feature_names=final_feature_meta.index.values)
+            feature_names=transformed_feature_meta.index.values)
     if feature_weights is not None:
         feature_weights.set_index('feature', inplace=True,
                                   verify_integrity=True)
         feature_weights.columns = map(str.title, feature_weights.columns)
-        final_feature_meta = final_feature_meta.join(feature_weights,
-                                                     how='inner')
-    final_feature_meta.index.rename('Feature', inplace=True)
-    return final_feature_meta
+        transformed_feature_meta = transformed_feature_meta.join(
+            feature_weights, how='inner')
+    transformed_feature_meta.index.rename('Feature', inplace=True)
+    return transformed_feature_meta
 
 
 def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):

@@ -1183,6 +1183,8 @@ parser.add_argument('--col-trf-patterns', type=str, nargs='+',
 parser.add_argument('--col-trf-dtypes', type=str, nargs='+',
                     choices=['category', 'float', 'int'],
                     help='ColumnTransformer column dtypes')
+parser.add_argument('--col-trf-remainder', type=str, default='passthrough',
+                    help='ColumnTransfomer remainder')
 parser.add_argument('--sample-meta-cols', type=str, nargs='+',
                     help='sample metadata columns')
 parser.add_argument('--col-slr-cols', type=str_list, nargs='+',
@@ -1785,8 +1787,8 @@ pipe_config = {
         'estimator': CFS()},
     # transformers
     'ColumnTransformer': {
-        'estimator': ExtendedColumnTransformer([], n_jobs=1,
-                                               remainder='passthrough')},
+        'estimator': ExtendedColumnTransformer(
+            [], n_jobs=1, remainder=args.col_trf_remainder)},
     'OneHotEncoder': {
         'estimator':  OneHotEncoder(handle_unknown='ignore', sparse=False)},
     'LogTransformer': {

@@ -10,6 +10,8 @@ dependencies:
   - bioconductor-deseq2
   - bioconductor-edger
   - bioconductor-limma
+  - bioconductor-nanostringdiff
+  - bioconductor-ruvseq
   - bioconductor-sva
   - bioconductor-variancepartition
   - eli5
@@ -30,6 +32,7 @@ dependencies:
   - r-essentials
   - r-fnn
   - r-fselector
+  - r-fuzzyranktests
   - r-jade
   - r-lme4
   - r-minqa

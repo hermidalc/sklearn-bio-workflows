@@ -77,7 +77,7 @@ from sklearn_extensions.model_selection import (
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
     DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover, LogTransformer,
-    NanoStringNormalizer)
+    NanoStringNormalizer, NanoStringDiffNormalizer)
 from sklearn_extensions.svm import CachedLinearSVC, CachedSVC
 from sklearn_extensions.utils import _determine_key_type
 
@@ -1259,11 +1259,13 @@ parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
 parser.add_argument('--de-trf-mb', type=str_bool, nargs='+',
                     help='diff expr trf model batch')
 parser.add_argument('--nsn-trf-cc', type=str, nargs='+',
-                    help='NanoStringNormalizer code_count method')
+                    help='NanoStringNormalizer code_count')
 parser.add_argument('--nsn-trf-bg', type=str, nargs='+',
-                    help='NanoStringNormalizer background method')
+                    help='NanoStringNormalizer background')
+parser.add_argument('--nsn-trf-bg-t', type=str_bool, nargs='+',
+                    help='NanoStringNormalizer background_threshold')
 parser.add_argument('--nsn-trf-sc', type=str, nargs='+',
-                    help='NanoStringNormalizer sample_content method')
+                    help='NanoStringNormalizer sample_content')
 parser.add_argument('--rfe-clf-step', type=float, nargs='+',
                     help='RFE step')
 parser.add_argument('--rfe-clf-tune-step-at', type=int,
@@ -1609,8 +1611,10 @@ for cv_param, cv_param_values in cv_params.copy().items():
                     'ext_clf_e', 'ada_clf_e', 'grb_clf_e', 'grb_clf_d',
                     'mlp_clf_hls', 'mlp_clf_a', 'mlp_clf_lr', 'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
-    elif cv_param in ('de_slr_mb', 'de_trf_mb', 'pwr_trf_meth', 'svc_clf_kern',
-                      'mlp_clf_act', 'mlp_clf_slvr', 'sgd_clf_loss'):
+    elif cv_param in ('de_slr_mb', 'de_trf_mb', 'nsn_trf_cc', 'nsn_trf_bg',
+                      'nsn_trf_bg_t', 'nsn_trf_sc', 'pwr_trf_meth',
+                      'svc_clf_kern', 'mlp_clf_act', 'mlp_clf_slvr',
+                      'sgd_clf_loss'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param == 'skb_slr_k_max':
         cv_param = '_'.join(cv_param.split('_')[:3])
@@ -1820,7 +1824,11 @@ pipe_config = {
         'param_grid': {
             'code_count': cv_params['nsn_trf_cc'],
             'background': cv_params['nsn_trf_bg'],
+            'background_threshold': cv_params['nsn_trf_bg_t'],
             'sample_content': cv_params['nsn_trf_sc']},
+        'param_routing': ['feature_meta']},
+    'NanoStringDiffNormalizer': {
+        'estimator': NanoStringDiffNormalizer(meta_col=args.nano_meta_col),
         'param_routing': ['feature_meta']},
     # classifiers
     'RFE-LinearSVC': {

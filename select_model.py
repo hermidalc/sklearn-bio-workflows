@@ -854,7 +854,7 @@ def run_model_selection():
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
         else:
-            test_splitter = StratifiedGroupKFold(n_splits=args.scv_splits,
+            test_splitter = StratifiedGroupKFold(n_splits=args.test_splits,
                                                  random_state=args.random_seed,
                                                  shuffle=True)
         for split_idx, (train_idxs, test_idxs) in enumerate(
@@ -1183,7 +1183,8 @@ parser.add_argument('--col-trf-patterns', type=str, nargs='+',
 parser.add_argument('--col-trf-dtypes', type=str, nargs='+',
                     choices=['category', 'float', 'int'],
                     help='ColumnTransformer column dtypes')
-parser.add_argument('--col-trf-remainder', type=str, default='passthrough',
+parser.add_argument('--col-trf-remainder', type=str,
+                    choices=['drop', 'passthrough'], default='passthrough',
                     help='ColumnTransfomer remainder')
 parser.add_argument('--sample-meta-cols', type=str, nargs='+',
                     help='sample metadata columns')

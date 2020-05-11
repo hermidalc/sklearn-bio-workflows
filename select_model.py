@@ -1259,10 +1259,10 @@ parser.add_argument('--mms-trf-feature-range', type=int_list, default=(0, 1),
 parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
                     choices=['box-cox', 'yeo-johnson'],
                     help='PowerTransformer meth')
-parser.add_argument('--rna-trf-mb', type=str_bool, nargs='+',
-                    help='RNA trf model batch')
 parser.add_argument('--rna-trf-ft', type=str, nargs='+',
                     help='RNA trf fit type')
+parser.add_argument('--rna-trf-mb', type=str_bool, nargs='+',
+                    help='RNA trf model batch')
 parser.add_argument('--nsn-trf-cc', type=str, nargs='+',
                     help='NanoStringNormalizer code_count')
 parser.add_argument('--nsn-trf-bg', type=str, nargs='+',

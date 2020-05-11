@@ -1206,12 +1206,14 @@ parser.add_argument('--skb-slr-k-max', type=int,
                     help='Selector k max')
 parser.add_argument('--skb-slr-k-step', type=int, default=1,
                     help='Selector k step')
-parser.add_argument('--de-slr-pv', type=float, nargs='+',
-                    help='diff expr slr adj p-value')
-parser.add_argument('--de-slr-fc', type=float, nargs='+',
-                    help='diff expr slr fold change')
-parser.add_argument('--de-slr-mb', type=str_bool, nargs='+',
-                    help='diff expr slr model batch')
+parser.add_argument('--rna-slr-pv', type=float, nargs='+',
+                    help='RNA slr adj p-value')
+parser.add_argument('--rna-slr-fc', type=float, nargs='+',
+                    help='RNA slr fold change')
+parser.add_argument('--rna-slr-mb', type=str_bool, nargs='+',
+                    help='RNA slr model batch')
+parser.add_argument('--rna-slr-ft', type=str, nargs='+',
+                    help='RNA fit type')
 parser.add_argument('--sfm-slr-thres', type=float, nargs='+',
                     help='SelectFromModel threshold')
 parser.add_argument('--sfm-slr-svc-ce', type=int, nargs='+',
@@ -1257,8 +1259,10 @@ parser.add_argument('--mms-trf-feature-range', type=int_list, default=(0, 1),
 parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
                     choices=['box-cox', 'yeo-johnson'],
                     help='PowerTransformer meth')
-parser.add_argument('--de-trf-mb', type=str_bool, nargs='+',
-                    help='diff expr trf model batch')
+parser.add_argument('--rna-trf-mb', type=str_bool, nargs='+',
+                    help='RNA trf model batch')
+parser.add_argument('--rna-trf-ft', type=str, nargs='+',
+                    help='RNA trf fit type')
 parser.add_argument('--nsn-trf-cc', type=str, nargs='+',
                     help='NanoStringNormalizer code_count')
 parser.add_argument('--nsn-trf-bg', type=str, nargs='+',
@@ -1376,6 +1380,9 @@ parser.add_argument('--sgd-clf-penalty', type=str,
                     help='SGDClassifier penalty')
 parser.add_argument('--sgd-clf-max-iter', type=int, default=1000,
                     help='SGDClassifier max_iter')
+parser.add_argument('--deseq2-no-lfc-shrink', default=False,
+                    action='store_true',
+                    help='deseq2 no lfc shrink')
 parser.add_argument('--edger-prior-count', type=int, default=1,
                     help='edger prior count')
 parser.add_argument('--limma-robust', default=False, action='store_true',
@@ -1604,7 +1611,7 @@ for cv_param, cv_param_values in cv_params.copy().items():
             cv_params[cv_param[:-1]] = None
         continue
     if cv_param in ('col_slr_cols', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
-                    'de_slr_pv', 'de_slr_fc', 'sfm_slr_thres',
+                    'rna_slr_pv', 'rna_slr_fc', 'sfm_slr_thres',
                     'sfm_slr_rf_thres', 'sfm_slr_rf_e', 'sfm_slr_ext_thres',
                     'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_d',
                     'rlf_slr_n', 'rlf_slr_s', 'rfe_clf_step', 'svc_clf_deg',
@@ -1612,10 +1619,10 @@ for cv_param, cv_param_values in cv_params.copy().items():
                     'ext_clf_e', 'ada_clf_e', 'grb_clf_e', 'grb_clf_d',
                     'mlp_clf_hls', 'mlp_clf_a', 'mlp_clf_lr', 'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
-    elif cv_param in ('de_slr_mb', 'de_trf_mb', 'nsn_trf_cc', 'nsn_trf_bg',
-                      'nsn_trf_bg_t', 'nsn_trf_sc', 'pwr_trf_meth',
-                      'svc_clf_kern', 'mlp_clf_act', 'mlp_clf_slvr',
-                      'sgd_clf_loss'):
+    elif cv_param in ('rna_slr_ft', 'rna_trf_ft', 'rna_slr_mb', 'rna_trf_mb',
+                      'nsn_trf_cc', 'nsn_trf_bg', 'nsn_trf_bg_t', 'nsn_trf_sc',
+                      'pwr_trf_meth', 'svc_clf_kern', 'mlp_clf_act',
+                      'mlp_clf_slvr', 'sgd_clf_loss'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param == 'skb_slr_k_max':
         cv_param = '_'.join(cv_param.split('_')[:3])
@@ -1727,25 +1734,27 @@ pipe_config = {
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'DESeq2': {
-        'estimator': DESeq2(memory=memory),
+        'estimator': DESeq2(memory=memory,
+                            lfc_shrink=not args.deseq2_no_lfc_shrink),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
-            'sv': cv_params['de_slr_pv'],
-            'fc': cv_params['de_slr_fc'],
-            'model_batch': cv_params['de_slr_mb']},
+            'pv': cv_params['rna_slr_pv'],
+            'fc': cv_params['rna_slr_fc'],
+            'fit_type': cv_params['rna_slr_ft'],
+            'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'EdgeR': {
         'estimator': EdgeR(memory=memory, prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
-            'pv': cv_params['de_slr_pv'],
-            'fc': cv_params['de_slr_fc'],
-            'model_batch': cv_params['de_slr_mb']},
+            'pv': cv_params['rna_slr_pv'],
+            'fc': cv_params['rna_slr_fc'],
+            'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'EdgeRFilterByExpr': {
         'estimator': EdgeRFilterByExpr(),
         'param_grid': {
-            'model_batch': cv_params['de_slr_mb']},
+            'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'LimmaVoom': {
         'estimator': LimmaVoom(memory=memory,
@@ -1753,27 +1762,27 @@ pipe_config = {
                                prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
-            'pv': cv_params['de_slr_pv'],
-            'fc': cv_params['de_slr_fc'],
-            'model_batch': cv_params['de_slr_mb']},
+            'pv': cv_params['rna_slr_pv'],
+            'fc': cv_params['rna_slr_fc'],
+            'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'DreamVoom': {
         'estimator': DreamVoom(memory=memory,
                                prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
-            'pv': cv_params['de_slr_pv'],
-            'fc': cv_params['de_slr_fc'],
-            'model_batch': cv_params['de_slr_mb']},
+            'pv': cv_params['rna_slr_pv'],
+            'fc': cv_params['rna_slr_fc'],
+            'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'Limma': {
         'estimator': Limma(memory=memory, robust=args.limma_robust,
                            trend=args.limma_trend),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
-            'pv': cv_params['de_slr_pv'],
-            'fc': cv_params['de_slr_fc'],
-            'model_batch': cv_params['de_slr_mb']},
+            'pv': cv_params['rna_slr_pv'],
+            'fc': cv_params['rna_slr_fc'],
+            'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'NanoStringEndogenousSelector': {
         'estimator': NanoStringEndogenousSelector(meta_col=args.nano_meta_col),
@@ -1811,7 +1820,8 @@ pipe_config = {
     'DESeq2RLEVST': {
         'estimator': DESeq2RLEVST(memory=memory),
         'param_grid': {
-            'model_batch': cv_params['de_trf_mb']},
+            'fit_type': cv_params['rna_trf_ft'],
+            'model_batch': cv_params['rna_trf_mb']},
         'param_routing': ['sample_meta']},
     'EdgeRTMMLogCPM': {
         'estimator': EdgeRTMMLogCPM(memory=memory,

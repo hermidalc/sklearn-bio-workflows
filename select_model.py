@@ -41,7 +41,7 @@ from sklearn.discriminant_analysis import (
 from sklearn.ensemble import (
     AdaBoostClassifier, ExtraTreesClassifier, GradientBoostingClassifier,
     RandomForestClassifier)
-from sklearn.exceptions import ConvergenceWarning
+from sklearn.exceptions import ConvergenceWarning, FitFailedWarning
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
@@ -1486,7 +1486,7 @@ parser.add_argument('--random-seed', type=int, default=777,
 parser.add_argument('--jvm-heap-size', type=int, default=500,
                     help='rjava jvm heap size')
 parser.add_argument('--filter-warnings', type=str, nargs='+',
-                    choices=['convergence', 'joblib', 'qda'],
+                    choices=['convergence', 'joblib', 'fitfailed', 'qda'],
                     help='filter warnings')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
@@ -1532,6 +1532,10 @@ if args.filter_warnings:
             warnings.filterwarnings(
                 'ignore', category=UserWarning,
                 message='^Persisting input arguments took')
+        if 'fitfailed' in args.filter_warnings:
+            warnings.filterwarnings(
+                'ignore', category=FitFailedWarning,
+                message='^Estimator fit failed')
         if 'qda' in args.filter_warnings:
             # filter QDA collinearity warnings
             warnings.filterwarnings(
@@ -1552,6 +1556,9 @@ if args.filter_warnings:
         if 'joblib' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Persisting input arguments took', 'UserWarning']))
+        if 'fitfailed' in args.filter_warnings:
+            python_warnings.append(':'.join(
+                ['ignore', 'Estimator fit failed', 'UserWarning']))
         if 'qda' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Variables are collinear',

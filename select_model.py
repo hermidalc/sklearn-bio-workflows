@@ -981,9 +981,27 @@ def run_model_selection():
         else:
             print()
         # feature mean rankings and scores
+        feature_annots = None
         feature_weights = None
         feature_scores = {}
         for split_idx, split_result in enumerate(split_results):
+            if split_idx == 0:
+                if feature_meta.columns.any():
+                    feature_annots = (
+                        split_result['feature_meta'][feature_meta.columns])
+                else:
+                    feature_annots = pd.DataFrame(
+                        index=split_result['feature_meta'].index)
+            elif feature_meta.columns.any():
+                feature_annots = pd.concat(
+                    [feature_annots,
+                     split_result['feature_meta'][feature_meta.columns]],
+                    axis=0)
+            else:
+                feature_annots = pd.concat(
+                    [feature_annots,
+                     pd.DataFrame(index=split_result['feature_meta'].index)],
+                    axis=0)
             if 'Weight' in split_result['feature_meta'].columns:
                 if split_idx == 0:
                     feature_weights = (
@@ -1007,6 +1025,8 @@ def run_model_selection():
                         how='outer')
                 feature_scores[metric].rename(columns={metric: split_idx},
                                               inplace=True)
+        feature_annots = feature_annots.loc[
+            ~feature_annots.index.duplicated(keep='first')]
         feature_mean_meta = None
         feature_mean_meta_floatfmt = ['']
         if feature_weights is not None:
@@ -1014,9 +1034,9 @@ def run_model_selection():
                 ascending=False, method='min', na_option='keep')
             feature_ranks.fillna(feature_ranks.shape[0], inplace=True)
             feature_weights.fillna(0, inplace=True)
-            feature_mean_meta = feature_meta.reindex(index=feature_ranks.index,
-                                                     fill_value='')
-            feature_mean_meta_floatfmt.extend([''] * feature_meta.shape[1])
+            feature_mean_meta = feature_annots.reindex(
+                index=feature_ranks.index, fill_value='')
+            feature_mean_meta_floatfmt.extend([''] * feature_annots.shape[1])
             feature_mean_meta['Mean Weight Rank'] = feature_ranks.mean(axis=1)
             feature_mean_meta['Mean Weight'] = feature_weights.mean(axis=1)
             feature_mean_meta_floatfmt.extend(['.1f', '.6e'])
@@ -1029,10 +1049,10 @@ def run_model_selection():
             feature_scores[metric].fillna(0.5, inplace=True)
             if feature_scores[metric].mean(axis=1).nunique() > 1:
                 if feature_mean_meta is None:
-                    feature_mean_meta = feature_meta.reindex(
+                    feature_mean_meta = feature_annots.reindex(
                         index=feature_scores[metric].index, fill_value='')
                     feature_mean_meta_floatfmt.extend(
-                        [''] * feature_meta.shape[1])
+                        [''] * feature_annots.shape[1])
                 feature_mean_meta = feature_mean_meta.join(
                     pd.DataFrame({
                         'Mean Test {}'.format(metric_label[metric]):

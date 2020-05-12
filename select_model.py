@@ -857,6 +857,9 @@ def run_model_selection():
             test_splitter = StratifiedGroupKFold(n_splits=args.test_splits,
                                                  random_state=args.random_seed,
                                                  shuffle=True)
+        if args.verbose > 0:
+            print('Test CV:', end=' ')
+            pprint(test_splitter)
         for split_idx, (train_idxs, test_idxs) in enumerate(
                 test_splitter.split(X, y, groups)):
             pipe_fit_params = {}

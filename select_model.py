@@ -47,7 +47,8 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     auc, average_precision_score, balanced_accuracy_score,
     precision_recall_curve, roc_auc_score, roc_curve)
-from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
+from sklearn.model_selection import (RepeatedStratifiedKFold, StratifiedKFold,
+                                     StratifiedShuffleSplit)
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -72,7 +73,8 @@ from sklearn_extensions.feature_selection import (
     LimmaVoom, MutualInfoScorerClassification, NanoStringEndogenousSelector,
     ReliefF, RFE, SelectFromModel, SelectKBest, VarianceThreshold)
 from sklearn_extensions.model_selection import (
-    ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
+    ExtendedGridSearchCV, ExtendedRandomizedSearchCV,
+    RepeatedStratifiedGroupKFold, StratifiedGroupKFold,
     StratifiedGroupShuffleSplit)
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
@@ -592,6 +594,10 @@ def run_model_selection():
             cv_splitter = StratifiedShuffleSplit(n_splits=args.scv_splits,
                                                  test_size=args.scv_size,
                                                  random_state=args.random_seed)
+        elif args.scv_repeats > 0:
+            cv_splitter = RepeatedStratifiedKFold(
+                n_splits=args.scv_splits, n_repeats=args.scv_repeats,
+                random_state=args.random_seed)
         else:
             cv_splitter = StratifiedKFold(n_splits=args.scv_splits,
                                           random_state=args.random_seed,
@@ -599,6 +605,10 @@ def run_model_selection():
     elif args.scv_use_ssplit:
         cv_splitter = StratifiedGroupShuffleSplit(
             n_splits=args.scv_splits, test_size=args.scv_size,
+            random_state=args.random_seed)
+    elif args.scv_repeats > 0:
+        cv_splitter = RepeatedStratifiedGroupKFold(
+            n_splits=args.scv_splits, n_repeats=args.scv_repeats,
             random_state=args.random_seed)
     else:
         cv_splitter = StratifiedGroupKFold(n_splits=args.scv_splits,
@@ -845,6 +855,10 @@ def run_model_selection():
                 test_splitter = StratifiedShuffleSplit(
                     n_splits=args.test_splits, test_size=args.test_size,
                     random_state=args.random_seed)
+            elif args.test_repeats > 0:
+                test_splitter = RepeatedStratifiedKFold(
+                    n_splits=args.test_splits, n_repeats=args.test_repeats,
+                    random_state=args.random_seed)
             else:
                 test_splitter = StratifiedKFold(n_splits=args.test_splits,
                                                 random_state=args.random_seed,
@@ -852,6 +866,10 @@ def run_model_selection():
         elif args.test_use_ssplit:
             test_splitter = StratifiedGroupShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
+                random_state=args.random_seed)
+        elif args.test_repeats > 0:
+            test_splitter = RepeatedStratifiedGroupKFold(
+                n_splits=args.test_splits, n_repeats=args.test_repeats,
                 random_state=args.random_seed)
         else:
             test_splitter = StratifiedGroupKFold(n_splits=args.test_splits,
@@ -1421,6 +1439,8 @@ parser.add_argument('--scv-type', type=str,
                     help='scv type')
 parser.add_argument('--scv-splits', type=int, default=10,
                     help='scv splits')
+parser.add_argument('--scv-repeats', type=int, default=0,
+                    help='scv repeats')
 parser.add_argument('--scv-size', type=float, default=0.2,
                     help='scv size')
 parser.add_argument('--scv-verbose', type=int,
@@ -1443,6 +1463,8 @@ parser.add_argument('--scv-use-ssplit', default=False, action='store_true',
                     help='scv ShuffleSplit variants instead of KFold')
 parser.add_argument('--test-splits', type=int, default=10,
                     help='num outer splits')
+parser.add_argument('--test-repeats', type=int, default=0,
+                    help='num outer repeats')
 parser.add_argument('--test-size', type=float, default=0.2,
                     help='outer splits test size')
 parser.add_argument('--test-use-ssplit', default=False, action='store_true',

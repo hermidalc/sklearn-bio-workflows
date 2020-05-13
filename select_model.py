@@ -1558,7 +1558,7 @@ if args.filter_warnings:
                 ['ignore', 'Persisting input arguments took', 'UserWarning']))
         if 'fitfailed' in args.filter_warnings:
             python_warnings.append(':'.join(
-                ['ignore', 'Estimator fit failed', 'UserWarning']))
+                ['ignore', 'Estimator fit failed', 'RuntimeWarning']))
         if 'qda' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Variables are collinear',

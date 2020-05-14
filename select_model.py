@@ -994,7 +994,8 @@ def run_model_selection():
             if metric == 'average_precision':
                 print(' Mean PR AUC Test: {:.4f}'.format(
                     np.mean(scores['te']['pr_auc'])), end=' ')
-        if num_features and pipe_props['has_selector']:
+        if num_features and (pipe_props['has_selector']
+                             or np.mean(num_features) < X.shape[1]):
             print(' Mean Features: {:.0f}'.format(np.mean(num_features)))
         else:
             print()

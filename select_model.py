@@ -331,23 +331,31 @@ def transform_feature_meta(pipe, feature_meta):
                 else:
                     trf_feature_meta = feature_meta.iloc[trf_columns]
                 if isinstance(trf_pipe, BaseEstimator):
-                    for trf_estimator in trf_pipe:
-                        if hasattr(trf_estimator, 'get_support'):
+                    for trf_transformer in trf_pipe:
+                        if hasattr(trf_transformer, 'get_support'):
                             trf_feature_meta = trf_feature_meta.loc[
-                                trf_estimator.get_support()]
-                        elif hasattr(trf_estimator, 'get_feature_names'):
-                            trf_new_feature_names = (
-                                trf_estimator.get_feature_names(
+                                trf_transformer.get_support()]
+                        elif hasattr(trf_transformer, 'get_feature_names'):
+                            new_trf_feature_names = (
+                                trf_transformer.get_feature_names(
                                     input_features=(trf_feature_meta.index
                                                     .values)).astype(str))
-                            trf_feature_meta = pd.DataFrame(
-                                np.repeat(trf_feature_meta.values, [
-                                    np.sum(np.char.startswith(
-                                        trf_new_feature_names,
-                                        '{}_'.format(feature_name)))
-                                    for feature_name in trf_feature_meta.index
-                                ], axis=0), columns=trf_feature_meta.columns,
-                                index=trf_new_feature_names)
+                            new_trf_feature_meta = None
+                            for feature_name in trf_feature_meta.index:
+                                f_feature_meta = pd.concat(
+                                    [trf_feature_meta.loc[[feature_name]]]
+                                    * np.sum(np.char.startswith(
+                                        new_trf_feature_names,
+                                        '{}_'.format(feature_name))),
+                                    axis=0, ignore_index=True)
+                                if new_trf_feature_meta is None:
+                                    new_trf_feature_meta = f_feature_meta
+                                else:
+                                    new_trf_feature_meta = pd.concat(
+                                        [new_trf_feature_meta, f_feature_meta],
+                                        axis=0, ignore_index=True)
+                            trf_feature_meta = new_trf_feature_meta.set_index(
+                                new_trf_feature_names)
                 if transformed_feature_meta is None:
                     transformed_feature_meta = trf_feature_meta
                 else:
@@ -363,13 +371,21 @@ def transform_feature_meta(pipe, feature_meta):
                 new_feature_names = estimator.get_feature_names(
                     input_features=transformed_feature_meta.index.values
                 ).astype(str)
-                transformed_feature_meta = pd.DataFrame(
-                    np.repeat(transformed_feature_meta.values, [
-                        np.sum(np.char.startswith(
-                            new_feature_names, '{}_'.format(feature_name)))
-                        for feature_name in transformed_feature_meta.index
-                    ], axis=0), columns=transformed_feature_meta.columns,
-                    index=new_feature_names)
+                new_transformed_feature_meta = None
+                for feature_name in transformed_feature_meta.index:
+                    f_feature_meta = pd.concat(
+                        [transformed_feature_meta.loc[[feature_name]]]
+                        * np.sum(np.char.startswith(
+                            new_feature_names, '{}_'.format(feature_name))),
+                        axis=0, ignore_index=True)
+                    if new_transformed_feature_meta is None:
+                        new_transformed_feature_meta = f_feature_meta
+                    else:
+                        new_transformed_feature_meta = pd.concat(
+                            [new_transformed_feature_meta, f_feature_meta],
+                            axis=0, ignore_index=True)
+                transformed_feature_meta = (new_transformed_feature_meta
+                                            .set_index(new_feature_names))
     final_estimator = pipe[-1]
     feature_weights = explain_weights_df(
         final_estimator, feature_names=transformed_feature_meta.index.values)
@@ -1004,30 +1020,29 @@ def run_model_selection():
         feature_weights = None
         feature_scores = {}
         for split_idx, split_result in enumerate(split_results):
+            split_feature_meta = split_result['feature_meta']
             if split_idx == 0:
                 if feature_meta.columns.any():
-                    feature_annots = (
-                        split_result['feature_meta'][feature_meta.columns])
+                    feature_annots = split_feature_meta[feature_meta.columns]
                 else:
                     feature_annots = pd.DataFrame(
-                        index=split_result['feature_meta'].index)
+                        index=split_feature_meta.index)
             elif feature_meta.columns.any():
                 feature_annots = pd.concat(
-                    [feature_annots,
-                     split_result['feature_meta'][feature_meta.columns]],
+                    [feature_annots, split_feature_meta[feature_meta.columns]],
                     axis=0)
             else:
                 feature_annots = pd.concat(
                     [feature_annots,
-                     pd.DataFrame(index=split_result['feature_meta'].index)],
+                     pd.DataFrame(index=split_feature_meta.index)],
                     axis=0)
-            if 'Weight' in split_result['feature_meta'].columns:
+            if 'Weight' in split_feature_meta.columns:
                 if split_idx == 0:
                     feature_weights = (
-                        split_result['feature_meta'][['Weight']].copy())
+                        split_feature_meta[['Weight']].copy())
                 else:
                     feature_weights = feature_weights.join(
-                        split_result['feature_meta'][['Weight']],
+                        split_feature_meta[['Weight']],
                         how='outer')
                 feature_weights.rename(columns={'Weight': split_idx},
                                        inplace=True)
@@ -1035,12 +1050,12 @@ def run_model_selection():
                 if split_idx == 0:
                     feature_scores[metric] = pd.DataFrame(
                         split_result['scores']['te'][metric], columns=[metric],
-                        index=split_result['feature_meta'].index)
+                        index=split_feature_meta.index)
                 else:
                     feature_scores[metric] = feature_scores[metric].join(
                         pd.DataFrame(split_result['scores']['te'][metric],
                                      columns=[metric],
-                                     index=split_result['feature_meta'].index),
+                                     index=split_feature_meta.index),
                         how='outer')
                 feature_scores[metric].rename(columns={metric: split_idx},
                                               inplace=True)

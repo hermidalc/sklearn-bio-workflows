@@ -1311,6 +1311,8 @@ parser.add_argument('--rlf-slr-n', type=int, nargs='+',
                     help='ReliefF n neighbors')
 parser.add_argument('--rlf-slr-s', type=int, nargs='+',
                     help='ReliefF sample size')
+parser.add_argument('--ohe-trf-drop', type=str, choices=['first'],
+                    help='OneHotEncoder drop')
 parser.add_argument('--mms-trf-feature-range', type=int_list, default=(0, 1),
                     help='MinMaxScaler feature range')
 parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
@@ -1872,7 +1874,10 @@ pipe_config = {
         'estimator': ExtendedColumnTransformer(
             [], n_jobs=1, remainder=args.col_trf_remainder)},
     'OneHotEncoder': {
-        'estimator':  OneHotEncoder(handle_unknown='ignore', sparse=False)},
+        'estimator': OneHotEncoder(
+            drop=args.ohe_trf_drop, sparse=False,
+            handle_unknown=('ignore' if args.ohe_trf_drop is None else
+                            'error'))},
     'LogTransformer': {
         'estimator':  LogTransformer(base=2, shift=1)},
     'PowerTransformer': {

@@ -981,10 +981,10 @@ def run_model_selection():
             if args.pipe_memory:
                 memory.clear(warn=False)
         if args.save_results:
-            dump(split_results, '{}/{}_split_results.pkl'.format(
-                args.out_dir, dataset_name))
-            dump(param_cv_scores, '{}/{}_param_cv_scores.pkl'.format(
-                args.out_dir, dataset_name))
+            dump(split_results, '{}/{}_split_results.pkl'
+                 .format(args.out_dir, dataset_name))
+            dump(param_cv_scores, '{}/{}_param_cv_scores.pkl'
+                 .format(args.out_dir, dataset_name))
         scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
@@ -1062,58 +1062,57 @@ def run_model_selection():
         feature_annots = feature_annots.loc[
             ~feature_annots.index.duplicated(keep='first')]
         feature_frequency = None
-        feature_mean_meta = None
-        feature_mean_meta_floatfmt = ['']
+        feature_results = None
+        feature_results_floatfmt = ['']
         if feature_weights is not None:
             feature_ranks = feature_weights.abs().rank(
                 ascending=False, method='min', na_option='keep')
             feature_ranks.fillna(feature_ranks.shape[0], inplace=True)
             feature_frequency = feature_weights.count(axis=1)
             feature_weights.fillna(0, inplace=True)
-            feature_mean_meta = feature_annots.reindex(
+            feature_results = feature_annots.reindex(
                 index=feature_ranks.index, fill_value='')
-            feature_mean_meta_floatfmt.extend([''] * feature_annots.shape[1])
-            feature_mean_meta['Frequency'] = feature_frequency
-            feature_mean_meta['Mean Weight Rank'] = feature_ranks.mean(axis=1)
-            feature_mean_meta['Mean Weight'] = feature_weights.mean(axis=1)
-            feature_mean_meta_floatfmt.extend(['.0f', '.1f', '.6e'])
+            feature_results_floatfmt.extend([''] * feature_annots.shape[1])
+            feature_results['Frequency'] = feature_frequency
+            feature_results['Mean Weight Rank'] = feature_ranks.mean(axis=1)
+            feature_results['Mean Weight'] = feature_weights.mean(axis=1)
+            feature_results_floatfmt.extend(['.0f', '.1f', '.6e'])
         for metric in args.scv_scoring:
             if metric not in ('roc_auc', 'balanced_accuracy',
                               'average_precision'):
                 run_cleanup()
                 raise RuntimeError('No feature scores fillna value defined '
                                    'for {}'.format(metric))
-            if feature_frequency is None:
+            if feature_results is None:
+                feature_results = feature_annots.reindex(
+                    index=feature_scores[metric].index, fill_value='')
+                feature_results_floatfmt.extend(
+                    [''] * feature_annots.shape[1])
                 feature_frequency = feature_scores[metric].count(axis=1)
+                feature_results['Frequency'] = feature_frequency
+                feature_results_floatfmt.append('.0f')
             feature_scores[metric].fillna(0.5, inplace=True)
             if feature_scores[metric].mean(axis=1).nunique() > 1:
-                if feature_mean_meta is None:
-                    feature_mean_meta = feature_annots.reindex(
-                        index=feature_scores[metric].index, fill_value='')
-                    feature_mean_meta_floatfmt.extend(
-                        [''] * feature_annots.shape[1])
-                    feature_mean_meta['Frequency'] = feature_frequency
-                    feature_mean_meta_floatfmt.append('.0f')
-                feature_mean_meta = feature_mean_meta.join(
+                feature_results = feature_results.join(
                     pd.DataFrame({
                         'Mean Test {}'.format(metric_label[metric]):
                             feature_scores[metric].mean(axis=1)}),
                     how='left')
-                feature_mean_meta_floatfmt.append('.4f')
-        if 'Frequency' not in feature_mean_meta.columns:
-            feature_mean_meta['Frequency'] = feature_frequency
-            feature_mean_meta_floatfmt.append('.0f')
-        if args.verbose > 0 and feature_mean_meta is not None:
+                feature_results_floatfmt.append('.4f')
+        if args.save_results:
+            dump(feature_results, '{}/{}_feature_results.pkl'
+                 .format(args.out_dir, dataset_name))
+        if args.verbose > 0:
             print('Overall Feature Ranking:')
             if feature_weights is not None:
                 print(tabulate(
-                    feature_mean_meta.sort_values(by='Mean Weight Rank'),
-                    floatfmt=feature_mean_meta_floatfmt, headers='keys'))
+                    feature_results.sort_values(by='Mean Weight Rank'),
+                    floatfmt=feature_results_floatfmt, headers='keys'))
             else:
                 print(tabulate(
-                    feature_mean_meta.sort_values(by='Mean Test {}'.format(
+                    feature_results.sort_values(by='Mean Test {}'.format(
                         metric_label[args.scv_refit]), ascending=False),
-                    floatfmt=feature_mean_meta_floatfmt, headers='keys'))
+                    floatfmt=feature_results_floatfmt, headers='keys'))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         # plot roc and pr curves

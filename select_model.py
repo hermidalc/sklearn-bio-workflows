@@ -592,9 +592,7 @@ def run_model_selection():
     else:
         pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
                                     pipe_step_names[-1])
-    search_param_routing = ({'cv': 'groups',
-                             'estimator': ['sample_weight'],
-                             'scoring': ['sample_weight']}
+    search_param_routing = ({'cv': 'groups', 'estimator': [], 'scoring': []}
                             if groups is not None else None)
     if pipe.param_routing:
         if search_param_routing is None:
@@ -662,11 +660,14 @@ def run_model_selection():
                  for i, c in enumerate(col_trf_columns)]), ')', sep='')
         else:
             print()
-    if args.verbose > 0 and groups is not None:
-        print('Groups:')
-        pprint(groups)
-        print('Sample weights:')
-        pprint(sample_weights)
+    if args.verbose > 0:
+        if groups is not None:
+            print('Groups:')
+            pprint(groups)
+        if (sample_weights is not None and 'sample_weight'
+                in search_param_routing['estimator']):
+            print('Sample weights:')
+            pprint(sample_weights)
     if args.load_only:
         run_cleanup()
         sys.exit()

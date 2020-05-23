@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import (
     is_bool_dtype, is_categorical_dtype, is_integer_dtype, is_float_dtype,
-    is_object_dtype)
+    is_object_dtype, is_string_dtype)
 import rpy2.rinterface_lib.embedded as r_embedded
 
 r_embedded.set_initoptions(
@@ -245,8 +245,21 @@ def load_dataset(dataset_file):
                 run_cleanup()
                 raise RuntimeError('{} column already exists in X'
                                    .format(sample_meta_col))
-            X[sample_meta_col] = sample_meta[sample_meta_col]
-            new_feature_names.append(sample_meta_col)
+            is_category = (is_categorical_dtype(sample_meta[sample_meta_col])
+                           or is_object_dtype(sample_meta[sample_meta_col])
+                           or is_string_dtype(sample_meta[sample_meta_col]))
+            num_unique_cat = sample_meta[sample_meta_col].unique().size
+            if args.test_dataset or not is_category or num_unique_cat > 2:
+                X[sample_meta_col] = sample_meta[sample_meta_col]
+                new_feature_names.append(sample_meta_col)
+            elif num_unique_cat == 2:
+                ohe = OneHotEncoder(drop='first', sparse=False)
+                ohe.fit(sample_meta[[sample_meta_col]])
+                new_sample_meta_col = '{}_{}'.format(
+                    sample_meta_col, ohe.categories_[0][1])
+                X[new_sample_meta_col] = ohe.transform(
+                    sample_meta[[sample_meta_col]])
+                new_feature_names.append(new_sample_meta_col)
         new_feature_meta = pd.DataFrame('', index=new_feature_names,
                                         columns=feature_meta.columns)
         feature_meta = feature_meta.append(new_feature_meta,
@@ -266,9 +279,11 @@ def load_dataset(dataset_file):
                 col_trf_columns.append(X.dtypes.apply(is_float_dtype)
                                        .to_numpy())
             elif dtype == 'category':
-                col_trf_columns.append(X.dtypes.apply(
-                    lambda d: (is_bool_dtype(d) or is_categorical_dtype(d)
-                               or is_object_dtype(d))).to_numpy())
+                col_trf_columns.append(
+                    X.dtypes.apply(lambda d: (
+                        is_bool_dtype(d) or is_categorical_dtype(d)
+                        or is_object_dtype(d) or is_string_dtype(d)))
+                    .to_numpy())
     return (dataset_name, X, y, groups, sample_meta, sample_weights,
             feature_meta, col_trf_columns)
 

@@ -739,8 +739,7 @@ def run_model_selection():
             else:
                 print(tabulate(final_feature_meta, headers='keys'))
         if args.save_model:
-            dump(search, '{}/{}_search.pkl'.format(args.out_dir,
-                                                   dataset_name))
+            dump(search, '{}/{}_model.pkl'.format(args.out_dir, dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         test_datasets = natsorted(
@@ -914,6 +913,7 @@ def run_model_selection():
                 ax_pre.grid(False)
     # train-test nested cv
     else:
+        split_models = []
         split_results = []
         param_cv_scores = {}
         if groups is None:
@@ -1023,13 +1023,16 @@ def run_model_selection():
                                    floatfmt='.6e', headers='keys'))
                 else:
                     print(tabulate(final_feature_meta, headers='keys'))
-            split_results.append({
-                'model': best_pipe if args.save_model else None,
-                'feature_meta': final_feature_meta,
-                'scores': split_scores})
+            if args.save_model:
+                split_models.append(best_pipe)
+            split_results.append({'feature_meta': final_feature_meta,
+                                  'scores': split_scores})
             # clear cache (can grow too big if not)
             if args.pipe_memory:
                 memory.clear(warn=False)
+        if args.save_model:
+            dump(split_models, '{}/{}_split_models.pkl'
+                 .format(args.out_dir, dataset_name))
         if args.save_results:
             dump(split_results, '{}/{}_split_results.pkl'
                  .format(args.out_dir, dataset_name))

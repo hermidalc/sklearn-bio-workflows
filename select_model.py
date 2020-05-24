@@ -1310,6 +1310,9 @@ parser.add_argument('--col-trf-remainder', type=str,
                     help='ColumnTransfomer remainder')
 parser.add_argument('--sample-meta-cols', type=str, nargs='+',
                     help='sample metadata columns')
+parser.add_argument('--penalty-factor-meta-col', type=str,
+                    default='Penalty Factor',
+                    help='penalty_factor feature metadata column name')
 parser.add_argument('--col-slr-cols', type=str_list, nargs='+',
                     help='ColumnSelector feature or metadata columns')
 parser.add_argument('--col-slr-file', type=str, nargs='+',

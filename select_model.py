@@ -1417,6 +1417,8 @@ parser.add_argument('--svc-clf-deg', type=int, nargs='+',
                     help='SVC poly degree')
 parser.add_argument('--svc-clf-g', type=str, nargs='+',
                     help='SVC gamma')
+parser.add_argument('--svc-clf-max-iter', type=int, default=-1,
+                    help='SVC max_iter')
 parser.add_argument('--lsvc-clf-loss', type=str, default='squared_hinge',
                     help='LinearSVC loss')
 parser.add_argument('--lsvc-clf-max-iter', type=int, default=1000,
@@ -1693,7 +1695,8 @@ if args.pipe_memory:
         max_iter=args.lsvc_clf_max_iter, memory=memory,
         random_state=args.random_seed, tol=args.lsvc_clf_tol)
     svc_clf = CachedSVC(cache_size=args.svc_clf_cache, kernel='linear',
-                        memory=memory, random_state=args.random_seed)
+                        memory=memory, max_iter=args.svc_clf_max_iter,
+                        random_state=args.random_seed)
     sfm_lsvc_clf = CachedLinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, memory=memory,
         penalty='l1', random_state=args.random_seed, tol=args.lsvc_clf_tol)
@@ -1713,6 +1716,7 @@ else:
         max_iter=args.lsvc_clf_max_iter, random_state=args.random_seed,
         tol=args.lsvc_clf_tol)
     svc_clf = SVC(cache_size=args.svc_clf_cache, kernel='linear',
+                  max_iter=args.svc_clf_max_iter,
                   random_state=args.random_seed)
     sfm_lsvc_clf = LinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, penalty='l1',
@@ -2044,7 +2048,8 @@ pipe_config = {
             'class_weight': cv_params['svc_clf_cw']},
         'param_routing': ['sample_weight']},
     'SVC': {
-        'estimator': SVC(cache_size=args.svc_clf_cache, gamma='scale',
+        'estimator': SVC(cache_size=args.svc_clf_cache,
+                         max_iter=args.svc_clf_max_iter,
                          random_state=args.random_seed),
         'param_grid': {
             'C': cv_params['svc_clf_c'],

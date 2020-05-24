@@ -71,7 +71,8 @@ from sklearn_extensions.feature_selection import (
     CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
     ColumnSelector, DESeq2, DreamVoom, EdgeR, EdgeRFilterByExpr, FCBF, Limma,
     LimmaVoom, MutualInfoScorerClassification, NanoStringEndogenousSelector,
-    ReliefF, RFE, SelectFromModel, SelectKBest, VarianceThreshold)
+    ReliefF, RFE, SelectFromModel, SelectFromUnivariateModel, SelectKBest,
+    VarianceThreshold)
 from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV,
     RepeatedStratifiedGroupKFold, StratifiedGroupKFold,
@@ -236,6 +237,11 @@ def load_dataset(dataset_file):
         feature_meta = pd.DataFrame(index=r_biobase.featureNames(eset))
     if args.sample_meta_cols:
         new_feature_names = []
+        if args.penalty_factor_meta_col in feature_meta.columns:
+            run_cleanup()
+            raise RuntimeError('{} column already exists in feature_meta'
+                               .format(args.penalty_factor_meta_col))
+        feature_meta[args.penalty_factor_meta_col] = 1
         for sample_meta_col in args.sample_meta_cols:
             if sample_meta_col not in sample_meta.columns:
                 run_cleanup()
@@ -248,11 +254,20 @@ def load_dataset(dataset_file):
             is_category = (is_categorical_dtype(sample_meta[sample_meta_col])
                            or is_object_dtype(sample_meta[sample_meta_col])
                            or is_string_dtype(sample_meta[sample_meta_col]))
-            num_unique_cat = sample_meta[sample_meta_col].unique().size
-            if args.test_dataset or not is_category or num_unique_cat > 2:
+            num_categories = sample_meta[sample_meta_col].unique().size
+            if args.test_dataset or not is_category:
                 X[sample_meta_col] = sample_meta[sample_meta_col]
                 new_feature_names.append(sample_meta_col)
-            elif num_unique_cat == 2:
+            elif num_categories > 2:
+                ohe = OneHotEncoder(sparse=False)
+                ohe.fit(sample_meta[[sample_meta_col]])
+                for category in ohe.categories_[0]:
+                    new_sample_meta_col = '{}_{}'.format(
+                        sample_meta_col, category)
+                    X[new_sample_meta_col] = ohe.transform(
+                        sample_meta[[sample_meta_col]])
+                    new_feature_names.append(new_sample_meta_col)
+            elif num_categories == 2:
                 ohe = OneHotEncoder(drop='first', sparse=False)
                 ohe.fit(sample_meta[[sample_meta_col]])
                 new_sample_meta_col = '{}_{}'.format(
@@ -262,6 +277,7 @@ def load_dataset(dataset_file):
                 new_feature_names.append(new_sample_meta_col)
         new_feature_meta = pd.DataFrame('', index=new_feature_names,
                                         columns=feature_meta.columns)
+        new_feature_meta[args.penalty_factor_meta_col] = 0
         feature_meta = feature_meta.append(new_feature_meta,
                                            verify_integrity=True)
     col_trf_columns = []
@@ -762,10 +778,6 @@ def run_model_selection():
             ax_slr.set_xlabel('Number of top-ranked features selected',
                               fontsize=args.axis_font_size)
             ax_slr.set_ylabel('Test Score', fontsize=args.axis_font_size)
-            x_axis = range(1, final_feature_meta.shape[0] + 1)
-            ax_slr.set_xlim([min(x_axis), max(x_axis)])
-            if len(x_axis) <= 30:
-                ax_slr.set_xticks(x_axis)
             best_pipe = search.best_estimator_
             tf_pipe_steps = best_pipe.steps[:-1]
             tf_pipe_steps.append(('slrc', ColumnSelector()))
@@ -773,7 +785,7 @@ def run_model_selection():
                                      if best_pipe.param_routing else {})
             tf_pipe_param_routing['slrc'] = (
                 pipe_config['ColumnSelector']['param_routing'])
-            if isinstance(best_pipe[-1], RFE):
+            if isinstance(best_pipe[-1], RFE, SelectFromUnivariateModel):
                 final_step_name = best_pipe.steps[-1][0]
                 final_estimator = best_pipe.steps[-1][1].estimator
                 final_estimator_key = type(final_estimator).__qualname__
@@ -789,10 +801,32 @@ def run_model_selection():
             if 'feature_meta' not in pipe_fit_params:
                 tf_pipe_fit_params['feature_meta'] = feature_meta
             tf_name_sets = []
-            for feature_name in final_feature_meta.iloc[
-                    (-final_feature_meta['Weight'].abs()).argsort()].index:
-                tf_name_sets.append(tf_name_sets[-1] + [feature_name]
-                                    if tf_name_sets else [feature_name])
+            if args.penalty_factor_meta_col in final_feature_meta.columns:
+                unpenalized_feature_names = final_feature_meta.loc[
+                    final_feature_meta[args.penalty_factor_meta_col] == 0
+                ].index.to_list()
+                penalized_final_feature_meta = final_feature_meta.loc[
+                    final_feature_meta[args.penalty_factor_meta_col] != 0]
+                for feature_name in penalized_final_feature_meta.iloc[
+                        (-penalized_final_feature_meta['Weight'].abs())
+                        .argsort()].index:
+                    tf_name_sets.append(tf_name_sets[-1] + [feature_name]
+                                        if tf_name_sets
+                                        else [feature_name])
+                tf_name_sets = [feature_names + unpenalized_feature_names
+                                for feature_names in tf_name_sets]
+                x_axis = range(1, penalized_final_feature_meta.shape[0] + 1)
+            else:
+                for feature_name in final_feature_meta.iloc[
+                        (-final_feature_meta['Weight'].abs())
+                        .argsort()].index:
+                    tf_name_sets.append(tf_name_sets[-1] + [feature_name]
+                                        if tf_name_sets
+                                        else [feature_name])
+                x_axis = range(1, final_feature_meta.shape[0] + 1)
+            ax_slr.set_xlim([min(x_axis), max(x_axis)])
+            if len(x_axis) <= 30:
+                ax_slr.set_xticks(x_axis)
             tf_pipes = Parallel(
                 n_jobs=args.n_jobs, backend=args.parallel_backend,
                 verbose=args.scv_verbose)(
@@ -1017,7 +1051,13 @@ def run_model_selection():
                         scores['te']['pr_auc'] = []
                     scores['te']['pr_auc'].append(
                         split_result['scores']['te']['pr_auc'])
-            num_features.append(split_result['feature_meta'].shape[0])
+            split_feature_meta = split_result['feature_meta']
+            if args.penalty_factor_meta_col in split_feature_meta.columns:
+                num_features.append(split_feature_meta.loc[
+                    split_feature_meta[args.penalty_factor_meta_col]
+                    != 0].shape[0])
+            else:
+                num_features.append(split_feature_meta.shape[0])
         print('Dataset:', dataset_name, X.shape, end=' ')
         for metric in args.scv_scoring:
             print(' Mean {} (CV / Test): {:.4f} / {:.4f}'.format(

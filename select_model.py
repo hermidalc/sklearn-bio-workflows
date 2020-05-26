@@ -1386,8 +1386,6 @@ parser.add_argument('--sfm-slr-svc-ce-min', type=int,
                     help='SelectFromModel LinearSVC C exp min')
 parser.add_argument('--sfm-slr-svc-ce-max', type=int,
                     help='SelectFromModel LinearSVC C exp max')
-parser.add_argument('--sfm-slr-svc-cw', type=str, nargs='+',
-                    help='SelectFromModel LinearSVC class weight')
 parser.add_argument('--sfm-slr-rf-thres', type=float, nargs='+',
                     help='SelectFromModel rf threshold')
 parser.add_argument('--sfm-slr-rf-e', type=int, nargs='+',
@@ -1396,8 +1394,6 @@ parser.add_argument('--sfm-slr-rf-d', type=str, nargs='+',
                     help='SelectFromModel rf max depth')
 parser.add_argument('--sfm-slr-rf-f', type=str, nargs='+',
                     help='SelectFromModel rf max features')
-parser.add_argument('--sfm-slr-rf-cw', type=str, nargs='+',
-                    help='SelectFromModel rf class weight')
 parser.add_argument('--sfm-slr-ext-thres', type=float, nargs='+',
                     help='SelectFromModel ext threshold')
 parser.add_argument('--sfm-slr-ext-e', type=int, nargs='+',
@@ -1406,8 +1402,6 @@ parser.add_argument('--sfm-slr-ext-d', type=str, nargs='+',
                     help='SelectFromModel ext max depth')
 parser.add_argument('--sfm-slr-ext-f', type=str, nargs='+',
                     help='SelectFromModel ext max features')
-parser.add_argument('--sfm-slr-ext-cw', type=str, nargs='+',
-                    help='SelectFromModel ext class weight')
 parser.add_argument('--sfm-slr-grb-e', type=int, nargs='+',
                     help='SelectFromModel grb n estimators')
 parser.add_argument('--sfm-slr-grb-d', type=int, nargs='+',
@@ -1839,8 +1833,7 @@ for cv_param, cv_param_values in cv_params.copy().items():
                                       - cv_params['{}_min'.format(cv_param)])
                                      / cv_params['{}_step'.format(cv_param)]))
                         + 1), decimals=3)
-    elif cv_param in ('sfm_slr_svc_cw', 'sfm_slr_rf_cw', 'sfm_slr_ext_cw',
-                      'sfm_slr_rf_f', 'sfm_slr_ext_f', 'sfm_slr_grb_f',
+    elif cv_param in ('sfm_slr_rf_f', 'sfm_slr_ext_f', 'sfm_slr_grb_f',
                       'svc_clf_cw', 'dt_clf_f', 'dt_clf_cw', 'rf_clf_f',
                       'rf_clf_cw', 'ext_clf_f', 'ext_clf_cw', 'ada_clf_lgr_cw',
                       'grb_clf_f', 'sgd_clf_cw'):
@@ -1881,7 +1874,7 @@ pipe_config = {
         'estimator': SelectFromModel(sfm_lsvc_clf),
         'param_grid': {
             'estimator__C': cv_params['sfm_slr_svc_c'],
-            'estimator__class_weight': cv_params['sfm_slr_svc_cw'],
+            'estimator__class_weight': cv_params['svc_clf_cw'],
             'max_features': cv_params['skb_slr_k'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
@@ -1891,7 +1884,7 @@ pipe_config = {
             'estimator__n_estimators': cv_params['sfm_slr_rf_e'],
             'estimator__max_depth': cv_params['sfm_slr_rf_d'],
             'estimator__max_features': cv_params['sfm_slr_rf_f'],
-            'estimator__class_weight': cv_params['sfm_slr_rf_cw'],
+            'estimator__class_weight': cv_params['rf_clf_cw'],
             'max_features': cv_params['skb_slr_k'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
@@ -1901,7 +1894,7 @@ pipe_config = {
             'estimator__n_estimators': cv_params['sfm_slr_ext_e'],
             'estimator__max_depth': cv_params['sfm_slr_ext_d'],
             'estimator__max_features': cv_params['sfm_slr_ext_f'],
-            'estimator__class_weight': cv_params['sfm_slr_ext_cw'],
+            'estimator__class_weight': cv_params['ext_clf_cw'],
             'max_features': cv_params['skb_slr_k'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},

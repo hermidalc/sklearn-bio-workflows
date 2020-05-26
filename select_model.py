@@ -1355,7 +1355,13 @@ parser.add_argument('--col-slr-meta-col', type=str,
 parser.add_argument('--vrt-slr-thres', type=float, nargs='+',
                     help='VarianceThreshold threshold')
 parser.add_argument('--mui-slr-n', type=int, nargs='+',
-                    help='MutualInfoScorer n neighbors')
+                    help='MutualInfoScorer n_neighbors')
+parser.add_argument('--mui-slr-n-min', type=int, default=1,
+                    help='MutualInfoScorer n_neighbors min')
+parser.add_argument('--mui-slr-n-max', type=int,
+                    help='MutualInfoScorer n_neighbors max')
+parser.add_argument('--mui-slr-n-step', type=int, default=1,
+                    help='MutualInfoScorer n_neighbors step')
 parser.add_argument('--skb-slr-k', type=int, nargs='+',
                     help='Selector k')
 parser.add_argument('--skb-slr-k-min', type=int, default=1,
@@ -1799,7 +1805,7 @@ for cv_param, cv_param_values in cv_params.copy().items():
                       'pwr_trf_meth', 'svc_clf_kern', 'mlp_clf_act',
                       'mlp_clf_slvr', 'sgd_clf_loss'):
         cv_params[cv_param] = sorted(cv_param_values)
-    elif cv_param == 'skb_slr_k_max':
+    elif cv_param in ('mui_slr_n_max', 'skb_slr_k_max'):
         cv_param = '_'.join(cv_param.split('_')[:3])
         if (cv_params['{}_min'.format(cv_param)] == 1
                 and cv_params['{}_step'.format(cv_param)] > 1):

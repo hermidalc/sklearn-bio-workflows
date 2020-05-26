@@ -712,7 +712,7 @@ def run_model_selection():
         if groups is not None:
             print('Groups:')
             pprint(groups)
-        if (sample_weight is not None and 'sample_weight' in
+        if (sample_weights is not None and 'sample_weight' in
                 search_param_routing['estimator']):
             print('Sample weights:')
             pprint(sample_weights)

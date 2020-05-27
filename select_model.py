@@ -852,7 +852,7 @@ def run_model_selection():
                                           fit_params=tf_pipe_fit_params)
                     for feature_names in tf_name_sets)
             if args.scv_verbose == 0:
-                print()
+                print(flush=True)
         # plot roc and pr curves
         if 'roc_auc' in args.scv_scoring:
             fig_roc, ax_roc = plt.subplots(figsize=(args.fig_width,
@@ -1006,7 +1006,7 @@ def run_model_selection():
                             fit_params=pipe_fit_params)
                         for pipe_params in [best_params])[0]
                 if args.scv_verbose == 0:
-                    print()
+                    print(flush=True)
             else:
                 best_index = search.best_index_
                 best_params = search.best_params_

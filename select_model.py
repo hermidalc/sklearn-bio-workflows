@@ -77,7 +77,8 @@ from sklearn_extensions.feature_selection import (
 from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedSampleFromGroupKFold, RepeatedStratifiedGroupKFold,
-    RepeatedStratifiedSampleFromGroupKFold, StratifiedGroupShuffleSplit)
+    RepeatedStratifiedSampleFromGroupKFold, StratifiedGroupShuffleSplit,
+    StratifiedSampleFromGroupShuffleSplit)
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
     DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover, LogTransformer,
@@ -641,9 +642,9 @@ def run_model_selection():
                  or not pipe_props['uses_rjava'] else False)
     if groups is None:
         if args.scv_use_ssplit:
-            cv_splitter = StratifiedShuffleSplit(n_splits=args.scv_splits,
-                                                 test_size=args.scv_size,
-                                                 random_state=args.random_seed)
+            cv_splitter = StratifiedShuffleSplit(
+                n_splits=args.scv_splits, test_size=args.scv_size,
+                random_state=args.random_seed)
         elif args.scv_repeats > 0:
             cv_splitter = RepeatedStratifiedKFold(
                 n_splits=args.scv_splits, n_repeats=args.scv_repeats,
@@ -653,9 +654,18 @@ def run_model_selection():
                 n_splits=args.scv_splits, random_state=args.random_seed,
                 shuffle=True)
     elif args.scv_use_ssplit:
-        cv_splitter = StratifiedGroupShuffleSplit(
-            n_splits=args.scv_splits, test_size=args.scv_size,
-            random_state=args.random_seed)
+        if 'sample_weight' in search_param_routing['estimator']:
+            cv_splitter = StratifiedGroupShuffleSplit(
+                n_splits=args.scv_splits, test_size=args.scv_size,
+                random_state=args.random_seed)
+        elif args.test_dataset:
+            cv_splitter = StratifiedSampleFromGroupShuffleSplit(
+                n_splits=args.scv_splits, test_size=args.scv_size,
+                random_state=args.random_seed)
+        else:
+            cv_splitter = StratifiedShuffleSplit(
+                n_splits=args.scv_splits, test_size=args.scv_size,
+                random_state=args.random_seed)
     elif args.scv_repeats > 0:
         if 'sample_weight' in search_param_routing['estimator']:
             cv_splitter = RepeatedStratifiedGroupKFold(
@@ -954,9 +964,14 @@ def run_model_selection():
                     n_splits=args.test_splits, random_state=args.random_seed,
                     shuffle=True)
         elif args.test_use_ssplit:
-            test_splitter = StratifiedGroupShuffleSplit(
-                n_splits=args.test_splits, test_size=args.test_size,
-                random_state=args.random_seed)
+            if 'sample_weight' in search_param_routing['estimator']:
+                test_splitter = StratifiedGroupShuffleSplit(
+                    n_splits=args.test_splits, test_size=args.test_size,
+                    random_state=args.random_seed)
+            else:
+                test_splitter = StratifiedSampleFromGroupShuffleSplit(
+                    n_splits=args.test_splits, test_size=args.test_size,
+                    random_state=args.random_seed)
         elif args.test_repeats > 0:
             if 'sample_weight' in search_param_routing['estimator']:
                 test_splitter = RepeatedStratifiedGroupKFold(
@@ -993,7 +1008,6 @@ def run_model_selection():
             search_fit_params = pipe_fit_params.copy()
             if groups is not None:
                 search_fit_params['groups'] = groups[train_idxs]
-
             try:
                 with parallel_backend(
                         args.parallel_backend,

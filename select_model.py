@@ -770,7 +770,7 @@ def run_model_selection():
                                floatfmt='.6e', headers='keys'))
             else:
                 print(tabulate(final_feature_meta, headers='keys'))
-        if args.save_model:
+        if args.save_models:
             dump(search, '{}/{}_model.pkl'.format(args.out_dir, dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
@@ -1090,13 +1090,13 @@ def run_model_selection():
                                    floatfmt='.6e', headers='keys'))
                 else:
                     print(tabulate(final_feature_meta, headers='keys'))
-            if args.save_model:
+            if args.save_models:
                 split_models.append(best_pipe)
             split_results.append({'feature_meta': final_feature_meta,
                                   'scores': split_scores})
             if args.pipe_memory:
                 memory.clear(warn=False)
-        if args.save_model:
+        if args.save_models:
             dump(split_models, '{}/{}_split_models.pkl'
                  .format(args.out_dir, dataset_name))
         if args.save_results:
@@ -1646,8 +1646,8 @@ parser.add_argument('--save-figs', default=False, action='store_true',
                     help='save figures')
 parser.add_argument('--show-figs', default=False, action='store_true',
                     help='show figures')
-parser.add_argument('--save-model', default=False, action='store_true',
-                    help='save model')
+parser.add_argument('--save-models', default=False, action='store_true',
+                    help='save models')
 parser.add_argument('--save-results', default=False, action='store_true',
                     help='save results')
 parser.add_argument('--n-jobs', type=int, default=-1,

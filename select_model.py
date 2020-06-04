@@ -1096,6 +1096,15 @@ def run_model_selection():
                                 'scores': split_scores}
             split_results.append(split_result)
             if args.save_models:
+                if args.pipe_memory:
+                    best_pipe.set_params(memory=None)
+                    for estimator in best_pipe:
+                        if hasattr(estimator, 'memory'):
+                            estimator.set_params(memory=None)
+                        if hasattr(estimator, 'estimator'):
+                            estimator.estimator.set_params(memory=None)
+                        elif hasattr(estimator, 'base_estimator'):
+                            estimator.base_estimator.set_params(memory=None)
                 split_models.append(best_pipe)
             if args.pipe_memory:
                 memory.clear(warn=False)

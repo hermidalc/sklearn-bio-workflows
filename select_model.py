@@ -750,9 +750,9 @@ def run_model_selection():
         with parallel_backend(args.parallel_backend,
                               inner_max_num_threads=inner_max_num_threads):
             search.fit(X, y, **search_fit_params)
+        best_pipe = search.best_estimator_
         param_cv_scores = add_param_cv_scores(search, param_grid_dict)
-        final_feature_meta = transform_feature_meta(search.best_estimator_,
-                                                    feature_meta)
+        final_feature_meta = transform_feature_meta(best_pipe, feature_meta)
         if args.verbose > 0:
             print('Train:', dataset_name, end=' ')
             for metric in args.scv_scoring:
@@ -771,7 +771,7 @@ def run_model_selection():
             else:
                 print(tabulate(final_feature_meta, headers='keys'))
         if args.save_models:
-            dump(search.best_estimator_, '{}/{}_model.pkl'
+            dump(best_pipe, '{}/{}_model.pkl'
                  .format(args.out_dir, dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
@@ -810,7 +810,6 @@ def run_model_selection():
             ax_slr.set_xlabel('Number of top-ranked features selected',
                               fontsize=args.axis_font_size)
             ax_slr.set_ylabel('Test Score', fontsize=args.axis_font_size)
-            best_pipe = search.best_estimator_
             tf_pipe_steps = best_pipe.steps[:-1]
             tf_pipe_steps.append(('slrc', ColumnSelector()))
             tf_pipe_param_routing = (best_pipe.param_routing

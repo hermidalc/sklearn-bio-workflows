@@ -1027,73 +1027,76 @@ def run_model_selection():
                               'train-test split will be ignored. Details: {}'
                               .format(format_exception_only(type(e), e)[0]),
                               category=FitFailedWarning)
-                if args.pipe_memory:
-                    memory.clear(warn=False)
-                continue
-            if pipe_props['uses_rjava']:
-                best_index = np.argmin(search.cv_results_[
-                    'rank_test_{}'.format(args.scv_refit)])
-                best_params = search.cv_results_['params'][best_index]
-                best_pipe = Parallel(
-                    n_jobs=args.n_jobs, backend=args.parallel_backend,
-                    verbose=args.scv_verbose)(
-                        delayed(fit_pipeline)(
-                            X.iloc[train_idxs], y[train_idxs], pipe.steps,
-                            params=pipe_params,
-                            param_routing=pipe.param_routing,
-                            fit_params=pipe_fit_params)
-                        for pipe_params in [best_params])[0]
-                if args.scv_verbose == 0:
-                    print(flush=True)
+                split_result = None
+                best_pipe = None
             else:
-                best_index = search.best_index_
-                best_params = search.best_params_
-                best_pipe = search.best_estimator_
-            param_cv_scores = add_param_cv_scores(search, param_grid_dict,
-                                                  param_cv_scores)
-            final_feature_meta = transform_feature_meta(best_pipe,
-                                                        feature_meta)
-            split_scores = {'cv': {}}
-            for metric in args.scv_scoring:
-                split_scores['cv'][metric] = search.cv_results_[
-                    'mean_test_{}'.format(metric)][best_index]
-            test_sample_weights = (sample_weights[test_idxs]
-                                   if sample_weights is not None else None)
-            pipe_predict_params = {}
-            if 'sample_meta' in pipe_fit_params:
-                pipe_predict_params['sample_meta'] = (
-                    sample_meta.iloc[test_idxs])
-            if 'feature_meta' in pipe_fit_params:
-                pipe_predict_params['feature_meta'] = feature_meta
-            split_scores['te'] = calculate_test_scores(
-                best_pipe, X.iloc[test_idxs], y[test_idxs],
-                pipe_predict_params, test_sample_weights=test_sample_weights)
-            if args.verbose > 0:
-                print('Dataset:', dataset_name, ' Split: {:>{width}d}'
-                      .format(split_idx + 1, width=len(str(args.test_splits))),
-                      end=' ')
-                for metric in args.scv_scoring:
-                    print(' {} (CV / Test): {:.4f} / {:.4f}'.format(
-                        metric_label[metric], split_scores['cv'][metric],
-                        split_scores['te'][metric]), end=' ')
-                    if metric == 'average_precision':
-                        print(' PR AUC Test: {:.4f}'.format(
-                            split_scores['te']['pr_auc']), end=' ')
-                print(' Params:', {
-                    k: ('.'.join([type(v).__module__, type(v).__qualname__])
-                        if isinstance(v, BaseEstimator) else v)
-                    for k, v in best_params.items()})
-            if args.verbose > 1:
-                if 'Weight' in final_feature_meta.columns:
-                    print(tabulate(final_feature_meta.iloc[
-                        (-final_feature_meta['Weight'].abs()).argsort()],
-                                   floatfmt='.6e', headers='keys'))
+                if pipe_props['uses_rjava']:
+                    best_index = np.argmin(search.cv_results_[
+                        'rank_test_{}'.format(args.scv_refit)])
+                    best_params = search.cv_results_['params'][best_index]
+                    best_pipe = Parallel(
+                        n_jobs=args.n_jobs, backend=args.parallel_backend,
+                        verbose=args.scv_verbose)(
+                            delayed(fit_pipeline)(
+                                X.iloc[train_idxs], y[train_idxs], pipe.steps,
+                                params=pipe_params,
+                                param_routing=pipe.param_routing,
+                                fit_params=pipe_fit_params)
+                            for pipe_params in [best_params])[0]
+                    if args.scv_verbose == 0:
+                        print(flush=True)
                 else:
-                    print(tabulate(final_feature_meta, headers='keys'))
+                    best_index = search.best_index_
+                    best_params = search.best_params_
+                    best_pipe = search.best_estimator_
+                param_cv_scores = add_param_cv_scores(search, param_grid_dict,
+                                                      param_cv_scores)
+                final_feature_meta = transform_feature_meta(best_pipe,
+                                                            feature_meta)
+                split_scores = {'cv': {}}
+                for metric in args.scv_scoring:
+                    split_scores['cv'][metric] = search.cv_results_[
+                        'mean_test_{}'.format(metric)][best_index]
+                test_sample_weights = (sample_weights[test_idxs]
+                                       if sample_weights is not None else None)
+                pipe_predict_params = {}
+                if 'sample_meta' in pipe_fit_params:
+                    pipe_predict_params['sample_meta'] = (
+                        sample_meta.iloc[test_idxs])
+                if 'feature_meta' in pipe_fit_params:
+                    pipe_predict_params['feature_meta'] = feature_meta
+                split_scores['te'] = calculate_test_scores(
+                    best_pipe, X.iloc[test_idxs], y[test_idxs],
+                    pipe_predict_params,
+                    test_sample_weights=test_sample_weights)
+                if args.verbose > 0:
+                    print('Dataset:', dataset_name, ' Split: {:>{width}d}'
+                          .format(split_idx + 1,
+                                  width=len(str(args.test_splits))), end=' ')
+                    for metric in args.scv_scoring:
+                        print(' {} (CV / Test): {:.4f} / {:.4f}'.format(
+                            metric_label[metric], split_scores['cv'][metric],
+                            split_scores['te'][metric]), end=' ')
+                        if metric == 'average_precision':
+                            print(' PR AUC Test: {:.4f}'.format(
+                                split_scores['te']['pr_auc']), end=' ')
+                    print(' Params:', {
+                        k: ('.'.join([type(v).__module__,
+                                      type(v).__qualname__])
+                            if isinstance(v, BaseEstimator) else v)
+                        for k, v in best_params.items()})
+                if args.verbose > 1:
+                    if 'Weight' in final_feature_meta.columns:
+                        print(tabulate(final_feature_meta.iloc[
+                            (-final_feature_meta['Weight'].abs()).argsort()],
+                                       floatfmt='.6e', headers='keys'))
+                    else:
+                        print(tabulate(final_feature_meta, headers='keys'))
+                split_result = {'feature_meta': final_feature_meta,
+                                'scores': split_scores}
+            split_results.append(split_result)
             if args.save_models:
                 split_models.append(best_pipe)
-            split_results.append({'feature_meta': final_feature_meta,
-                                  'scores': split_scores})
             if args.pipe_memory:
                 memory.clear(warn=False)
         if args.save_models:
@@ -1107,6 +1110,8 @@ def run_model_selection():
         scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
+            if split_result is None:
+                continue
             for metric in args.scv_scoring:
                 if metric not in scores['cv']:
                     scores['cv'][metric] = []
@@ -1145,6 +1150,8 @@ def run_model_selection():
         feature_weights = None
         feature_scores = {}
         for split_idx, split_result in enumerate(split_results):
+            if split_result is None:
+                continue
             split_feature_meta = split_result['feature_meta']
             if split_idx == 0:
                 if feature_meta.columns.any():
@@ -1254,6 +1261,8 @@ def run_model_selection():
             tprs = []
             mean_fpr = np.linspace(0, 1, 100)
             for split_result in split_results:
+                if split_result is None:
+                    continue
                 tprs.append(np.interp(mean_fpr,
                                       split_result['scores']['te']['fpr'],
                                       split_result['scores']['te']['tpr']))
@@ -1295,6 +1304,8 @@ def run_model_selection():
             pres, scores['te']['pr_auc'] = [], []
             mean_rec = np.linspace(0, 1, 100)
             for split_result in split_results:
+                if split_result is None:
+                    continue
                 scores['te']['pr_auc'].append(
                     split_result['scores']['te']['pr_auc'])
                 pres.append(np.interp(mean_rec,

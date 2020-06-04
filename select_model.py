@@ -771,7 +771,8 @@ def run_model_selection():
             else:
                 print(tabulate(final_feature_meta, headers='keys'))
         if args.save_models:
-            dump(search, '{}/{}_model.pkl'.format(args.out_dir, dataset_name))
+            dump(search.best_estimator_, '{}/{}_model.pkl'
+                 .format(args.out_dir, dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         test_datasets = natsorted(

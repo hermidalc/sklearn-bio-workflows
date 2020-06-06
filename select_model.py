@@ -369,7 +369,7 @@ def transform_feature_meta(pipe, feature_meta):
                     ctf_feature_meta = feature_meta.loc[ctf_columns]
                 else:
                     ctf_feature_meta = feature_meta.iloc[ctf_columns]
-                if isinstance(ctf_transformer, Pipeline):
+                if isinstance(ctf_transformer, BaseEstimator):
                     for transformer in ctf_transformer:
                         if hasattr(transformer, 'get_support'):
                             ctf_feature_meta = ctf_feature_meta.loc[
@@ -395,10 +395,6 @@ def transform_feature_meta(pipe, feature_meta):
                                         axis=0, ignore_index=True)
                             ctf_feature_meta = new_ctf_feature_meta.set_index(
                                 new_ctf_feature_names)
-                else:
-                    run_cleanup()
-                    raise RuntimeError('ColumnTransformer transformer must be '
-                                       'a Pipeline')
                 if transformed_feature_meta is None:
                     transformed_feature_meta = ctf_feature_meta
                 else:

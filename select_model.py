@@ -1063,6 +1063,22 @@ def run_model_selection():
                     best_index = search.best_index_
                     best_params = search.best_params_
                     best_pipe = search.best_estimator_
+                split_scores = {'cv': {}}
+                for metric in args.scv_scoring:
+                    split_scores['cv'][metric] = search.cv_results_[
+                        'mean_test_{}'.format(metric)][best_index]
+                test_sample_weights = (sample_weights[test_idxs]
+                                       if sample_weights is not None else None)
+                pipe_predict_params = {}
+                if 'sample_meta' in pipe_fit_params:
+                    pipe_predict_params['sample_meta'] = (
+                        sample_meta.iloc[test_idxs])
+                if 'feature_meta' in pipe_fit_params:
+                    pipe_predict_params['feature_meta'] = feature_meta
+                split_scores['te'] = calculate_test_scores(
+                    best_pipe, X.iloc[test_idxs], y[test_idxs],
+                    pipe_predict_params,
+                    test_sample_weights=test_sample_weights)
             except Exception as e:
                 if args.scv_error_score == 'raise':
                     raise
@@ -1083,22 +1099,6 @@ def run_model_selection():
                                                       param_cv_scores)
                 final_feature_meta = transform_feature_meta(best_pipe,
                                                             feature_meta)
-                split_scores = {'cv': {}}
-                for metric in args.scv_scoring:
-                    split_scores['cv'][metric] = search.cv_results_[
-                        'mean_test_{}'.format(metric)][best_index]
-                test_sample_weights = (sample_weights[test_idxs]
-                                       if sample_weights is not None else None)
-                pipe_predict_params = {}
-                if 'sample_meta' in pipe_fit_params:
-                    pipe_predict_params['sample_meta'] = (
-                        sample_meta.iloc[test_idxs])
-                if 'feature_meta' in pipe_fit_params:
-                    pipe_predict_params['feature_meta'] = feature_meta
-                split_scores['te'] = calculate_test_scores(
-                    best_pipe, X.iloc[test_idxs], y[test_idxs],
-                    pipe_predict_params,
-                    test_sample_weights=test_sample_weights)
                 if args.verbose > 0:
                     print('Dataset:', dataset_name, ' Split: {:>{width}d}'
                           .format(split_idx + 1,

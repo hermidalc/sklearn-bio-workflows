@@ -357,49 +357,49 @@ def transform_feature_meta(pipe, feature_meta):
     transformed_feature_meta = None
     for estimator in pipe:
         if isinstance(estimator, ColumnTransformer):
-            for _, ctf_transformer, ctf_columns in estimator.transformers_:
-                if (isinstance(ctf_transformer, str)
-                        and ctf_transformer == 'drop'):
-                    ctf_feature_meta = feature_meta.iloc[
-                        ~feature_meta.index.isin(ctf_columns)]
-                elif ((isinstance(ctf_columns, slice)
-                       and (isinstance(ctf_columns.start, str)
-                            or isinstance(ctf_columns.stop, str)))
-                      or isinstance(ctf_columns[0], str)):
-                    ctf_feature_meta = feature_meta.loc[ctf_columns]
+            for _, trf_transformer, trf_columns in estimator.transformers_:
+                if (isinstance(trf_transformer, str)
+                        and trf_transformer == 'drop'):
+                    trf_feature_meta = feature_meta.iloc[
+                        ~feature_meta.index.isin(trf_columns)]
+                elif ((isinstance(trf_columns, slice)
+                       and (isinstance(trf_columns.start, str)
+                            or isinstance(trf_columns.stop, str)))
+                      or isinstance(trf_columns[0], str)):
+                    trf_feature_meta = feature_meta.loc[trf_columns]
                 else:
-                    ctf_feature_meta = feature_meta.iloc[ctf_columns]
-                if isinstance(ctf_transformer, BaseEstimator):
-                    for transformer in ctf_transformer:
+                    trf_feature_meta = feature_meta.iloc[trf_columns]
+                if isinstance(trf_transformer, BaseEstimator):
+                    for transformer in trf_transformer:
                         if hasattr(transformer, 'get_support'):
-                            ctf_feature_meta = ctf_feature_meta.loc[
+                            trf_feature_meta = trf_feature_meta.loc[
                                 transformer.get_support()]
                         elif hasattr(transformer, 'get_feature_names'):
-                            new_ctf_feature_names = (
+                            new_trf_feature_names = (
                                 transformer.get_feature_names(
-                                    input_features=(ctf_feature_meta.index
+                                    input_features=(trf_feature_meta.index
                                                     .values)).astype(str))
-                            new_ctf_feature_meta = None
-                            for feature_name in ctf_feature_meta.index:
+                            new_trf_feature_meta = None
+                            for feature_name in trf_feature_meta.index:
                                 f_feature_meta = pd.concat(
-                                    [ctf_feature_meta.loc[[feature_name]]]
+                                    [trf_feature_meta.loc[[feature_name]]]
                                     * np.sum(np.char.startswith(
-                                        new_ctf_feature_names,
+                                        new_trf_feature_names,
                                         '{}_'.format(feature_name))),
                                     axis=0, ignore_index=True)
-                                if new_ctf_feature_meta is None:
-                                    new_ctf_feature_meta = f_feature_meta
+                                if new_trf_feature_meta is None:
+                                    new_trf_feature_meta = f_feature_meta
                                 else:
-                                    new_ctf_feature_meta = pd.concat(
-                                        [new_ctf_feature_meta, f_feature_meta],
+                                    new_trf_feature_meta = pd.concat(
+                                        [new_trf_feature_meta, f_feature_meta],
                                         axis=0, ignore_index=True)
-                            ctf_feature_meta = new_ctf_feature_meta.set_index(
-                                new_ctf_feature_names)
+                            trf_feature_meta = new_trf_feature_meta.set_index(
+                                new_trf_feature_names)
                 if transformed_feature_meta is None:
-                    transformed_feature_meta = ctf_feature_meta
+                    transformed_feature_meta = trf_feature_meta
                 else:
                     transformed_feature_meta = pd.concat(
-                        [transformed_feature_meta, ctf_feature_meta], axis=0)
+                        [transformed_feature_meta, trf_feature_meta], axis=0)
         else:
             if transformed_feature_meta is None:
                 transformed_feature_meta = feature_meta
@@ -573,9 +573,9 @@ def unset_pipe_memory(pipe):
     pipe.set_params(memory=None)
     for estimator in pipe:
         if isinstance(estimator, ColumnTransformer):
-            for _, ctf_transformer, _ in estimator.transformers_:
-                if isinstance(ctf_transformer, Pipeline):
-                    for transformer in ctf_transformer:
+            for _, trf_transformer, _ in estimator.transformers_:
+                if isinstance(trf_transformer, Pipeline):
+                    for transformer in trf_transformer:
                         if hasattr(transformer, 'memory'):
                             transformer.set_params(memory=None)
                         if hasattr(transformer, 'estimator'):

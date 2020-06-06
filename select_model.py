@@ -1044,22 +1044,6 @@ def run_model_selection():
                         inner_max_num_threads=inner_max_num_threads):
                     search.fit(X.iloc[train_idxs], y[train_idxs],
                                **search_fit_params)
-            except Exception as e:
-                if args.scv_error_score == 'raise':
-                    raise
-                if args.verbose > 0:
-                    print('Dataset:', dataset_name, ' Split: {:>{width}d}'
-                          .format(split_idx + 1,
-                                  width=len(str(args.test_splits))), end=' ',
-                          flush=True)
-                warnings.formatwarning = warning_format
-                warnings.warn('Estimator refit failed. This outer CV '
-                              'train-test split will be ignored. Details: {}'
-                              .format(format_exception_only(type(e), e)[0]),
-                              category=FitFailedWarning)
-                split_result = None
-                best_pipe = None
-            else:
                 if pipe_props['uses_rjava']:
                     best_index = np.argmin(search.cv_results_[
                         'rank_test_{}'.format(args.scv_refit)])
@@ -1079,6 +1063,22 @@ def run_model_selection():
                     best_index = search.best_index_
                     best_params = search.best_params_
                     best_pipe = search.best_estimator_
+            except Exception as e:
+                if args.scv_error_score == 'raise':
+                    raise
+                if args.verbose > 0:
+                    print('Dataset:', dataset_name, ' Split: {:>{width}d}'
+                          .format(split_idx + 1,
+                                  width=len(str(args.test_splits))), end=' ',
+                          flush=True)
+                warnings.formatwarning = warning_format
+                warnings.warn('Estimator refit failed. This outer CV '
+                              'train-test split will be ignored. Details: {}'
+                              .format(format_exception_only(type(e), e)[0]),
+                              category=FitFailedWarning)
+                split_result = None
+                best_pipe = None
+            else:
                 param_cv_scores = add_param_cv_scores(search, param_grid_dict,
                                                       param_cv_scores)
                 final_feature_meta = transform_feature_meta(best_pipe,

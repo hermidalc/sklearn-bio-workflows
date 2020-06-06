@@ -53,6 +53,7 @@ from sklearn.model_selection import (RepeatedStratifiedKFold, StratifiedKFold,
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import (
     MinMaxScaler, OneHotEncoder, PowerTransformer, RobustScaler,
     StandardScaler)
@@ -356,48 +357,53 @@ def transform_feature_meta(pipe, feature_meta):
     transformed_feature_meta = None
     for estimator in pipe:
         if isinstance(estimator, ColumnTransformer):
-            for _, trf_pipe, trf_columns in estimator.transformers_:
-                if isinstance(trf_pipe, str) and trf_pipe == 'drop':
-                    trf_feature_meta = feature_meta.iloc[
-                        ~feature_meta.index.isin(trf_columns)]
-                elif ((isinstance(trf_columns, slice)
-                       and (isinstance(trf_columns.start, str)
-                            or isinstance(trf_columns.stop, str)))
-                      or isinstance(trf_columns[0], str)):
-                    trf_feature_meta = feature_meta.loc[trf_columns]
+            for _, ctf_transformer, ctf_columns in estimator.transformers_:
+                if (isinstance(ctf_transformer, str)
+                        and ctf_transformer == 'drop'):
+                    ctf_feature_meta = feature_meta.iloc[
+                        ~feature_meta.index.isin(ctf_columns)]
+                elif ((isinstance(ctf_columns, slice)
+                       and (isinstance(ctf_columns.start, str)
+                            or isinstance(ctf_columns.stop, str)))
+                      or isinstance(ctf_columns[0], str)):
+                    ctf_feature_meta = feature_meta.loc[ctf_columns]
                 else:
-                    trf_feature_meta = feature_meta.iloc[trf_columns]
-                if isinstance(trf_pipe, BaseEstimator):
-                    for trf_transformer in trf_pipe:
-                        if hasattr(trf_transformer, 'get_support'):
-                            trf_feature_meta = trf_feature_meta.loc[
-                                trf_transformer.get_support()]
-                        elif hasattr(trf_transformer, 'get_feature_names'):
-                            new_trf_feature_names = (
-                                trf_transformer.get_feature_names(
-                                    input_features=(trf_feature_meta.index
+                    ctf_feature_meta = feature_meta.iloc[ctf_columns]
+                if isinstance(ctf_transformer, Pipeline):
+                    for transformer in ctf_transformer:
+                        if hasattr(transformer, 'get_support'):
+                            ctf_feature_meta = ctf_feature_meta.loc[
+                                transformer.get_support()]
+                        elif hasattr(transformer, 'get_feature_names'):
+                            new_ctf_feature_names = (
+                                transformer.get_feature_names(
+                                    input_features=(ctf_feature_meta.index
                                                     .values)).astype(str))
-                            new_trf_feature_meta = None
-                            for feature_name in trf_feature_meta.index:
+                            new_ctf_feature_meta = None
+                            for feature_name in ctf_feature_meta.index:
                                 f_feature_meta = pd.concat(
-                                    [trf_feature_meta.loc[[feature_name]]]
+                                    [ctf_feature_meta.loc[[feature_name]]]
                                     * np.sum(np.char.startswith(
-                                        new_trf_feature_names,
+                                        new_ctf_feature_names,
                                         '{}_'.format(feature_name))),
                                     axis=0, ignore_index=True)
-                                if new_trf_feature_meta is None:
-                                    new_trf_feature_meta = f_feature_meta
+                                if new_ctf_feature_meta is None:
+                                    new_ctf_feature_meta = f_feature_meta
                                 else:
-                                    new_trf_feature_meta = pd.concat(
-                                        [new_trf_feature_meta, f_feature_meta],
+                                    new_ctf_feature_meta = pd.concat(
+                                        [new_ctf_feature_meta, f_feature_meta],
                                         axis=0, ignore_index=True)
-                            trf_feature_meta = new_trf_feature_meta.set_index(
-                                new_trf_feature_names)
+                            ctf_feature_meta = new_ctf_feature_meta.set_index(
+                                new_ctf_feature_names)
+                else:
+                    run_cleanup()
+                    raise RuntimeError('ColumnTransformer transformer must be '
+                                       'a Pipeline')
                 if transformed_feature_meta is None:
-                    transformed_feature_meta = trf_feature_meta
+                    transformed_feature_meta = ctf_feature_meta
                 else:
                     transformed_feature_meta = pd.concat(
-                        [transformed_feature_meta, trf_feature_meta], axis=0)
+                        [transformed_feature_meta, ctf_feature_meta], axis=0)
         else:
             if transformed_feature_meta is None:
                 transformed_feature_meta = feature_meta
@@ -565,6 +571,29 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         plt.legend(loc='lower right', fontsize='medium')
         plt.tick_params(labelsize=args.axis_font_size)
         plt.grid(True, alpha=0.3)
+
+
+def unset_pipe_memory(pipe):
+    pipe.set_params(memory=None)
+    for estimator in pipe:
+        if isinstance(estimator, ColumnTransformer):
+            for _, ctf_transformer, _ in estimator.transformers_:
+                if isinstance(ctf_transformer, Pipeline):
+                    for transformer in ctf_transformer:
+                        if hasattr(transformer, 'memory'):
+                            transformer.set_params(memory=None)
+                        if hasattr(transformer, 'estimator'):
+                            transformer.estimator.set_params(memory=None)
+                        elif hasattr(transformer, 'base_estimator'):
+                            transformer.base_estimator.set_params(memory=None)
+        else:
+            if hasattr(estimator, 'memory'):
+                estimator.set_params(memory=None)
+            if hasattr(estimator, 'estimator'):
+                estimator.estimator.set_params(memory=None)
+            elif hasattr(estimator, 'base_estimator'):
+                estimator.base_estimator.set_params(memory=None)
+    return pipe
 
 
 def run_model_selection():
@@ -770,9 +799,6 @@ def run_model_selection():
                                floatfmt='.6e', headers='keys'))
             else:
                 print(tabulate(final_feature_meta, headers='keys'))
-        if args.save_models:
-            dump(best_pipe, '{}/{}_model.pkl'
-                 .format(args.out_dir, dataset_name))
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         test_datasets = natsorted(
@@ -945,6 +971,10 @@ def run_model_selection():
                 ax_pre.legend(loc='lower right', fontsize='medium')
                 ax_pre.tick_params(labelsize=args.axis_font_size)
                 ax_pre.grid(False)
+        if args.save_models:
+            best_pipe = unset_pipe_memory(best_pipe)
+            dump(best_pipe, '{}/{}_model.pkl'
+                 .format(args.out_dir, dataset_name))
     # train-test nested cv
     else:
         split_models = []
@@ -1097,14 +1127,7 @@ def run_model_selection():
             split_results.append(split_result)
             if args.save_models:
                 if args.pipe_memory:
-                    best_pipe.set_params(memory=None)
-                    for estimator in best_pipe:
-                        if hasattr(estimator, 'memory'):
-                            estimator.set_params(memory=None)
-                        if hasattr(estimator, 'estimator'):
-                            estimator.estimator.set_params(memory=None)
-                        elif hasattr(estimator, 'base_estimator'):
-                            estimator.base_estimator.set_params(memory=None)
+                    best_pipe = unset_pipe_memory(best_pipe)
                 split_models.append(best_pipe)
             if args.pipe_memory:
                 memory.clear(warn=False)

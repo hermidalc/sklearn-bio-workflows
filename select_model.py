@@ -1122,7 +1122,7 @@ def run_model_selection():
                                 'scores': split_scores}
             split_results.append(split_result)
             if args.save_models:
-                if args.pipe_memory:
+                if args.pipe_memory and best_pipe is not None:
                     best_pipe = unset_pipe_memory(best_pipe)
                 split_models.append(best_pipe)
             if args.pipe_memory:

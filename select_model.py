@@ -1262,6 +1262,8 @@ def run_model_selection():
         if args.save_results:
             dump(feature_results, '{}/{}_feature_results.pkl'
                  .format(args.out_dir, dataset_name))
+            r_base.saveRDS(feature_results, '{}/{}_feature_results.rds'
+                           .format(args.out_dir, dataset_name))
         if args.verbose > 0:
             print('Overall Feature Ranking:')
             if feature_weights is not None:

@@ -261,27 +261,36 @@ def load_dataset(dataset_file):
             is_category = (is_categorical_dtype(sample_meta[sample_meta_col])
                            or is_object_dtype(sample_meta[sample_meta_col])
                            or is_string_dtype(sample_meta[sample_meta_col]))
-            num_categories = sample_meta[sample_meta_col].unique().size
             if args.test_dataset or not is_category:
                 X[sample_meta_col] = sample_meta[sample_meta_col]
                 new_feature_names.append(sample_meta_col)
-            elif num_categories > 2:
-                ohe = OneHotEncoder(sparse=False)
-                ohe.fit(sample_meta[[sample_meta_col]])
-                for category in ohe.categories_[0]:
+            else:
+                num_categories = sample_meta[sample_meta_col][
+                    sample_meta[sample_meta_col] != 'NA'].unique().size
+                if num_categories > 2:
+                    ohe = OneHotEncoder(drop=['NA'], sparse=False)
+                    ohe.fit(sample_meta[[sample_meta_col]])
+                    new_sample_meta_cols = []
+                    for category in ohe.categories_[0]:
+                        if category == 'NA':
+                            continue
+                        new_sample_meta_col = '{}_{}'.format(
+                            sample_meta_col, category).replace(' ', '_')
+                        new_sample_meta_cols.append(new_sample_meta_col)
+                    X = X.join(pd.DataFrame(
+                        ohe.transform(sample_meta[[sample_meta_col]]),
+                        index=sample_meta[[sample_meta_col]].index,
+                        columns=new_sample_meta_cols), sort=False)
+                    new_feature_names.extend(new_sample_meta_cols)
+                elif num_categories == 2:
+                    ohe = OneHotEncoder(drop='first', sparse=False)
+                    ohe.fit(sample_meta[[sample_meta_col]])
+                    category = ohe.categories_[0][1]
                     new_sample_meta_col = '{}_{}'.format(
-                        sample_meta_col, category)
+                        sample_meta_col, category).replace(' ', '_')
                     X[new_sample_meta_col] = ohe.transform(
                         sample_meta[[sample_meta_col]])
                     new_feature_names.append(new_sample_meta_col)
-            elif num_categories == 2:
-                ohe = OneHotEncoder(drop='first', sparse=False)
-                ohe.fit(sample_meta[[sample_meta_col]])
-                new_sample_meta_col = '{}_{}'.format(
-                    sample_meta_col, ohe.categories_[0][1])
-                X[new_sample_meta_col] = ohe.transform(
-                    sample_meta[[sample_meta_col]])
-                new_feature_names.append(new_sample_meta_col)
         new_feature_meta = pd.DataFrame('', index=new_feature_names,
                                         columns=feature_meta.columns)
         new_feature_meta[args.penalty_factor_meta_col] = 0

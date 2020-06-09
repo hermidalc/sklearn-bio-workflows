@@ -268,7 +268,9 @@ def load_dataset(dataset_file):
                 num_categories = sample_meta[sample_meta_col][
                     sample_meta[sample_meta_col] != 'NA'].unique().size
                 if num_categories > 2:
-                    ohe = OneHotEncoder(drop=['NA'], sparse=False)
+                    ohe_drop = (['NA'] if 'NA' in
+                                sample_meta[sample_meta_col].values else None)
+                    ohe = OneHotEncoder(drop=ohe_drop, sparse=False)
                     ohe.fit(sample_meta[[sample_meta_col]])
                     new_sample_meta_cols = []
                     for category in ohe.categories_[0]:

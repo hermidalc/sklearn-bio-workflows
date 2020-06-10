@@ -270,12 +270,13 @@ def load_dataset(dataset_file):
                     run_cleanup()
                     raise RuntimeError('No ordinal encoder categories config '
                                        'exists for {}'.format(sample_meta_col))
-                ode = OrdinalEncoder(
-                    categories=[ordinal_encoder_categories[sample_meta_col]])
-                ode.fit(sample_meta[[sample_meta_col]])
-                X[sample_meta_col] = ode.transform(
-                    sample_meta[[sample_meta_col]])
-                new_feature_names.append(sample_meta_col)
+                if (sample_meta[sample_meta_col] != 'NA').any():
+                    ode = OrdinalEncoder(categories=[
+                        ordinal_encoder_categories[sample_meta_col]])
+                    ode.fit(sample_meta[[sample_meta_col]])
+                    X[sample_meta_col] = ode.transform(
+                        sample_meta[[sample_meta_col]])
+                    new_feature_names.append(sample_meta_col)
             else:
                 num_categories = sample_meta[sample_meta_col][
                     sample_meta[sample_meta_col] != 'NA'].unique().size

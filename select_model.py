@@ -55,8 +55,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import (
-    MinMaxScaler, OneHotEncoder, PowerTransformer, RobustScaler,
-    StandardScaler)
+    MinMaxScaler, OneHotEncoder, OrdinalEncoder, PowerTransformer,
+    RobustScaler, StandardScaler)
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier
 from tabulate import tabulate
@@ -263,6 +263,18 @@ def load_dataset(dataset_file):
                            or is_string_dtype(sample_meta[sample_meta_col]))
             if args.test_dataset or not is_category:
                 X[sample_meta_col] = sample_meta[sample_meta_col]
+                new_feature_names.append(sample_meta_col)
+            elif (args.ordinal_encode_cols is not None
+                  and sample_meta_col in args.ordinal_encode_cols):
+                if sample_meta_col not in ordinal_encoder_categories:
+                    run_cleanup()
+                    raise RuntimeError('No ordinal encoder categories config '
+                                       'exists for {}'.format(sample_meta_col))
+                ode = OrdinalEncoder(
+                    categories=[ordinal_encoder_categories[sample_meta_col]])
+                ode.fit(sample_meta[[sample_meta_col]])
+                X[sample_meta_col] = ode.transform(
+                    sample_meta[[sample_meta_col]])
                 new_feature_names.append(sample_meta_col)
             else:
                 num_categories = sample_meta[sample_meta_col][
@@ -1439,6 +1451,8 @@ parser.add_argument('--col-trf-remainder', type=str,
                     help='ColumnTransfomer remainder')
 parser.add_argument('--sample-meta-cols', type=str, nargs='+',
                     help='sample metadata columns')
+parser.add_argument('--ordinal-encode-cols', type=str, nargs='+',
+                    help='sample metadata columns to ordinal encode')
 parser.add_argument('--penalty-factor-meta-col', type=str,
                     default='Penalty Factor',
                     help='penalty_factor feature metadata column name')
@@ -2278,12 +2292,14 @@ params_lin_xticks = [
     'clf__l1_ratio',
     'clf__n_neighbors',
     'clf__n_estimators']
+
 params_log_xticks = [
     'slr__estimator__C',
     'clf__alpha',
     'clf__C',
     'clf__estimator__C',
     'clf__base_estimator__C']
+
 params_fixed_xticks = [
     'slr',
     'slr__cols',
@@ -2313,10 +2329,15 @@ params_fixed_xticks = [
     'clf__estimator__max_features',
     'clf__base_estimator__class_weight',
     'clf__max_features']
+
 metric_label = {
     'roc_auc': 'ROC AUC',
     'balanced_accuracy': 'BCR',
     'average_precision': 'AVG PRE'}
+
+ordinal_encoder_categories = {
+    'tumor_stage': ['NA', 'x', 'i', 'i or ii', 'ii', 'iii', 'iv'],
+}
 
 run_model_selection()
 if args.show_figs or args.save_figs:

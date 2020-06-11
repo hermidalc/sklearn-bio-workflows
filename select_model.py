@@ -270,7 +270,7 @@ def load_dataset(dataset_file):
                     run_cleanup()
                     raise RuntimeError('No ordinal encoder categories config '
                                        'exists for {}'.format(sample_meta_col))
-                if len(sample_meta[sample_meta_col].unique()) > 1:
+                if sample_meta[sample_meta_col].unique().size > 1:
                     ode = OrdinalEncoder(categories=[
                         ordinal_encoder_categories[sample_meta_col]])
                     ode.fit(sample_meta[[sample_meta_col]])

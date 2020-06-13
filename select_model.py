@@ -1233,8 +1233,9 @@ def run_model_selection():
                     feature_weights = feature_weights.join(
                         split_feature_meta[['Weight']],
                         how='outer')
-                feature_weights.rename(columns={'Weight': split_idx},
-                                       inplace=True)
+                feature_weights.rename(
+                    columns={'Weight': 'Weight {:d}'.format(split_idx + 1)},
+                    inplace=True)
             for metric in args.scv_scoring:
                 if split_idx == 0:
                     feature_scores[metric] = pd.DataFrame(
@@ -1259,8 +1260,8 @@ def run_model_selection():
             feature_ranks.fillna(feature_ranks.shape[0], inplace=True)
             feature_frequency = feature_weights.count(axis=1)
             feature_weights.fillna(0, inplace=True)
-            feature_results = feature_annots.reindex(
-                index=feature_ranks.index, fill_value='')
+            feature_results = feature_annots.reindex(index=feature_ranks.index,
+                                                     fill_value='')
             feature_results_floatfmt.extend([''] * feature_annots.shape[1])
             feature_results['Frequency'] = feature_frequency
             feature_results['Mean Weight Rank'] = feature_ranks.mean(axis=1)
@@ -1294,7 +1295,11 @@ def run_model_selection():
                           dataset_name)
             dump(feature_results, '{}/{}_feature_results.pkl'
                  .format(args.out_dir, model_name))
+            dump(feature_weights, '{}/{}_feature_weights.pkl'
+                 .format(args.out_dir, model_name))
             r_base.saveRDS(feature_results, '{}/{}_feature_results.rds'
+                           .format(args.out_dir, model_name))
+            r_base.saveRDS(feature_weights, '{}/{}_feature_weights.rds'
                            .format(args.out_dir, model_name))
         if args.verbose > 0:
             print('Overall Feature Ranking:')

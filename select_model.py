@@ -593,29 +593,6 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         plt.grid(True, alpha=0.3)
 
 
-def unset_pipe_memory(pipe):
-    pipe.set_params(memory=None)
-    for estimator in pipe:
-        if isinstance(estimator, ColumnTransformer):
-            for _, trf_transformer, _ in estimator.transformers_:
-                if isinstance(trf_transformer, Pipeline):
-                    for transformer in trf_transformer:
-                        if hasattr(transformer, 'memory'):
-                            transformer.set_params(memory=None)
-                        if hasattr(transformer, 'estimator'):
-                            transformer.estimator.set_params(memory=None)
-                        elif hasattr(transformer, 'base_estimator'):
-                            transformer.base_estimator.set_params(memory=None)
-        else:
-            if hasattr(estimator, 'memory'):
-                estimator.set_params(memory=None)
-            if hasattr(estimator, 'estimator'):
-                estimator.estimator.set_params(memory=None)
-            elif hasattr(estimator, 'base_estimator'):
-                estimator.base_estimator.set_params(memory=None)
-    return pipe
-
-
 def run_model_selection():
     (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
      col_trf_columns) = load_dataset(args.train_dataset)
@@ -995,7 +972,11 @@ def run_model_selection():
             model_name = (dataset_name.replace('eset', args.save_model_code)
                           if args.save_model_code is not None else
                           dataset_name)
-            best_pipe = unset_pipe_memory(best_pipe)
+            if args.pipe_memory:
+                for param, param_value in (
+                        best_pipe.get_params(deep=True).items()):
+                    if isinstance(param_value, Memory):
+                        best_pipe.set_params(**{param: None})
             dump(best_pipe, '{}/{}_model.pkl'.format(args.out_dir, model_name))
     # train-test nested cv
     else:
@@ -1149,7 +1130,10 @@ def run_model_selection():
             split_results.append(split_result)
             if args.save_models:
                 if args.pipe_memory and best_pipe is not None:
-                    best_pipe = unset_pipe_memory(best_pipe)
+                    for param, param_value in (
+                            best_pipe.get_params(deep=True).items()):
+                        if isinstance(param_value, Memory):
+                            best_pipe.set_params(**{param: None})
                 split_models.append(best_pipe)
             if args.pipe_memory:
                 memory.clear(warn=False)

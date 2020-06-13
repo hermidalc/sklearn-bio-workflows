@@ -1295,12 +1295,13 @@ def run_model_selection():
                           dataset_name)
             dump(feature_results, '{}/{}_feature_results.pkl'
                  .format(args.out_dir, model_name))
-            dump(feature_weights, '{}/{}_feature_weights.pkl'
-                 .format(args.out_dir, model_name))
             r_base.saveRDS(feature_results, '{}/{}_feature_results.rds'
                            .format(args.out_dir, model_name))
-            r_base.saveRDS(feature_weights, '{}/{}_feature_weights.rds'
-                           .format(args.out_dir, model_name))
+            if feature_weights is not None:
+                dump(feature_weights, '{}/{}_feature_weights.pkl'
+                     .format(args.out_dir, model_name))
+                r_base.saveRDS(feature_weights, '{}/{}_feature_weights.rds'
+                               .format(args.out_dir, model_name))
         if args.verbose > 0:
             print('Overall Feature Ranking:')
             if feature_weights is not None:

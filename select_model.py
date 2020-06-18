@@ -652,7 +652,7 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
 def run_model_selection():
     (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
      col_trf_columns) = load_dataset(args.train_dataset)
-    pipe, pipe_name, pipe_props, param_grid, param_grid_dict, _= (
+    pipe, pipe_name, pipe_props, param_grid, param_grid_dict, _ = (
         setup_pipe_and_param_grid(args.pipe_steps, col_trf_columns))
     search_param_routing = ({'cv': 'groups', 'estimator': [], 'scoring': []}
                             if groups is not None else None)

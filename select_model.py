@@ -92,123 +92,6 @@ def warning_format(message, category, filename, lineno, file=None, line=None):
     return ' {}: {}'.format(category.__name__, message)
 
 
-def setup_pipe_and_param_grid(cmd_pipe_steps):
-    pipe_steps = []
-    pipe_param_routing = None
-    pipe_step_names = []
-    pipe_props = {'has_selector': False, 'uses_rjava': False}
-    param_grid = []
-    param_grid_dict = {}
-    pipe_step_keys = []
-    pipe_step_types = []
-    for step_idx, step_keys in enumerate(cmd_pipe_steps):
-        if any(k.title() == 'None' for k in step_keys):
-            pipe_step_keys.append(
-                [k for k in step_keys if k.title() != 'None'] + [None])
-        else:
-            pipe_step_keys.append(step_keys)
-        if len(step_keys) > 1:
-            pipe_step_names.append('|'.join(step_keys))
-        else:
-            pipe_step_names.append(step_keys[0])
-    for pipe_step_combo in product(*pipe_step_keys):
-        params = {}
-        for step_idx, step_key in enumerate(pipe_step_combo):
-            if step_key:
-                if step_key not in pipe_config:
-                    run_cleanup()
-                    raise RuntimeError('No pipeline config exists for {}'
-                                       .format(step_key))
-                estimator = pipe_config[step_key]['estimator']
-                if is_classifier(estimator):
-                    step_type = 'clf'
-                    if hasattr(estimator, 'get_support'):
-                        pipe_props['has_selector'] = True
-                elif is_regressor(estimator):
-                    step_type = 'rgr'
-                    if hasattr(estimator, 'get_support'):
-                        pipe_props['has_selector'] = True
-                elif hasattr(estimator, 'get_support'):
-                    step_type = 'slr'
-                    pipe_props['has_selector'] = True
-                elif hasattr(estimator, 'fit_transform'):
-                    step_type = 'trf'
-                else:
-                    run_cleanup()
-                    raise RuntimeError('Unsupported estimator type {}'
-                                       .format(estimator))
-                if step_idx < len(pipe_steps):
-                    if step_type != pipe_step_types[step_idx]:
-                        run_cleanup()
-                        raise RuntimeError(
-                            'Different step estimator types: {} {}'
-                            .format(step_type, pipe_step_types[step_idx]))
-                else:
-                    pipe_step_types.append(step_type)
-                uniq_step_name = '{}{:d}'.format(step_type, step_idx)
-                if 'param_grid' in pipe_config[step_key]:
-                    for param, param_values in (
-                            pipe_config[step_key]['param_grid'].items()):
-                        if isinstance(param_values, (list, tuple, np.ndarray)):
-                            if (isinstance(param_values, (list, tuple))
-                                    and param_values or param_values.size > 0):
-                                uniq_step_param = '{}__{}'.format(
-                                    uniq_step_name, param)
-                                if len(param_values) > 1:
-                                    params[uniq_step_param] = param_values
-                                    if uniq_step_param not in param_grid_dict:
-                                        param_grid_dict[uniq_step_param] = (
-                                            param_values)
-                                else:
-                                    estimator.set_params(
-                                        **{param: param_values[0]})
-                        elif param_values is not None:
-                            estimator.set_params(**{param: param_values})
-                if 'param_routing' in pipe_config[step_key]:
-                    if pipe_param_routing is None:
-                        pipe_param_routing = {}
-                    if uniq_step_name in pipe_param_routing:
-                        for param in pipe_config[step_key]['param_routing']:
-                            if param not in pipe_param_routing[uniq_step_name]:
-                                pipe_param_routing[uniq_step_name] = param
-                    else:
-                        pipe_param_routing[uniq_step_name] = (
-                            pipe_config[step_key]['param_routing'])
-                if isinstance(estimator, (CFS, FCBF, ReliefF)):
-                    pipe_props['uses_rjava'] = True
-                if step_idx == len(pipe_steps):
-                    if len(pipe_step_keys[step_idx]) > 1:
-                        pipe_steps.append((uniq_step_name, None))
-                    else:
-                        pipe_steps.append((uniq_step_name, estimator))
-                if len(pipe_step_keys[step_idx]) > 1:
-                    params[uniq_step_name] = [estimator]
-                    if uniq_step_name not in param_grid_dict:
-                        param_grid_dict[uniq_step_name] = []
-                    if estimator not in param_grid_dict[uniq_step_name]:
-                        param_grid_dict[uniq_step_name].append(estimator)
-            else:
-                uniq_step_name = pipe_step_types[step_idx] + str(step_idx)
-                params[uniq_step_name] = [None]
-                if uniq_step_name not in param_grid_dict:
-                    param_grid_dict[uniq_step_name] = []
-                if None not in param_grid_dict[uniq_step_name]:
-                    param_grid_dict[uniq_step_name].append(None)
-        param_grid.append(params)
-    pipe = ExtendedPipeline(pipe_steps, memory=memory,
-                            param_routing=pipe_param_routing)
-    param_grid_estimators = {}
-    for param, param_values in param_grid_dict.items():
-        if any(isinstance(v, BaseEstimator) for v in param_values):
-            param_grid_estimators[param] = param_values
-            param_grid_dict[param] = sorted(
-                ['.'.join([type(v).__module__, type(v).__qualname__])
-                 if isinstance(v, BaseEstimator) else v for v in param_values],
-                key=lambda x: (x is None, x))
-    return (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
-            param_grid_estimators)
-
-
 def load_dataset(dataset_file):
     dataset_name, file_extension = os.path.splitext(
         os.path.split(dataset_file)[1])
@@ -333,6 +216,179 @@ def load_dataset(dataset_file):
                     .to_numpy())
     return (dataset_name, X, y, groups, sample_meta, sample_weights,
             feature_meta, col_trf_columns)
+
+
+def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_columns=None):
+    pipe_steps = []
+    pipe_param_routing = None
+    pipe_step_names = []
+    pipe_props = {'has_selector': False, 'uses_rjava': False}
+    param_grid = []
+    param_grid_dict = {}
+    pipe_step_keys = []
+    pipe_step_types = []
+    for step_idx, step_keys in enumerate(cmd_pipe_steps):
+        if any(k.title() == 'None' for k in step_keys):
+            pipe_step_keys.append(
+                [k for k in step_keys if k.title() != 'None'] + [None])
+        else:
+            pipe_step_keys.append(step_keys)
+        if len(step_keys) > 1:
+            pipe_step_names.append('|'.join(step_keys))
+        else:
+            pipe_step_names.append(step_keys[0])
+    for pipe_step_combo in product(*pipe_step_keys):
+        params = {}
+        for step_idx, step_key in enumerate(pipe_step_combo):
+            if step_key:
+                if step_key not in pipe_config:
+                    run_cleanup()
+                    raise RuntimeError('No pipeline config exists for {}'
+                                       .format(step_key))
+                estimator = pipe_config[step_key]['estimator']
+                if is_classifier(estimator):
+                    step_type = 'clf'
+                    if hasattr(estimator, 'get_support'):
+                        pipe_props['has_selector'] = True
+                elif is_regressor(estimator):
+                    step_type = 'rgr'
+                    if hasattr(estimator, 'get_support'):
+                        pipe_props['has_selector'] = True
+                elif hasattr(estimator, 'get_support'):
+                    step_type = 'slr'
+                    pipe_props['has_selector'] = True
+                elif hasattr(estimator, 'fit_transform'):
+                    step_type = 'trf'
+                else:
+                    run_cleanup()
+                    raise RuntimeError('Unsupported estimator type {}'
+                                       .format(estimator))
+                if step_idx < len(pipe_steps):
+                    if step_type != pipe_step_types[step_idx]:
+                        run_cleanup()
+                        raise RuntimeError(
+                            'Different step estimator types: {} {}'
+                            .format(step_type, pipe_step_types[step_idx]))
+                else:
+                    pipe_step_types.append(step_type)
+                uniq_step_name = '{}{:d}'.format(step_type, step_idx)
+                if 'param_grid' in pipe_config[step_key]:
+                    for param, param_values in (
+                            pipe_config[step_key]['param_grid'].items()):
+                        if isinstance(param_values, (list, tuple, np.ndarray)):
+                            if (isinstance(param_values, (list, tuple))
+                                    and param_values or param_values.size > 0):
+                                uniq_step_param = '{}__{}'.format(
+                                    uniq_step_name, param)
+                                if len(param_values) > 1:
+                                    params[uniq_step_param] = param_values
+                                    if uniq_step_param not in param_grid_dict:
+                                        param_grid_dict[uniq_step_param] = (
+                                            param_values)
+                                else:
+                                    estimator.set_params(
+                                        **{param: param_values[0]})
+                        elif param_values is not None:
+                            estimator.set_params(**{param: param_values})
+                if 'param_routing' in pipe_config[step_key]:
+                    if pipe_param_routing is None:
+                        pipe_param_routing = {}
+                    if uniq_step_name in pipe_param_routing:
+                        for param in pipe_config[step_key]['param_routing']:
+                            if param not in pipe_param_routing[uniq_step_name]:
+                                pipe_param_routing[uniq_step_name] = param
+                    else:
+                        pipe_param_routing[uniq_step_name] = (
+                            pipe_config[step_key]['param_routing'])
+                if isinstance(estimator, (CFS, FCBF, ReliefF)):
+                    pipe_props['uses_rjava'] = True
+                if step_idx == len(pipe_steps):
+                    if len(pipe_step_keys[step_idx]) > 1:
+                        pipe_steps.append((uniq_step_name, None))
+                    else:
+                        pipe_steps.append((uniq_step_name, estimator))
+                if len(pipe_step_keys[step_idx]) > 1:
+                    params[uniq_step_name] = [estimator]
+                    if uniq_step_name not in param_grid_dict:
+                        param_grid_dict[uniq_step_name] = []
+                    if estimator not in param_grid_dict[uniq_step_name]:
+                        param_grid_dict[uniq_step_name].append(estimator)
+            else:
+                uniq_step_name = pipe_step_types[step_idx] + str(step_idx)
+                params[uniq_step_name] = [None]
+                if uniq_step_name not in param_grid_dict:
+                    param_grid_dict[uniq_step_name] = []
+                if None not in param_grid_dict[uniq_step_name]:
+                    param_grid_dict[uniq_step_name].append(None)
+        param_grid.append(params)
+    pipe = ExtendedPipeline(pipe_steps, memory=memory,
+                            param_routing=pipe_param_routing)
+    param_grid_estimators = {}
+    for param, param_values in param_grid_dict.items():
+        if any(isinstance(v, BaseEstimator) for v in param_values):
+            param_grid_estimators[param] = param_values
+            param_grid_dict[param] = sorted(
+                ['.'.join([type(v).__module__, type(v).__qualname__])
+                 if isinstance(v, BaseEstimator) else v for v in param_values],
+                key=lambda x: (x is None, x))
+    if (isinstance(pipe[0], ColumnTransformer)
+            and args.col_trf_pipe_steps is not None):
+        col_trf_name, col_trf_estimator = pipe.steps[0]
+        col_trf_pipe_names = []
+        col_trf_transformers = []
+        col_trf_param_grids = []
+        col_trf_param_routing = None
+        for trf_idx, trf_pipe_steps in enumerate(args.col_trf_pipe_steps):
+            (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
+             trf_param_grid_dict, trf_param_grid_estimators) = (
+                 setup_pipe_and_param_grid(trf_pipe_steps))
+            col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
+            uniq_trf_name = 'trf{:d}'.format(trf_idx)
+            col_trf_transformers.append((uniq_trf_name, trf_pipe,
+                                         col_trf_columns[trf_idx]))
+            if trf_param_grid:
+                col_trf_param_grids.append(
+                    [{'{}__{}__{}'.format(col_trf_name, uniq_trf_name, k): v
+                      for k, v in params.items()}
+                     for params in trf_param_grid])
+                for param, param_value in trf_param_grid_dict.items():
+                    param_grid_dict['{}__{}__{}'.format(
+                        col_trf_name, uniq_trf_name, param)] = param_value
+                for param, estimator in trf_param_grid_estimators.items():
+                    param_grid_estimators['{}__{}__{}'.format(
+                        col_trf_name, uniq_trf_name, param)] = estimator
+            if trf_pipe.param_routing is not None:
+                if col_trf_param_routing is None:
+                    col_trf_param_routing = {}
+                col_trf_param_routing[uniq_trf_name] = list(
+                    {v for l in trf_pipe.param_routing.values() for v in l})
+            for trf_pipe_prop, trf_pipe_prop_value in trf_pipe_props.items():
+                if trf_pipe_prop_value:
+                    pipe_props[trf_pipe_prop] = trf_pipe_prop_value
+        if col_trf_param_grids:
+            final_estimator_param_grid = param_grid.copy()
+            param_grid = []
+            for param_grid_combo in product(final_estimator_param_grid,
+                                            *col_trf_param_grids):
+                param_grid.append({k: v for params in param_grid_combo
+                                   for k, v in params.items()})
+        col_trf_estimator.set_params(param_routing=col_trf_param_routing,
+                                     transformers=col_trf_transformers)
+        if col_trf_param_routing is not None:
+            pipe_param_routing = (pipe.param_routing if pipe.param_routing
+                                  else {})
+            pipe_param_routing[col_trf_name] = list(
+                {v for l in col_trf_param_routing.values() for v in l})
+            pipe.set_params(param_routing=pipe_param_routing)
+        pipe_step_names[0] = ';'.join(col_trf_pipe_names)
+        pipe_name = '{}\n{}\n{}'.format(pipe_step_names[0],
+                                        '->'.join(pipe_step_names[1:-1]),
+                                        pipe_step_names[-1])
+    else:
+        pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
+                                    pipe_step_names[-1])
+    return (pipe, pipe_name, pipe_props, param_grid, param_grid_dict,
+            param_grid_estimators)
 
 
 def fit_pipeline(X, y, steps, params=None, param_routing=None,
@@ -596,65 +652,8 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
 def run_model_selection():
     (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
      col_trf_columns) = load_dataset(args.train_dataset)
-    (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
-     param_grid_estimators) = setup_pipe_and_param_grid(args.pipe_steps)
-    if (isinstance(pipe[0], ColumnTransformer)
-            and args.col_trf_pipe_steps is not None):
-        col_trf_name, col_trf_estimator = pipe.steps[0]
-        col_trf_pipe_names = []
-        col_trf_transformers = []
-        col_trf_param_grids = []
-        col_trf_param_routing = None
-        for trf_idx, trf_pipe_steps in enumerate(args.col_trf_pipe_steps):
-            (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
-             trf_param_grid_dict, trf_param_grid_estimators) = (
-                 setup_pipe_and_param_grid(trf_pipe_steps))
-            col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
-            uniq_trf_name = 'trf{:d}'.format(trf_idx)
-            col_trf_transformers.append((uniq_trf_name, trf_pipe,
-                                         col_trf_columns[trf_idx]))
-            if trf_param_grid:
-                col_trf_param_grids.append(
-                    [{'{}__{}__{}'.format(col_trf_name, uniq_trf_name, k): v
-                      for k, v in params.items()}
-                     for params in trf_param_grid])
-                for param, param_value in trf_param_grid_dict.items():
-                    param_grid_dict['{}__{}__{}'.format(
-                        col_trf_name, uniq_trf_name, param)] = param_value
-                for param, estimator in trf_param_grid_estimators.items():
-                    param_grid_estimators['{}__{}__{}'.format(
-                        col_trf_name, uniq_trf_name, param)] = estimator
-            if trf_pipe.param_routing is not None:
-                if col_trf_param_routing is None:
-                    col_trf_param_routing = {}
-                col_trf_param_routing[uniq_trf_name] = list(
-                    {v for l in trf_pipe.param_routing.values()
-                     for v in l})
-            for trf_pipe_prop, trf_pipe_prop_value in trf_pipe_props.items():
-                if trf_pipe_prop_value:
-                    pipe_props[trf_pipe_prop] = trf_pipe_prop_value
-        if col_trf_param_grids:
-            final_estimator_param_grid = param_grid.copy()
-            param_grid = []
-            for param_grid_combo in product(final_estimator_param_grid,
-                                            *col_trf_param_grids):
-                param_grid.append({k: v for params in param_grid_combo
-                                   for k, v in params.items()})
-        col_trf_estimator.set_params(param_routing=col_trf_param_routing,
-                                     transformers=col_trf_transformers)
-        if col_trf_param_routing is not None:
-            pipe_param_routing = (pipe.param_routing if pipe.param_routing
-                                  else {})
-            pipe_param_routing[col_trf_name] = list(
-                {v for l in col_trf_param_routing.values() for v in l})
-            pipe.set_params(param_routing=pipe_param_routing)
-        pipe_step_names[0] = ';'.join(col_trf_pipe_names)
-        pipe_name = '{}\n{}\n{}'.format(pipe_step_names[0],
-                                        '->'.join(pipe_step_names[1:-1]),
-                                        pipe_step_names[-1])
-    else:
-        pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
-                                    pipe_step_names[-1])
+    pipe, pipe_name, pipe_props, param_grid, param_grid_dict, _= (
+        setup_pipe_and_param_grid(args.pipe_steps, col_trf_columns))
     search_param_routing = ({'cv': 'groups', 'estimator': [], 'scoring': []}
                             if groups is not None else None)
     if pipe.param_routing:
@@ -741,12 +740,11 @@ def run_model_selection():
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
               X.shape, end=' ')
         if col_trf_columns:
-            print('(', ' '.join(
-                ['{}: {:d}'.format(
-                    col_trf_estimator.transformers[i][0],
-                    np.sum(c) if _determine_key_type(c) == 'bool' else
-                    c.shape[0])
-                 for i, c in enumerate(col_trf_columns)]), ')', sep='')
+            print('(', ' '.join([
+                '{}: {:d}'.format(pipe[0].transformers[i][0],
+                                  np.sum(c) if _determine_key_type(c) == 'bool'
+                                  else c.shape[0])
+                for i, c in enumerate(col_trf_columns)]), ')', sep='')
         else:
             print()
     if args.verbose > 0:
@@ -802,8 +800,8 @@ def run_model_selection():
             list(set(args.test_dataset) - set(args.train_dataset)))
         for test_dataset in test_datasets:
             (test_dataset_name, X_test, y_test, _, test_sample_meta,
-             test_sample_weights, test_feature_meta,
-             test_col_trf_columns) = load_dataset(test_dataset)
+             test_sample_weights, test_feature_meta, _) = (
+                 load_dataset(test_dataset))
             pipe_predict_params = {}
             if 'sample_meta' in pipe_fit_params:
                 pipe_predict_params['sample_meta'] = test_sample_meta
@@ -918,8 +916,8 @@ def run_model_selection():
             'hls', len(test_datasets) * len(args.scv_scoring))
         for test_idx, test_dataset in enumerate(test_datasets):
             (test_dataset_name, X_test, y_test, _, test_sample_meta,
-             test_sample_weights, test_feature_meta,
-             test_col_trf_columns) = load_dataset(test_dataset)
+             test_sample_weights, test_feature_meta, _) = (
+                 load_dataset(test_dataset))
             pipe_predict_params = {}
             if 'sample_meta' in pipe_fit_params:
                 pipe_predict_params['sample_meta'] = test_sample_meta

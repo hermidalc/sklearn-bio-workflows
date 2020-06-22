@@ -781,19 +781,21 @@ def run_model_selection():
         test_splitter = StratifiedSampleFromGroupKFold(
             n_splits=args.test_splits, random_state=args.random_seed,
             shuffle=True)
-    min_train_samples = (X.shape[0] if args.test_dataset else
-                         min(train.size for train, _ in
-                             test_splitter.split(X, y, groups)))
-    for params in param_grid:
-        for param, param_values in params.items():
+    if args.skb_slr_k_lim:
+        min_train_samples = (X.shape[0] if args.test_dataset else
+                             min(train.size for train, _ in
+                                 test_splitter.split(X, y, groups)))
+        for params in param_grid:
+            for param, param_values in params.items():
+                param_type = get_param_type(param)
+                if param_type in params_k_selected_features:
+                    params[param] = param_values[
+                        param_values <= min_train_samples]
+        for param, param_values in param_grid_dict.items():
             param_type = get_param_type(param)
             if param_type in params_k_selected_features:
-                params[param] = param_values[param_values <= min_train_samples]
-    for param, param_values in param_grid_dict.items():
-        param_type = get_param_type(param)
-        if param_type in params_k_selected_features:
-            param_grid_dict[param] = (
-                param_values[param_values <= min_train_samples])
+                param_grid_dict[param] = param_values[
+                    param_values <= min_train_samples]
     if args.scv_type == 'grid':
         search = ExtendedGridSearchCV(
             pipe, cv=cv_splitter, error_score=args.scv_error_score,
@@ -1509,6 +1511,8 @@ parser.add_argument('--skb-slr-k-max', type=int,
                     help='Selector k max')
 parser.add_argument('--skb-slr-k-step', type=int, default=1,
                     help='Selector k step')
+parser.add_argument('--skb-slr-k-lim', default=False, action='store_true',
+                    help='Selector k sample limit')
 parser.add_argument('--rna-slr-pv', type=float, nargs='+',
                     help='RNA slr adj p-value')
 parser.add_argument('--rna-slr-fc', type=float, nargs='+',

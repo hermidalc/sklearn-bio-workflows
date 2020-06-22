@@ -818,11 +818,12 @@ def run_model_selection():
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
               X.shape, end=' ')
         if col_trf_columns:
-            print('(', ' '.join([
-                '{}: {:d}'.format(pipe[0].transformers[i][0],
-                                  np.sum(c) if _determine_key_type(c) == 'bool'
-                                  else c.shape[0])
-                for i, c in enumerate(col_trf_columns)]), ')', sep='')
+            print('(', ' '.join(
+                ['{}: {:d}'.format(
+                    pipe[0].transformers[i][0],
+                    np.sum(c) if _determine_key_type(c) == 'bool'
+                    else c.shape[0])
+                 for i, c in enumerate(col_trf_columns)]), ')', sep='')
         else:
             print()
     if args.verbose > 0:

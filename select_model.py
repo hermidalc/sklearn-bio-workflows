@@ -125,14 +125,14 @@ def load_dataset(dataset_file):
             feature_meta[feature_meta_category_cols].astype(str))
     except ValueError:
         feature_meta = pd.DataFrame(index=r_biobase.featureNames(eset))
-    if args.sample_meta_cols:
+    if sample_meta_cols:
         new_feature_names = []
         if args.penalty_factor_meta_col in feature_meta.columns:
             run_cleanup()
             raise RuntimeError('{} column already exists in feature_meta'
                                .format(args.penalty_factor_meta_col))
         feature_meta[args.penalty_factor_meta_col] = 1
-        for sample_meta_col in args.sample_meta_cols:
+        for sample_meta_col in sample_meta_cols:
             if sample_meta_col not in sample_meta.columns:
                 run_cleanup()
                 raise RuntimeError('{} column does not exist in sample_meta'
@@ -160,7 +160,8 @@ def load_dataset(dataset_file):
                     X[sample_meta_col] = ode.transform(
                         sample_meta[[sample_meta_col]])
                     new_feature_names.append(sample_meta_col)
-            else:
+            elif (args.onehot_encode_cols is not None
+                  and sample_meta_col in args.onehot_encode_cols):
                 num_categories = sample_meta[sample_meta_col][
                     sample_meta[sample_meta_col] != 'NA'].unique().size
                 if num_categories > 2:
@@ -659,7 +660,7 @@ def run_model_selection():
      col_trf_columns) = load_dataset(args.train_dataset)
     pipe, pipe_name, pipe_props, param_grid, param_grid_dict, _ = (
         setup_pipe_and_param_grid(args.pipe_steps, col_trf_columns))
-    if args.sample_meta_cols:
+    if sample_meta_cols:
         pipe_has_penalty_factor = False
         for param in pipe.get_params(deep=True).keys():
             param_parts = param.split('__')
@@ -1476,8 +1477,8 @@ parser.add_argument('--col-trf-dtypes', type=str, nargs='+',
 parser.add_argument('--col-trf-remainder', type=str,
                     choices=['drop', 'passthrough'], default='passthrough',
                     help='ColumnTransfomer remainder')
-parser.add_argument('--sample-meta-cols', type=str, nargs='+',
-                    help='sample metadata columns')
+parser.add_argument('--onehot-encode-cols', type=str, nargs='+',
+                    help='sample metadata columns to one-hot encode')
 parser.add_argument('--ordinal-encode-cols', type=str, nargs='+',
                     help='sample metadata columns to ordinal encode')
 parser.add_argument('--penalty-factor-meta-col', type=str,
@@ -1786,6 +1787,12 @@ elif args.scv_error_score == 'nan':
     args.scv_error_score = np.nan
 if args.scv_verbose is None:
     args.scv_verbose = args.verbose
+
+sample_meta_cols = []
+if args.onehot_encode_cols:
+    sample_meta_cols.extend(args.onehot_encode_cols)
+if args.ordinal_encode_cols:
+    sample_meta_cols.extend(args.ordinal_encode_cols)
 
 if args.parallel_backend != 'multiprocessing':
     python_warnings = ([os.environ['PYTHONWARNINGS']]

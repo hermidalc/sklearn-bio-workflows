@@ -660,34 +660,23 @@ def run_model_selection():
     pipe, pipe_name, pipe_props, param_grid, param_grid_dict, _ = (
         setup_pipe_and_param_grid(args.pipe_steps, col_trf_columns))
     if args.sample_meta_cols:
-        has_penalty_factor = False
-        if hasattr(pipe[-1], 'penalty_factor_meta_col'):
-            pipe[-1].set_params(
-                penalty_factor_meta_col=args.penalty_factor_meta_col)
-            has_penalty_factor = True
-        elif (hasattr(pipe[-1], 'estimator')
-              and hasattr(pipe[-1].estimator, 'penalty_factor_meta_col')):
-            pipe[-1].estimator.set_params(
-                penalty_factor_meta_col=args.penalty_factor_meta_col)
-            has_penalty_factor = True
-        elif pipe[-1] is None:
-            srv_step_name = pipe.steps[-1][0]
-            for params in param_grid:
-                if srv_step_name in params:
-                    if (hasattr(params[srv_step_name][0],
-                                'penalty_factor_meta_col')):
-                        params[srv_step_name][0].set_params(
-                            penalty_factor_meta_col=(
-                                args.penalty_factor_meta_col))
-                        has_penalty_factor = True
-                    elif (hasattr(params[srv_step_name][0], 'estimator')
-                          and hasattr(params[srv_step_name][0].estimator,
-                                      'penalty_factor_meta_col')):
-                        params[srv_step_name][0].estimator.set_params(
-                            penalty_factor_meta_col=(
-                                args.penalty_factor_meta_col))
-                        has_penalty_factor = True
-        if not has_penalty_factor:
+        pipe_has_penalty_factor = False
+        for param in pipe.get_params(deep=True).keys():
+            param_parts = param.split('__')
+            if param_parts[-1] == 'penalty_factor_meta_col':
+                pipe.set_params(**{param: args.penalty_factor_meta_col})
+                pipe_has_penalty_factor = True
+        for params in param_grid:
+            for param_values in params.values():
+                if any(isinstance(v, BaseEstimator) for v in param_values):
+                    for estimator in param_values:
+                        for param in estimator.get_params(deep=True).keys():
+                            param_parts = param.split('__')
+                            if param_parts[-1] == 'penalty_factor_meta_col':
+                                estimator.set_params(
+                                    **{param: args.penalty_factor_meta_col})
+                                pipe_has_penalty_factor = True
+        if not pipe_has_penalty_factor:
             feature_meta.drop(columns=[args.penalty_factor_meta_col],
                               inplace=True)
     search_param_routing = ({'cv': 'groups', 'estimator': [], 'scoring': []}

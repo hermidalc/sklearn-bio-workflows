@@ -43,6 +43,7 @@ from sklearn.ensemble import (
     AdaBoostClassifier, ExtraTreesClassifier, GradientBoostingClassifier,
     RandomForestClassifier)
 from sklearn.exceptions import ConvergenceWarning, FitFailedWarning
+from sklearn.feature_selection import RFE
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
@@ -73,8 +74,8 @@ from sklearn_extensions.feature_selection import (
     CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
     ColumnSelector, DESeq2, DreamVoom, EdgeR, EdgeRFilterByExpr, FCBF, Limma,
     LimmaVoom, MutualInfoScorerClassification, NanoStringEndogenousSelector,
-    ReliefF, RFE, SelectFromModel, SelectFromUnivariateModel, SelectKBest,
-    VarianceThreshold)
+    ReliefF, ExtendedRFE, SelectFromModel, SelectFromUnivariateModel,
+    SelectKBest, VarianceThreshold)
 from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedSampleFromGroupKFold, RepeatedStratifiedGroupKFold,
@@ -918,7 +919,7 @@ def run_model_selection():
                                      if best_pipe.param_routing else {})
             tf_pipe_param_routing['slrc'] = (
                 pipe_config['ColumnSelector']['param_routing'])
-            if isinstance(best_pipe[-1], RFE, SelectFromUnivariateModel):
+            if isinstance(best_pipe[-1], (RFE, SelectFromUnivariateModel)):
                 final_step_name = best_pipe.steps[-1][0]
                 final_estimator = best_pipe.steps[-1][1].estimator
                 final_estimator_key = type(final_estimator).__qualname__
@@ -2156,12 +2157,12 @@ pipe_config = {
         'param_routing': ['feature_meta']},
     # classifiers
     'RFE-LinearSVC': {
-        'estimator': RFE(LinearSVC(max_iter=args.lsvc_clf_max_iter,
-                                   random_state=args.random_seed,
-                                   tol=args.lsvc_clf_tol),
-                         tune_step_at=args.rfe_clf_tune_step_at,
-                         reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose, memory=memory),
+        'estimator': ExtendedRFE(
+            LinearSVC(max_iter=args.lsvc_clf_max_iter,
+                      random_state=args.random_seed, tol=args.lsvc_clf_tol),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            reducing_step=args.rfe_clf_reducing_step,
+            verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2169,12 +2170,12 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['feature_meta', 'sample_weight']},
     'RFE-SVC': {
-        'estimator': RFE(SVC(cache_size=args.svc_clf_cache, kernel='linear',
-                             max_iter=args.svc_clf_max_iter,
-                             random_state=args.random_seed),
-                         tune_step_at=args.rfe_clf_tune_step_at,
-                         reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose, memory=memory),
+        'estimator': ExtendedRFE(
+            SVC(kernel='linear', cache_size=args.svc_clf_cache,
+                max_iter=args.svc_clf_max_iter, random_state=args.random_seed),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            reducing_step=args.rfe_clf_reducing_step,
+            verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2182,10 +2183,11 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['feature_meta', 'sample_weight']},
     'RFE-RandomForestClassifier': {
-        'estimator': RFE(RandomForestClassifier(random_state=args.random_seed),
-                         tune_step_at=args.rfe_clf_tune_step_at,
-                         reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose, memory=memory),
+        'estimator': ExtendedRFE(
+            RandomForestClassifier(random_state=args.random_seed),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            reducing_step=args.rfe_clf_reducing_step,
+            verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['rf_clf_e'],
             'estimator__max_depth': cv_params['rf_clf_d'],
@@ -2195,10 +2197,11 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['feature_meta', 'sample_weight']},
     'RFE-ExtraTreesClassifier': {
-        'estimator': RFE(ExtraTreesClassifier(random_state=args.random_seed),
-                         tune_step_at=args.rfe_clf_tune_step_at,
-                         reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose, memory=memory),
+        'estimator': ExtendedRFE(
+            ExtraTreesClassifier(random_state=args.random_seed),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            reducing_step=args.rfe_clf_reducing_step,
+            verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['ext_clf_e'],
             'estimator__max_depth': cv_params['ext_clf_d'],
@@ -2208,7 +2211,7 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},
     'RFE-GradientBoostingClassifier': {
-        'estimator': RFE(
+        'estimator': ExtendedRFE(
             GradientBoostingClassifier(random_state=args.random_seed),
             tune_step_at=args.rfe_clf_tune_step_at,
             reducing_step=args.rfe_clf_reducing_step,

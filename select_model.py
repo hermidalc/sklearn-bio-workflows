@@ -2161,7 +2161,7 @@ pipe_config = {
                                    tol=args.lsvc_clf_tol),
                          tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose),
+                         verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2174,7 +2174,7 @@ pipe_config = {
                              random_state=args.random_seed),
                          tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose),
+                         verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2185,7 +2185,7 @@ pipe_config = {
         'estimator': RFE(RandomForestClassifier(random_state=args.random_seed),
                          tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose),
+                         verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['rf_clf_e'],
             'estimator__max_depth': cv_params['rf_clf_d'],
@@ -2198,7 +2198,7 @@ pipe_config = {
         'estimator': RFE(ExtraTreesClassifier(random_state=args.random_seed),
                          tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose),
+                         verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['ext_clf_e'],
             'estimator__max_depth': cv_params['ext_clf_d'],
@@ -2212,7 +2212,7 @@ pipe_config = {
             GradientBoostingClassifier(random_state=args.random_seed),
             tune_step_at=args.rfe_clf_tune_step_at,
             reducing_step=args.rfe_clf_reducing_step,
-            verbose=args.rfe_clf_verbose),
+            verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['grb_clf_e'],
             'estimator__max_depth': cv_params['grb_clf_d'],

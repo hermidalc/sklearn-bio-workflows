@@ -1879,20 +1879,14 @@ if args.pipe_memory:
     mui_clf_scorer = CachedMutualInfoScorerClassification(
         memory=memory, random_state=args.random_seed)
     lsvc_clf = CachedLinearSVC(
-        max_iter=args.lsvc_clf_max_iter, memory=memory,
-        random_state=args.random_seed, tol=args.lsvc_clf_tol)
-    svc_clf = CachedSVC(cache_size=args.svc_clf_cache, kernel='linear',
-                        memory=memory, max_iter=args.svc_clf_max_iter,
-                        random_state=args.random_seed)
-    sfm_lsvc_clf = CachedLinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, memory=memory,
         penalty='l1', random_state=args.random_seed, tol=args.lsvc_clf_tol)
-    rf_clf = CachedRandomForestClassifier(
-        memory=memory, random_state=args.random_seed)
-    ext_clf = CachedExtraTreesClassifier(
-        memory=memory, random_state=args.random_seed)
-    grb_clf = CachedGradientBoostingClassifier(
-        memory=memory, random_state=args.random_seed)
+    rf_clf = CachedRandomForestClassifier(memory=memory,
+                                          random_state=args.random_seed)
+    ext_clf = CachedExtraTreesClassifier(memory=memory,
+                                         random_state=args.random_seed)
+    grb_clf = CachedGradientBoostingClassifier(memory=memory,
+                                               random_state=args.random_seed)
 else:
     memory = None
     anova_clf_scorer = ANOVAFScorerClassification()
@@ -1900,20 +1894,11 @@ else:
     mui_clf_scorer = MutualInfoScorerClassification(
         random_state=args.random_seed)
     lsvc_clf = LinearSVC(
-        max_iter=args.lsvc_clf_max_iter, random_state=args.random_seed,
-        tol=args.lsvc_clf_tol)
-    svc_clf = SVC(cache_size=args.svc_clf_cache, kernel='linear',
-                  max_iter=args.svc_clf_max_iter,
-                  random_state=args.random_seed)
-    sfm_lsvc_clf = LinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, penalty='l1',
         random_state=args.random_seed, tol=args.lsvc_clf_tol)
-    rf_clf = RandomForestClassifier(
-        random_state=args.random_seed)
-    ext_clf = ExtraTreesClassifier(
-        random_state=args.random_seed)
-    grb_clf = GradientBoostingClassifier(
-        random_state=args.random_seed)
+    rf_clf = RandomForestClassifier(random_state=args.random_seed)
+    ext_clf = ExtraTreesClassifier(random_state=args.random_seed)
+    grb_clf = GradientBoostingClassifier(random_state=args.random_seed)
 
 pipeline_step_types = ('slr', 'trf', 'clf', 'rgr')
 cv_params = {k: v for k, v in vars(args).items()
@@ -2022,7 +2007,7 @@ pipe_config = {
             'k': cv_params['skb_slr_k'],
             'score_func__n_neighbors': cv_params['mui_slr_n']}},
     'SelectFromModel-LinearSVC': {
-        'estimator': SelectFromModel(sfm_lsvc_clf),
+        'estimator': SelectFromModel(lsvc_clf),
         'param_grid': {
             'estimator__C': cv_params['sfm_slr_svc_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2171,7 +2156,10 @@ pipe_config = {
         'param_routing': ['feature_meta']},
     # classifiers
     'RFE-LinearSVC': {
-        'estimator': RFE(lsvc_clf, tune_step_at=args.rfe_clf_tune_step_at,
+        'estimator': RFE(LinearSVC(max_iter=args.lsvc_clf_max_iter,
+                                   random_state=args.random_seed,
+                                   tol=args.lsvc_clf_tol),
+                         tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
                          verbose=args.rfe_clf_verbose),
         'param_grid': {
@@ -2181,7 +2169,10 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['feature_meta', 'sample_weight']},
     'RFE-SVC': {
-        'estimator': RFE(svc_clf, tune_step_at=args.rfe_clf_tune_step_at,
+        'estimator': RFE(SVC(cache_size=args.svc_clf_cache, kernel='linear',
+                             max_iter=args.svc_clf_max_iter,
+                             random_state=args.random_seed),
+                         tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
                          verbose=args.rfe_clf_verbose),
         'param_grid': {
@@ -2191,7 +2182,8 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['feature_meta', 'sample_weight']},
     'RFE-RandomForestClassifier': {
-        'estimator': RFE(rf_clf, tune_step_at=args.rfe_clf_tune_step_at,
+        'estimator': RFE(RandomForestClassifier(random_state=args.random_seed),
+                         tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
                          verbose=args.rfe_clf_verbose),
         'param_grid': {
@@ -2203,7 +2195,8 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['feature_meta', 'sample_weight']},
     'RFE-ExtraTreesClassifier': {
-        'estimator': RFE(ext_clf, tune_step_at=args.rfe_clf_tune_step_at,
+        'estimator': RFE(ExtraTreesClassifier(random_state=args.random_seed),
+                         tune_step_at=args.rfe_clf_tune_step_at,
                          reducing_step=args.rfe_clf_reducing_step,
                          verbose=args.rfe_clf_verbose),
         'param_grid': {
@@ -2215,9 +2208,11 @@ pipe_config = {
             'n_features_to_select': cv_params['skb_slr_k']},
         'param_routing': ['sample_weight']},
     'RFE-GradientBoostingClassifier': {
-        'estimator': RFE(grb_clf, tune_step_at=args.rfe_clf_tune_step_at,
-                         reducing_step=args.rfe_clf_reducing_step,
-                         verbose=args.rfe_clf_verbose),
+        'estimator': RFE(
+            GradientBoostingClassifier(random_state=args.random_seed),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            reducing_step=args.rfe_clf_reducing_step,
+            verbose=args.rfe_clf_verbose),
         'param_grid': {
             'estimator__n_estimators': cv_params['grb_clf_e'],
             'estimator__max_depth': cv_params['grb_clf_d'],

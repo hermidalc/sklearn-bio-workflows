@@ -383,13 +383,7 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_columns=None):
                 {v for l in col_trf_param_routing.values() for v in l})
             pipe.set_params(param_routing=pipe_param_routing)
         pipe_step_names[0] = ';'.join(col_trf_pipe_names)
-        pipe_name = '{}\n{}\n{}'.format(pipe_step_names[0],
-                                        '->'.join(pipe_step_names[1:-1]),
-                                        pipe_step_names[-1])
-    else:
-        pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
-                                    pipe_step_names[-1])
-    return (pipe, pipe_name, pipe_props, param_grid, param_grid_dict,
+    return (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
             param_grid_estimators)
 
 
@@ -659,8 +653,15 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
 def run_model_selection():
     (dataset_name, X, y, groups, sample_meta, sample_weights, feature_meta,
      col_trf_columns) = load_dataset(args.train_dataset)
-    pipe, pipe_name, pipe_props, param_grid, param_grid_dict, _ = (
+    pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict, _ = (
         setup_pipe_and_param_grid(args.pipe_steps, col_trf_columns))
+    if isinstance(pipe[0], ColumnTransformer):
+        pipe_name = '{}\n{}\n{}'.format(pipe_step_names[0],
+                                        '->'.join(pipe_step_names[1:-1]),
+                                        pipe_step_names[-1])
+    else:
+        pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
+                                    pipe_step_names[-1])
     if sample_meta_cols:
         pipe_has_penalty_factor = False
         for param in pipe.get_params(deep=True).keys():

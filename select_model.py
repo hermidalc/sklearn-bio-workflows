@@ -1395,22 +1395,18 @@ def run_model_selection():
             plt.ylabel('Precision', fontsize=args.axis_font_size)
             plt.xlim([-0.01, 1.01])
             plt.ylim([-0.01, 1.01])
-            pres, scores['te']['pr_auc'] = [], []
+            pres = []
             mean_rec = np.linspace(0, 1, 100)
             for split_result in split_results:
                 if split_result is None:
                     continue
-                scores['te']['pr_auc'].append(
-                    split_result['scores']['te']['pr_auc'])
-                pres.append(np.interp(mean_rec,
-                                      split_result['scores']['te']['rec'],
-                                      split_result['scores']['te']['pre']))
-                pres[-1][0] = 1.0
+                pres.append(np.interp(
+                    mean_rec, split_result['scores']['te']['rec'][::-1],
+                    split_result['scores']['te']['pre'][::-1]))
                 plt.step(split_result['scores']['te']['rec'],
                          split_result['scores']['te']['pre'], alpha=0.2,
                          color='darkgrey', lw=1, where='post')
             mean_pre = np.mean(pres, axis=0)
-            mean_pre[-1] = 0.0
             mean_pr_auc = np.mean(scores['te']['pr_auc'])
             std_pr_auc = np.std(scores['te']['pr_auc'])
             mean_num_features = np.mean(num_features)

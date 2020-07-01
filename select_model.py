@@ -420,6 +420,7 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
         y_score = pipe.decision_function(X_test, **pipe_predict_params)
     else:
         y_score = pipe.predict_proba(X_test, **pipe_predict_params)[:, 1]
+    scores['y_score'] = y_score
     for metric in args.scv_scoring:
         if metric == 'roc_auc':
             scores[metric] = roc_auc_score(
@@ -429,6 +430,7 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
                 sample_weight=test_sample_weights)
         elif metric == 'balanced_accuracy':
             y_pred = pipe.predict(X_test, **pipe_predict_params)
+            scores['y_pred'] = y_pred
             scores[metric] = balanced_accuracy_score(
                 y_test, y_pred, sample_weight=test_sample_weights)
         elif metric == 'average_precision':

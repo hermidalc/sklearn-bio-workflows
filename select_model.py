@@ -704,7 +704,7 @@ def run_model_selection():
                 search_param_routing['scoring'].append(param)
     scv_refit = (args.scv_refit if args.test_dataset
                  or not pipe_props['uses_rjava'] else False)
-    cv_split_params = {}
+    pass_cv_group_weights = False
     if groups is None:
         if args.scv_use_ssplit:
             cv_splitter = StratifiedShuffleSplit(
@@ -727,7 +727,7 @@ def run_model_selection():
             cv_splitter = StratifiedSampleFromGroupShuffleSplit(
                 n_splits=args.scv_splits, test_size=args.scv_size,
                 random_state=args.random_seed)
-            cv_split_params = {'weights': group_weights}
+            pass_cv_group_weights = True
         else:
             cv_splitter = StratifiedShuffleSplit(
                 n_splits=args.scv_splits, test_size=args.scv_size,
@@ -741,7 +741,7 @@ def run_model_selection():
             cv_splitter = RepeatedStratifiedSampleFromGroupKFold(
                 n_splits=args.scv_splits, n_repeats=args.scv_repeats,
                 random_state=args.random_seed)
-            cv_split_params = {'weights': group_weights}
+            pass_cv_group_weights = True
         else:
             cv_splitter = RepeatedStratifiedKFold(
                 n_splits=args.scv_splits, n_repeats=args.scv_repeats,
@@ -754,7 +754,7 @@ def run_model_selection():
         cv_splitter = StratifiedSampleFromGroupKFold(
             n_splits=args.scv_splits, random_state=args.random_seed,
             shuffle=True)
-        cv_split_params = {'weights': group_weights}
+        pass_cv_group_weights = True
     else:
         cv_splitter = StratifiedKFold(
             n_splits=args.scv_splits, random_state=args.random_seed,
@@ -855,7 +855,7 @@ def run_model_selection():
             print('Groups:')
             pprint(groups)
             if (group_weights is not None and (
-                    test_split_params or cv_split_params)):
+                    test_split_params or pass_cv_group_weights)):
                 print('Group weights:')
                 pprint(group_weights)
         if (sample_weights is not None and 'sample_weight' in
@@ -878,7 +878,7 @@ def run_model_selection():
         search_fit_params = pipe_fit_params.copy()
         if groups is not None:
             search_fit_params['groups'] = groups
-            if group_weights is not None and cv_split_params:
+            if group_weights is not None and pass_cv_group_weights:
                 search_fit_params['group_weights'] = group_weights
         with parallel_backend(args.parallel_backend,
                               inner_max_num_threads=inner_max_num_threads):
@@ -1109,7 +1109,7 @@ def run_model_selection():
             search_fit_params = pipe_fit_params.copy()
             if groups is not None:
                 search_fit_params['groups'] = groups[train_idxs]
-                if group_weights is not None and cv_split_params:
+                if group_weights is not None and pass_cv_group_weights:
                     search_fit_params['group_weights'] = (
                         group_weights[train_idxs])
             try:

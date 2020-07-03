@@ -1623,8 +1623,8 @@ parser.add_argument('--svc-clf-deg', type=int, nargs='+',
                     help='SVC poly degree')
 parser.add_argument('--svc-clf-g', type=str, nargs='+',
                     help='SVC gamma')
-parser.add_argument('--svc-clf-max-iter', type=int, default=-1,
-                    help='SVC max_iter')
+parser.add_argument('--svc-clf-max-iter', type=lambda x: int(float(x)),
+                    default=-1, help='SVC max_iter')
 parser.add_argument('--lsvc-clf-loss', type=str, default='squared_hinge',
                     help='LinearSVC loss')
 parser.add_argument('--lsvc-clf-max-iter', type=int, default=1000,

@@ -1274,34 +1274,30 @@ def run_model_selection():
             if split_result is None:
                 continue
             split_feature_meta = split_result['feature_meta']
-            if split_idx == 0:
-                if feature_meta.columns.any():
+            if feature_meta.columns.any():
+                if feature_annots is None:
                     feature_annots = split_feature_meta[feature_meta.columns]
                 else:
-                    feature_annots = pd.DataFrame(
-                        index=split_feature_meta.index)
-            elif feature_meta.columns.any():
-                feature_annots = pd.concat(
-                    [feature_annots, split_feature_meta[feature_meta.columns]],
-                    axis=0)
+                    feature_annots = pd.concat(
+                        [feature_annots,
+                         split_feature_meta[feature_meta.columns]], axis=0)
+            elif feature_annots is None:
+                feature_annots = pd.DataFrame(index=split_feature_meta.index)
             else:
                 feature_annots = pd.concat(
                     [feature_annots,
-                     pd.DataFrame(index=split_feature_meta.index)],
-                    axis=0)
+                     pd.DataFrame(index=split_feature_meta.index)], axis=0)
             if 'Weight' in split_feature_meta.columns:
-                if split_idx == 0:
-                    feature_weights = (
-                        split_feature_meta[['Weight']].copy())
+                if feature_weights is None:
+                    feature_weights = split_feature_meta[['Weight']].copy()
                 else:
                     feature_weights = feature_weights.join(
-                        split_feature_meta[['Weight']],
-                        how='outer')
+                        split_feature_meta[['Weight']], how='outer')
                 feature_weights.rename(
                     columns={'Weight': 'Weight {:d}'.format(split_idx + 1)},
                     inplace=True)
             for metric in args.scv_scoring:
-                if split_idx == 0:
+                if metric not in feature_scores:
                     feature_scores[metric] = pd.DataFrame(
                         split_result['scores']['te'][metric], columns=[metric],
                         index=split_feature_meta.index)

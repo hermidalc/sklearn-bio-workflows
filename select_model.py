@@ -114,7 +114,8 @@ def load_dataset(dataset_file):
         groups = np.array(sample_meta['Group'], dtype=int)
         _, group_indices, group_counts = np.unique(
             groups, return_inverse=True, return_counts=True)
-        if 'GroupWeight' in sample_meta.columns:
+        if ('GroupWeight' in sample_meta.columns
+                and sample_meta['GroupWeight'].unique().size > 1):
             group_weights = np.array(sample_meta['GroupWeight'], dtype=float)
         else:
             group_weights = None

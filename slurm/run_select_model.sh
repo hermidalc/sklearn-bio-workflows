@@ -16,7 +16,7 @@ export PYTHONWARNINGS='ignore:Persisting input arguments took:UserWarning'
 
 CONDA_BASE=$(conda info --base)
 source $CONDA_BASE/etc/profile.d/conda.sh
-conda activate sklearn-workflows
+conda activate sklearn-bio-workflows
 
 SELECT_MODEL_CMD="$SLURM_SUBMIT_DIR/select_model.py $@"
 echo $SELECT_MODEL_CMD

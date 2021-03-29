@@ -19,9 +19,9 @@ dependencies:
   - libopenblas
   - matplotlib
   - natsort
-  - numpy
+  - numpy=1.18
   - openjdk=8.0.192=h14c3975_1003
-  - pandas
+  - pandas=1.0
   - pillow
   - python=3.8
   - r-argparse
@@ -40,7 +40,7 @@ dependencies:
   - r-pamr
   - r-rcpparmadillo
   - r-rjava
-  - r-statmod
+  - r-statmod=1.4.35
   - rpy2=3.1
   - scikit-learn=0.22.2
   - seaborn

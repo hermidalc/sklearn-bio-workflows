@@ -24,9 +24,9 @@ dependencies:
   - openjdk=8.0.192=h14c3975_1003
   - pandas
   - pillow
-  - python
+  - python=3.8
   - r-argparse
-  - r-base
+  - r-base=3.6
   - r-corpcor
   - r-devtools
   - r-essentials

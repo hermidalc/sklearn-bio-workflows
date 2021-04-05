@@ -40,6 +40,6 @@ SBATCH_CMD="sbatch \
 --chdir=$(realpath $SCRIPT_PATH/../) \
 --cpus-per-task=$N_JOBS \
 $SBATCH_OPTS \
-$SCRIPT_PATH/run_select_model.sh ${SELECT_MODEL_OPTS[@]}"
+$SCRIPT_PATH/select_model.sh ${SELECT_MODEL_OPTS[@]}"
 echo $SBATCH_CMD
 $SBATCH_CMD

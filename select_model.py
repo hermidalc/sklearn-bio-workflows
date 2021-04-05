@@ -1092,9 +1092,14 @@ def run_model_selection():
                 ax_pre.tick_params(labelsize=args.axis_font_size)
                 ax_pre.grid(False)
         if args.save_models:
-            model_name = (dataset_name.replace('eset', args.save_model_code)
-                          if args.save_model_code is not None else
-                          dataset_name)
+            if args.save_model_code is not None:
+                if dataset_name.split('_')[-1] == 'eset':
+                    model_name = '_'.join([dataset_name.rpartition('_')[0],
+                                           args.save_model_code])
+                else:
+                    model_name = '_'.join([dataset_name, args.save_model_code])
+            else:
+                model_name = dataset_name
             if args.pipe_memory:
                 best_pipe = unset_pipe_memory(best_pipe)
             dump(best_pipe, '{}/{}_model.pkl'.format(args.out_dir, model_name))
@@ -1218,9 +1223,14 @@ def run_model_selection():
                 split_models.append(best_pipe)
             if args.pipe_memory:
                 memory.clear(warn=False)
-        model_name = (dataset_name.replace('eset', args.save_model_code)
-                      if args.save_model_code is not None else
-                      dataset_name)
+        if args.save_model_code is not None:
+            if dataset_name.split('_')[-1] == 'eset':
+                model_name = '_'.join([dataset_name.rpartition('_')[0],
+                                       args.save_model_code])
+            else:
+                model_name = '_'.join([dataset_name, args.save_model_code])
+        else:
+            model_name = dataset_name
         if args.save_models:
             dump(split_models, '{}/{}_split_models.pkl'
                  .format(args.out_dir, model_name))
@@ -1351,9 +1361,14 @@ def run_model_selection():
                     how='left')
                 feature_results_floatfmt.append('.4f')
         if args.save_results:
-            model_name = (dataset_name.replace('eset', args.save_model_code)
-                          if args.save_model_code is not None else
-                          dataset_name)
+            if args.save_model_code is not None:
+                if dataset_name.split('_')[-1] == 'eset':
+                    model_name = '_'.join([dataset_name.rpartition('_')[0],
+                                           args.save_model_code])
+                else:
+                    model_name = '_'.join([dataset_name, args.save_model_code])
+            else:
+                model_name = dataset_name
             dump(feature_results, '{}/{}_feature_results.pkl'
                  .format(args.out_dir, model_name))
             r_base.saveRDS(feature_results, '{}/{}_feature_results.rds'

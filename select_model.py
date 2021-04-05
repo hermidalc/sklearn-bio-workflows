@@ -837,14 +837,14 @@ def run_model_selection():
     if args.scv_type == 'grid':
         search = ExtendedGridSearchCV(
             pipe, cv=cv_splitter, error_score=args.scv_error_score,
-            n_jobs=args.n_jobs, param_grid=param_grid,
+            n_jobs=None, param_grid=param_grid,
             param_routing=search_param_routing, refit=scv_refit,
             return_train_score=False, scoring=args.scv_scoring,
             verbose=args.scv_verbose)
     elif args.scv_type == 'rand':
         search = ExtendedRandomizedSearchCV(
             pipe, cv=cv_splitter, error_score=args.scv_error_score,
-            n_iter=args.scv_n_iter, n_jobs=args.n_jobs,
+            n_iter=args.scv_n_iter, n_jobs=None,
             param_distributions=param_grid, param_routing=search_param_routing,
             random_state=args.random_seed, refit=scv_refit,
             return_train_score=False, scoring=args.scv_scoring,
@@ -896,7 +896,7 @@ def run_model_selection():
             search_fit_params['groups'] = groups
             if group_weights is not None and pass_cv_group_weights:
                 search_fit_params['group_weights'] = group_weights
-        with parallel_backend(args.parallel_backend,
+        with parallel_backend(args.parallel_backend, n_jobs=args.n_jobs,
                               inner_max_num_threads=inner_max_num_threads):
             search.fit(X, y, **search_fit_params)
         best_pipe = search.best_estimator_
@@ -1127,7 +1127,7 @@ def run_model_selection():
                         group_weights[train_idxs])
             try:
                 with parallel_backend(
-                        args.parallel_backend,
+                        args.parallel_backend, n_jobs=args.n_jobs,
                         inner_max_num_threads=inner_max_num_threads):
                     search.fit(X.iloc[train_idxs], y[train_idxs],
                                **search_fit_params)

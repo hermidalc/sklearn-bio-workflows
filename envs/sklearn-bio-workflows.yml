@@ -15,7 +15,7 @@ dependencies:
   - bioconductor-sva
   - bioconductor-variancepartition
   - eli5
-  - joblib>=0.14
+  - joblib=0.14.1
   - libopenblas
   - matplotlib
   - natsort

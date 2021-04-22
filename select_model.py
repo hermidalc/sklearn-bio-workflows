@@ -2420,7 +2420,7 @@ metric_label = {
     'average_precision': 'AVG PRE'}
 
 ordinal_encoder_categories = {
-    'tumor_stage': ['0', 'i', 'i or ii', 'NA', 'ii', 'iii', 'iv']}
+    'tumor_stage': ['0', 'i', 'i or ii', 'ii', 'NA', 'iii', 'iv']}
 
 run_model_selection()
 if args.show_figs or args.save_figs:

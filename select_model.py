@@ -72,10 +72,11 @@ from sklearn_extensions.ensemble import (
 from sklearn_extensions.feature_selection import (
     ANOVAFScorerClassification, CachedANOVAFScorerClassification,
     CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
-    ColumnSelector, DESeq2, DreamVoom, EdgeR, EdgeRFilterByExpr, FCBF, Limma,
-    LimmaVoom, MutualInfoScorerClassification, NanoStringEndogenousSelector,
-    ReliefF, ExtendedRFE, SelectFromModel, SelectFromUnivariateModel,
-    SelectKBest, VarianceThreshold)
+    ColumnSelector, ConfidenceThreshold, DESeq2, DreamVoom, EdgeR,
+    EdgeRFilterByExpr, FCBF, Limma, LimmaVoom, MeanThreshold, MedianThreshold,
+    MutualInfoScorerClassification, NanoStringEndogenousSelector, ReliefF,
+    ExtendedRFE, SelectFromModel, SelectFromUnivariateModel, SelectKBest,
+    VarianceThreshold)
 from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedSampleFromGroupKFold, RepeatedStratifiedGroupKFold,
@@ -1541,6 +1542,12 @@ parser.add_argument('--col-slr-file', type=str, nargs='+',
                     help='ColumnSelector feature or metadata columns file')
 parser.add_argument('--col-slr-meta-col', type=str,
                     help='ColumnSelector feature metadata column name')
+parser.add_argument('--cft-slr-thres', type=float, nargs='+',
+                    help='ConfidenceThreshold threshold')
+parser.add_argument('--mnt-slr-thres', type=float, nargs='+',
+                    help='MeanThreshold threshold')
+parser.add_argument('--mdt-slr-thres', type=float, nargs='+',
+                    help='MedianThreshold threshold')
 parser.add_argument('--vrt-slr-thres', type=float, nargs='+',
                     help='VarianceThreshold threshold')
 parser.add_argument('--mui-slr-n', type=int, nargs='+',
@@ -1964,7 +1971,8 @@ for cv_param, cv_param_values in cv_params.copy().items():
                         'sgd_clf_ae'):
             cv_params[cv_param[:-1]] = None
         continue
-    if cv_param in ('col_slr_cols', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
+    if cv_param in ('col_slr_cols', 'cft_slr_thres', 'mnt_slr_thres',
+                    'mdt_slr_thres', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
                     'rna_slr_pv', 'rna_slr_fc', 'sfm_slr_thres',
                     'sfm_slr_rf_thres', 'sfm_slr_rf_e', 'sfm_slr_ext_thres',
                     'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_d',
@@ -2032,6 +2040,19 @@ pipe_config = {
         'param_grid': {
             'cols': cv_params['col_slr_cols']},
         'param_routing': ['feature_meta']},
+    'ConfidenceThreshold': {
+        'estimator': ConfidenceThreshold(meta_col=args.cft_slr_meta_col),
+        'param_grid': {
+            'threshold': cv_params['cft_slr_thres']},
+        'param_routing': ['feature_meta']},
+    'MeanThreshold': {
+        'estimator': MeanThreshold(),
+        'param_grid': {
+            'threshold': cv_params['mnt_slr_thres']}},
+    'MedianThreshold': {
+        'estimator': MedianThreshold(),
+        'param_grid': {
+            'threshold': cv_params['mdt_slr_thres']}},
     'VarianceThreshold': {
         'estimator':  VarianceThreshold(),
         'param_grid': {

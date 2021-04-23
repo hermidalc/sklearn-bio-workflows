@@ -1544,6 +1544,9 @@ parser.add_argument('--col-slr-meta-col', type=str,
                     help='ColumnSelector feature metadata column name')
 parser.add_argument('--cft-slr-thres', type=float, nargs='+',
                     help='ConfidenceThreshold threshold')
+parser.add_argument('--cft-slr-meta-col', type=str,
+                    default='Confidence Score',
+                    help='ConfidenceThreshold feature metadata column name')
 parser.add_argument('--mnt-slr-thres', type=float, nargs='+',
                     help='MeanThreshold threshold')
 parser.add_argument('--mdt-slr-thres', type=float, nargs='+',

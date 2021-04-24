@@ -34,12 +34,13 @@ if [[ ! -v N_JOBS ]]; then
     SELECT_MODEL_OPTS+=("--n-jobs" "$(($N_JOBS - 1))")
 fi
 
-SCRIPT_PATH=$(dirname $(realpath -s $0))
+SCRIPT_DIR=$(dirname $(realpath -s $0))
+PROJECT_DIR=$(realpath $SCRIPT_DIR/../)
 
 SBATCH_CMD="sbatch \
---chdir=$(realpath $SCRIPT_PATH/../) \
+--chdir=$PROJECT_DIR \
 --cpus-per-task=$N_JOBS \
 $SBATCH_OPTS \
-$SCRIPT_PATH/select_model.sh ${SELECT_MODEL_OPTS[@]}"
+$PROJECT_DIR/select_model.sh ${SELECT_MODEL_OPTS[@]}"
 echo $SBATCH_CMD
 $SBATCH_CMD

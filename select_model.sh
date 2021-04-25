@@ -15,7 +15,7 @@ else
     mkdir -p ~/tmp
     export TMPDIR=~/tmp
 fi
-export JOBLIB_TEMP_FOLDER=$TMPDIR
+# export JOBLIB_TEMP_FOLDER=$TMPDIR
 export PYTHONUNBUFFERED=1
 
 python_warnings=(

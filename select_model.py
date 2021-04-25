@@ -3,6 +3,7 @@
 import os
 import re
 import sys
+import threading
 import warnings
 from argparse import ArgumentParser, ArgumentTypeError
 from glob import glob
@@ -11,6 +12,7 @@ from pprint import pprint
 from shutil import rmtree
 from tempfile import mkdtemp, gettempdir
 from traceback import format_exception_only
+from uuid import uuid4
 
 warnings.filterwarnings('ignore', category=FutureWarning,
                         module='sklearn.utils.deprecation')
@@ -31,7 +33,8 @@ r_embedded.set_initoptions(
 import rpy2.robjects as robjects
 import seaborn as sns
 from eli5 import explain_weights_df
-from joblib import Memory, Parallel, delayed, dump, parallel_backend
+from joblib import Memory, Parallel, delayed, dump, load, parallel_backend
+from joblib._memmapping_reducer import TemporaryResourcesManager
 from natsort import natsorted
 from rpy2.robjects import numpy2ri, pandas2ri
 from rpy2.robjects.packages import importr
@@ -92,6 +95,17 @@ from sklearn_extensions.utils import _determine_key_type
 
 def warning_format(message, category, filename, lineno, file=None, line=None):
     return ' {}: {}'.format(category.__name__, message)
+
+
+def convert_to_memmap(array):
+    mmap_file = os.path.join(
+        joblib_temp_folder_mgr.resolve_temp_folder_name(),
+        '{}-{}-{}.pkl'.format(os.getpid(), id(threading.current_thread()),
+                              uuid4().hex))
+    if os.path.exists(mmap_file):
+        os.unlink(mmap_file)
+    dump(array, mmap_file)
+    return load(mmap_file, mmap_mode='r+')
 
 
 def load_dataset(dataset_file):
@@ -222,6 +236,8 @@ def load_dataset(dataset_file):
                         is_bool_dtype(d) or is_categorical_dtype(d)
                         or is_object_dtype(d) or is_string_dtype(d)))
                     .to_numpy())
+    if col_trf_columns and args.max_nbytes is None:
+        col_trf_columns = convert_to_memmap(col_trf_columns)
     return (dataset_name, X, y, groups, group_weights, sample_weights,
             sample_meta, feature_meta, col_trf_columns)
 
@@ -838,14 +854,14 @@ def run_model_selection():
     if args.scv_type == 'grid':
         search = ExtendedGridSearchCV(
             pipe, cv=cv_splitter, error_score=args.scv_error_score,
-            n_jobs=None, param_grid=param_grid,
+            max_nbytes=args.max_nbytes, n_jobs=None, param_grid=param_grid,
             param_routing=search_param_routing, refit=scv_refit,
             return_train_score=False, scoring=args.scv_scoring,
             verbose=args.scv_verbose)
     elif args.scv_type == 'rand':
         search = ExtendedRandomizedSearchCV(
             pipe, cv=cv_splitter, error_score=args.scv_error_score,
-            n_iter=args.scv_n_iter, n_jobs=None,
+            max_nbytes=args.max_nbytes, n_iter=args.scv_n_iter, n_jobs=None,
             param_distributions=param_grid, param_routing=search_param_routing,
             random_state=args.random_seed, refit=scv_refit,
             return_train_score=False, scoring=args.scv_scoring,
@@ -1822,6 +1838,8 @@ parser.add_argument('--n-jobs', type=int, default=-1,
                     help='num parallel jobs')
 parser.add_argument('--parallel-backend', type=str, default='loky',
                     help='joblib parallel backend')
+parser.add_argument('--max-nbytes', type=str, default='1M',
+                    help='joblib parallel max_nbytes')
 parser.add_argument('--pipe-memory', default=False, action='store_true',
                     help='turn on pipeline memory')
 parser.add_argument('--out-dir', type=dir_path, default=os.getcwd(),
@@ -1851,6 +1869,8 @@ elif args.scv_error_score == 'nan':
     args.scv_error_score = np.nan
 if args.scv_verbose is None:
     args.scv_verbose = args.verbose
+if args.max_nbytes == 'None':
+    args.max_nbytes = None
 
 if args.parallel_backend != 'multiprocessing':
     python_warnings = ([os.environ['PYTHONWARNINGS']]
@@ -1912,6 +1932,7 @@ if args.filter_warnings:
                  'UserWarning', 'sklearn.discriminant_analysis']))
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 
+joblib_temp_folder_mgr = TemporaryResourcesManager()
 inner_max_num_threads = 1 if args.parallel_backend in ('loky') else None
 
 # suppress linux conda qt5 wayland warning

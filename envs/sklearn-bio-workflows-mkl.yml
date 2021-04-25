@@ -15,7 +15,7 @@ dependencies:
   - bioconductor-sva
   - bioconductor-variancepartition
   - eli5
-  - joblib=0.14.1
+  - joblib=1.0.1
   - libblas=*=*mkl
   - libopenblas
   - matplotlib

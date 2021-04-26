@@ -87,8 +87,8 @@ from sklearn_extensions.model_selection import (
     StratifiedSampleFromGroupShuffleSplit)
 from sklearn_extensions.pipeline import ExtendedPipeline
 from sklearn_extensions.preprocessing import (
-    DESeq2RLEVST, EdgeRTMMLogCPM, LimmaBatchEffectRemover, LogTransformer,
-    NanoStringNormalizer, NanoStringDiffNormalizer)
+    DESeq2RLEVST, EdgeRTMMLogCPM, EdgeRTMMTPM, LimmaBatchEffectRemover,
+    LogTransformer, NanoStringNormalizer, NanoStringDiffNormalizer)
 from sklearn_extensions.svm import CachedLinearSVC, CachedSVC
 from sklearn_extensions.utils import _determine_key_type
 
@@ -2226,6 +2226,9 @@ pipe_config = {
     'EdgeRTMMLogCPM': {
         'estimator': EdgeRTMMLogCPM(memory=memory,
                                     prior_count=args.edger_prior_count),
+        'param_routing': ['sample_meta']},
+    'EdgeRTMMTPM': {
+        'estimator': EdgeRTMMTPM(memory=memory),
         'param_routing': ['sample_meta']},
     'LimmaBatchEffectRemover': {
         'estimator': LimmaBatchEffectRemover(preserve_design=True),

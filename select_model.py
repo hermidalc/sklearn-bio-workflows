@@ -1197,6 +1197,7 @@ def run_model_selection():
                     test_sample_weights=test_sample_weights)
             except Exception as e:
                 if args.scv_error_score == 'raise':
+                    run_cleanup()
                     raise
                 if args.verbose > 0:
                     print('Dataset:', dataset_name, ' Split: {:>{width}d}'

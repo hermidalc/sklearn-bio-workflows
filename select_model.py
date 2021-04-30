@@ -624,7 +624,7 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         for metric in args.scv_scoring:
             param_metric_scores = param_cv_scores[param][metric]['scores']
             param_metric_stdev = param_cv_scores[param][metric]['stdev']
-            if any(len(l) > 1 for l in param_metric_scores):
+            if any(len(scores) > 1 for scores in param_metric_scores):
                 mean_cv_scores[metric], std_cv_scores[metric] = [], []
                 for param_value_scores in param_metric_scores:
                     mean_cv_scores[metric].append(np.mean(param_value_scores))

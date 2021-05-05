@@ -1343,7 +1343,11 @@ def run_model_selection():
         if feature_weights is not None:
             feature_ranks = feature_weights.abs().rank(
                 ascending=False, method='min', na_option='keep')
-            feature_ranks.fillna(feature_ranks.shape[0], inplace=True)
+            if args.feature_rank_meth == 'num_select_plus1':
+                feature_ranks.fillna(feature_ranks.count(axis=0) + 1,
+                                     inplace=True)
+            elif args.feature_rank_meth == 'num_total':
+                feature_ranks.fillna(feature_ranks.shape[0], inplace=True)
             feature_frequency = feature_weights.count(axis=1)
             feature_weights.fillna(0, inplace=True)
             feature_results = feature_annots.reindex(index=feature_ranks.index,
@@ -1808,6 +1812,10 @@ parser.add_argument('--test-use-ssplit', default=False, action='store_true',
 parser.add_argument('--param-cv-score-meth', type=str,
                     choices=['best', 'all'], default='best',
                     help='param cv scores calculation method')
+parser.add_argument('--feature-rank-meth', type=str,
+                    choices=['num_select_plus1', 'num_total'],
+                    default='num_select_plus1',
+                    help='feature rank method')
 parser.add_argument('--title-font-size', type=int, default=14,
                     help='figure title font size')
 parser.add_argument('--axis-font-size', type=int, default=14,

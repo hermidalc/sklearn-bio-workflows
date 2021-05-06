@@ -1352,7 +1352,11 @@ def run_model_selection():
             feature_weights.fillna(0, inplace=True)
             feature_results = feature_annots.reindex(index=feature_ranks.index,
                                                      fill_value='')
-            feature_results_floatfmt.extend([''] * feature_annots.shape[1])
+            for feature_annot_col in feature_annots.columns:
+                if is_integer_dtype(feature_annots[feature_annot_col]):
+                    feature_results_floatfmt.append('.0f')
+                else:
+                    feature_results_floatfmt.append('')
             feature_results['Frequency'] = feature_frequency
             feature_results['Mean Weight Rank'] = feature_ranks.mean(axis=1)
             feature_results['Mean Weight'] = feature_weights.mean(axis=1)
@@ -1365,8 +1369,11 @@ def run_model_selection():
             if feature_results is None:
                 feature_results = feature_annots.reindex(
                     index=feature_scores[metric].index, fill_value='')
-                feature_results_floatfmt.extend(
-                    [''] * feature_annots.shape[1])
+                for feature_annot_col in feature_annots.columns:
+                    if is_integer_dtype(feature_annots[feature_annot_col]):
+                        feature_results_floatfmt.append('.0f')
+                    else:
+                        feature_results_floatfmt.append('')
                 feature_frequency = feature_scores[metric].count(axis=1)
                 feature_results['Frequency'] = feature_frequency
                 feature_results_floatfmt.append('.0f')

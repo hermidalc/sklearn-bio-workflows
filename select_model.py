@@ -1688,6 +1688,35 @@ parser.add_argument('--lsvc-clf-tol', type=float, default=1e-2,
                     help='LinearSVC tol')
 parser.add_argument('--svc-clf-cache', type=int, default=2000,
                     help='SVC cache size')
+parser.add_argument('--lgr-clf-ce', type=int, nargs='+',
+                    help='LogisticRegression C exp')
+parser.add_argument('--lgr-clf-ce-min', type=int,
+                    help='LogisticRegression C exp min')
+parser.add_argument('--lgr-clf-ce-max', type=int,
+                    help='LogisticRegression C exp max')
+parser.add_argument('--lgr-clf-l1r', type=float, nargs='+',
+                    help='LogisticRegression l1 ratio')
+parser.add_argument('--lgr-clf-l1r-min', type=float,
+                    help='LogisticRegression l1 ratio min')
+parser.add_argument('--lgr-clf-l1r-max', type=float,
+                    help='LogisticRegression l1 ratio max')
+parser.add_argument('--lgr-clf-l1r-step', type=float, default=0.05,
+                    help='LogisticRegression l1 ratio step')
+parser.add_argument('--lgr-clf-cw', type=str, nargs='+',
+                    help='LogisticRegression class weight')
+parser.add_argument('--lgr-clf-dual', default=False, action='store_true',
+                    help='LogisticRegression max_iter')
+parser.add_argument('--lgr-clf-solver', type=str,
+                    choices=['newton-cg', 'libfgs', 'liblinear', 'sag',
+                             'saga'], default='lbfgs',
+                    help='LogisticRegression solver')
+parser.add_argument('--lgr-clf-penalty', type=str,
+                    choices=['l1', 'l2', 'elasticnet', 'none'], default='l2',
+                    help='LogisticRegression penalty')
+parser.add_argument('--lgr-clf-max-iter', type=int, default=1000,
+                    help='LogisticRegression max_iter')
+parser.add_argument('--lgr-clf-verbose', type=int, default=0,
+                    help='LogisticRegression verbosity')
 parser.add_argument('--knn-clf-k', type=int, nargs='+',
                     help='KNeighborsClassifier neighbors')
 parser.add_argument('--knn-clf-w', type=str, nargs='+',
@@ -1900,6 +1929,12 @@ if args.filter_warnings:
                 'ignore', category=ConvergenceWarning,
                 message='^Liblinear failed to converge',
                 module='sklearn.svm._base')
+            # filter LogisticRegression convergence warnings
+            warnings.filterwarnings(
+                'ignore', category=ConvergenceWarning,
+                message=('^The max_iter was reached which means the coef_ did '
+                         'not converge'),
+                module='sklearn.linear_model._sag')
             # filter SGDClassifier convergence warnings
             warnings.filterwarnings(
                 'ignore', category=ConvergenceWarning,
@@ -1928,6 +1963,10 @@ if args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Liblinear failed to converge', 'UserWarning',
                  'sklearn.svm._base']))
+            python_warnings.append(':'.join(
+                ['ignore',
+                 ('The max_iter was reached which means the coef_ did not '
+                  'converge'), 'UserWarning', 'sklearn.linear_model._sag']))
             python_warnings.append(':'.join(
                 ['ignore',
                  'Maximum number of iteration reached before convergence',
@@ -2005,8 +2044,8 @@ if cv_params['col_slr_file']:
         cv_params['col_slr_cols'].append(feature_names)
 for cv_param, cv_param_values in cv_params.copy().items():
     if cv_param_values is None:
-        if cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'ada_clf_lgr_ce',
-                        'sgd_clf_ae'):
+        if cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'lgr_clf_ce',
+                        'ada_clf_lgr_ce', 'sgd_clf_ae'):
             cv_params[cv_param[:-1]] = None
         continue
     if cv_param in ('col_slr_cols', 'cft_slr_thres', 'mnt_slr_thres',
@@ -2038,10 +2077,10 @@ for cv_param, cv_param_values in cv_params.copy().items():
                 cv_params['{}_max'.format(cv_param)]
                 + cv_params['{}_step'.format(cv_param)],
                 cv_params['{}_step'.format(cv_param)]))
-    elif cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'ada_clf_lgr_ce',
-                      'sgd_clf_ae'):
+    elif cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'lgr_clf_ce',
+                      'ada_clf_lgr_ce', 'sgd_clf_ae'):
         cv_params[cv_param[:-1]] = 10. ** np.asarray(cv_param_values)
-    elif cv_param in ('sfm_slr_svc_ce_max', 'svc_clf_ce_max',
+    elif cv_param in ('sfm_slr_svc_ce_max', 'svc_clf_ce_max', 'lgr_clf_ce_max',
                       'ada_clf_lgr_ce_max', 'sgd_clf_ae_max'):
         cv_param = '_'.join(cv_param.split('_')[:-1])
         cv_param_v_min = cv_params['{}_min'.format(cv_param)]
@@ -2049,7 +2088,7 @@ for cv_param, cv_param_values in cv_params.copy().items():
         cv_params[cv_param[:-1]] = np.logspace(
             cv_param_v_min, cv_param_v_max,
             cv_param_v_max - cv_param_v_min + 1, base=10)
-    elif cv_param == 'sgd_clf_l1r_max':
+    elif cv_param in ('lgr_clf_l1r_max', 'sgd_clf_l1r_max'):
         cv_param = '_'.join(cv_param.split('_')[:3])
         cv_params[cv_param] = np.round(
             np.linspace(cv_params['{}_min'.format(cv_param)],
@@ -2059,9 +2098,9 @@ for cv_param, cv_param_values in cv_params.copy().items():
                                      / cv_params['{}_step'.format(cv_param)]))
                         + 1), decimals=3)
     elif cv_param in ('sfm_slr_rf_f', 'sfm_slr_ext_f', 'sfm_slr_grb_f',
-                      'svc_clf_cw', 'dt_clf_f', 'dt_clf_cw', 'rf_clf_f',
-                      'rf_clf_cw', 'ext_clf_f', 'ext_clf_cw', 'ada_clf_lgr_cw',
-                      'grb_clf_f', 'sgd_clf_cw'):
+                      'svc_clf_cw', 'lgr_clf_cw', 'dt_clf_f', 'dt_clf_cw',
+                      'rf_clf_f', 'rf_clf_cw', 'ext_clf_f', 'ext_clf_cw',
+                      'ada_clf_lgr_cw', 'grb_clf_f', 'sgd_clf_cw'):
         cv_params[cv_param] = sorted([None if v.title() == 'None' else v
                                       for v in cv_param_values],
                                      key=lambda x: (x is None, x))
@@ -2345,6 +2384,16 @@ pipe_config = {
             'kernel': cv_params['svc_clf_kern'],
             'degree': cv_params['svc_clf_deg'],
             'gamma': cv_params['svc_clf_g']},
+        'param_routing': ['sample_weight']},
+    'LogisticRegression': {
+        'estimator': LogisticRegression(
+            dual=args.lgr_clf_dual, max_iter=args.lgr_clf_max_iter,
+            penalty=args.lgr_clf_penalty, random_state=args.random_seed,
+            solver=args.lgr_clf_solver, verbose=args.lgr_clf_verbose),
+        'param_grid': {
+            'C': cv_params['lgr_clf_c'],
+            'l1_ratio': cv_params['lgr_clf_l1r'],
+            'class_weight': cv_params['lgr_clf_cw']},
         'param_routing': ['sample_weight']},
     'KNeighborsClassifier': {
         'estimator': KNeighborsClassifier(),

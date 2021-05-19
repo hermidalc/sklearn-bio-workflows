@@ -219,8 +219,8 @@ def load_dataset(dataset_file):
                 new_feature_meta[feature_meta_col] = 0
             elif is_bool_dtype(feature_meta[feature_meta_col]):
                 new_feature_meta[feature_meta_col] = False
-        if not args.penalize_sample_meta_cols:
-            new_feature_meta[args.penalty_factor_meta_col] = 0
+        new_feature_meta[args.penalty_factor_meta_col] = (
+            1 if args.penalize_sample_meta_cols else 0)
         feature_meta = feature_meta.append(new_feature_meta,
                                            verify_integrity=True)
     col_trf_columns = []

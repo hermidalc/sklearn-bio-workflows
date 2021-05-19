@@ -219,7 +219,8 @@ def load_dataset(dataset_file):
                 new_feature_meta[feature_meta_col] = 0
             elif is_bool_dtype(feature_meta[feature_meta_col]):
                 new_feature_meta[feature_meta_col] = False
-        new_feature_meta[args.penalty_factor_meta_col] = 0
+        if not args.penalize_sample_meta_cols:
+            new_feature_meta[args.penalty_factor_meta_col] = 0
         feature_meta = feature_meta.append(new_feature_meta,
                                            verify_integrity=True)
     col_trf_columns = []
@@ -1561,6 +1562,9 @@ parser.add_argument('--ordinal-encode-cols', type=str, nargs='+',
 parser.add_argument('--penalty-factor-meta-col', type=str,
                     default='Penalty Factor',
                     help='penalty_factor feature metadata column name')
+parser.add_argument('--penalize-sample-meta-cols', default=False,
+                    action='store_true',
+                    help='Sample meta cols penalty factor = 1 instead of 0')
 parser.add_argument('--col-slr-cols', type=str_list, nargs='+',
                     help='ColumnSelector feature or metadata columns')
 parser.add_argument('--col-slr-file', type=str, nargs='+',

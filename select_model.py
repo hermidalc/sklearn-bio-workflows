@@ -1662,6 +1662,8 @@ parser.add_argument('--sfm-slr-ext-f', type=str, nargs='+',
                     help='SelectFromModel ext max features')
 parser.add_argument('--sfm-slr-grb-e', type=int, nargs='+',
                     help='SelectFromModel grb n estimators')
+parser.add_argument('--sfm-slr-grb-lr', type=float, nargs='+',
+                    help='SelectFromModel grb learning rate')
 parser.add_argument('--sfm-slr-grb-d', type=int, nargs='+',
                     help='SelectFromModel grb max depth')
 parser.add_argument('--sfm-slr-grb-f', type=str, nargs='+',
@@ -1788,6 +1790,8 @@ parser.add_argument('--ada-clf-lgr-cw', type=str, nargs='+',
                     help='AdaBoostClassifier LogisticRegression class weight')
 parser.add_argument('--grb-clf-e', type=int, nargs='+',
                     help='GradientBoostingClassifier n estimators')
+parser.add_argument('--grb-clf-lr', type=float, nargs='+',
+                    help='GradientBoostingClassifier learning rate')
 parser.add_argument('--grb-clf-d', type=int, nargs='+',
                     help='GradientBoostingClassifier max depth')
 parser.add_argument('--grb-clf-f', type=str, nargs='+',
@@ -2106,11 +2110,12 @@ for cv_param, cv_param_values in cv_params.copy().items():
                     'mdt_slr_thres', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
                     'rna_slr_pv', 'rna_slr_fc', 'sfm_slr_thres',
                     'sfm_slr_lgr_l1r', 'sfm_slr_rf_e', 'sfm_slr_ext_e',
-                    'sfm_slr_grb_e', 'sfm_slr_grb_d', 'rlf_slr_n', 'rlf_slr_s',
-                    'rfe_clf_step', 'svc_clf_deg', 'svc_clf_g', 'knn_clf_k',
-                    'knn_clf_w', 'rf_clf_e', 'ext_clf_e', 'ada_clf_e',
-                    'grb_clf_e', 'grb_clf_d', 'mlp_clf_hls', 'mlp_clf_a',
-                    'mlp_clf_lr', 'sgd_clf_l1r'):
+                    'sfm_slr_grb_e', 'sfm_slr_grb_lr', 'sfm_slr_grb_d',
+                    'rlf_slr_n', 'rlf_slr_s', 'rfe_clf_step', 'svc_clf_deg',
+                    'svc_clf_g', 'knn_clf_k', 'knn_clf_w', 'rf_clf_e',
+                    'ext_clf_e', 'ada_clf_e', 'grb_clf_e', 'grb_clf_lr',
+                    'grb_clf_d', 'mlp_clf_hls', 'mlp_clf_a', 'mlp_clf_lr',
+                    'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
     elif cv_param in ('rna_slr_ft', 'rna_trf_ft', 'rna_slr_mb', 'rna_trf_mb',
                       'nsn_trf_cc', 'nsn_trf_bg', 'nsn_trf_bg_t', 'nsn_trf_sc',
@@ -2243,6 +2248,7 @@ pipe_config = {
         'estimator': SelectFromModel(grb_clf),
         'param_grid': {
             'estimator__n_estimators': cv_params['sfm_slr_grb_e'],
+            'estimator__learning_rate': cv_params['sfm_slr_grb_lr'],
             'estimator__max_depth': cv_params['sfm_slr_grb_d'],
             'estimator__max_features': cv_params['sfm_slr_grb_f'],
             'max_features': cv_params['skb_slr_k'],
@@ -2425,6 +2431,7 @@ pipe_config = {
             verbose=args.rfe_clf_verbose, memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['grb_clf_e'],
+            'estimator__learning_rate': cv_params['grb_clf_lr'],
             'estimator__max_depth': cv_params['grb_clf_d'],
             'estimator__max_features': cv_params['grb_clf_f'],
             'step': cv_params['rfe_clf_step'],
@@ -2501,6 +2508,7 @@ pipe_config = {
         'estimator': GradientBoostingClassifier(random_state=args.random_seed),
         'param_grid': {
             'n_estimators': cv_params['grb_clf_e'],
+            'learning_rate': cv_params['grb_clf_lr'],
             'max_depth': cv_params['grb_clf_d'],
             'max_features': cv_params['grb_clf_f']},
         'param_routing': ['sample_weight']},
@@ -2550,9 +2558,12 @@ params_lin_xticks = [
 
 params_log_xticks = [
     'slr__estimator__C',
+    'slr__estimator__learning_rate',
     'clf__alpha',
     'clf__C',
+    'clf__learning_rate',
     'clf__estimator__C',
+    'clf__estimator__learning_rate',
     'clf__base_estimator__C']
 
 params_fixed_xticks = [

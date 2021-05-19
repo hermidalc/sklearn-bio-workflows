@@ -552,6 +552,15 @@ def transform_feature_meta(pipe, feature_meta):
         feature_weights.columns = map(str.title, feature_weights.columns)
         transformed_feature_meta = transformed_feature_meta.join(
             feature_weights, how='inner')
+        if (transformed_feature_meta['Weight'] == 0).any():
+            if (args.penalty_factor_meta_col in
+                    transformed_feature_meta.columns):
+                transformed_feature_meta = transformed_feature_meta.loc[
+                    transformed_feature_meta[args.penalty_factor_meta_col] == 0
+                    or transformed_feature_meta['Weight'] != 0]
+            else:
+                transformed_feature_meta = transformed_feature_meta.loc[
+                    transformed_feature_meta['Weight'] != 0]
     transformed_feature_meta.index.rename('Feature', inplace=True)
     return transformed_feature_meta
 

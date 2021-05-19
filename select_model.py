@@ -81,6 +81,7 @@ from sklearn_extensions.feature_selection import (
     MutualInfoScorerClassification, NanoStringEndogenousSelector, ReliefF,
     ExtendedRFE, SelectFromModel, SelectFromUnivariateModel, SelectKBest,
     VarianceThreshold)
+from sklearn_extensions.linear_model import CachedLogisticRegression
 from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedSampleFromGroupKFold, RepeatedStratifiedGroupKFold,
@@ -1611,16 +1612,35 @@ parser.add_argument('--sfm-slr-svc-ce-min', type=int,
                     help='SelectFromModel LinearSVC C exp min')
 parser.add_argument('--sfm-slr-svc-ce-max', type=int,
                     help='SelectFromModel LinearSVC C exp max')
-parser.add_argument('--sfm-slr-rf-thres', type=float, nargs='+',
-                    help='SelectFromModel rf threshold')
+parser.add_argument('--sfm-slr-lgr-ce', type=int, nargs='+',
+                    help='SelectFromModel LogisticRegression C exp')
+parser.add_argument('--sfm-slr-lgr-ce-min', type=int,
+                    help='SelectFromModel LogisticRegression C exp min')
+parser.add_argument('--sfm-slr-lgr-ce-max', type=int,
+                    help='SelectFromModel LogisticRegression C exp max')
+parser.add_argument('--sfm-slr-lgr-l1r', type=float, nargs='+',
+                    help='SelectFromModel LogisticRegression l1 ratio')
+parser.add_argument('--sfm-slr-lgr-l1r-min', type=float,
+                    help='SelectFromModel LogisticRegression l1 ratio min')
+parser.add_argument('--sfm-slr-lgr-l1r-max', type=float,
+                    help='SelectFromModel LogisticRegression l1 ratio max')
+parser.add_argument('--sfm-slr-lgr-l1r-step', type=float, default=0.05,
+                    help='SelectFromModel LogisticRegression l1 ratio step')
+parser.add_argument('--sfm-slr-lgr-dual', default=False, action='store_true',
+                    help='SelectFromModel LogisticRegression max_iter')
+parser.add_argument('--sfm-slr-lgr-solver', type=str,
+                    choices=['newton-cg', 'libfgs', 'liblinear', 'sag',
+                             'saga'], default='lbfgs',
+                    help='SelectFromModel LogisticRegression solver')
+parser.add_argument('--sfm-slr-lgr-penalty', type=str,
+                    choices=['l1', 'l2', 'elasticnet', 'none'], default='l1',
+                    help='SelectFromModel LogisticRegression penalty')
 parser.add_argument('--sfm-slr-rf-e', type=int, nargs='+',
                     help='SelectFromModel rf n estimators')
 parser.add_argument('--sfm-slr-rf-d', type=str, nargs='+',
                     help='SelectFromModel rf max depth')
 parser.add_argument('--sfm-slr-rf-f', type=str, nargs='+',
                     help='SelectFromModel rf max features')
-parser.add_argument('--sfm-slr-ext-thres', type=float, nargs='+',
-                    help='SelectFromModel ext threshold')
 parser.add_argument('--sfm-slr-ext-e', type=int, nargs='+',
                     help='SelectFromModel ext n estimators')
 parser.add_argument('--sfm-slr-ext-d', type=str, nargs='+',
@@ -1892,7 +1912,8 @@ parser.add_argument('--random-seed', type=int, default=777,
 parser.add_argument('--jvm-heap-size', type=int, default=500,
                     help='rjava jvm heap size')
 parser.add_argument('--filter-warnings', type=str, nargs='+',
-                    choices=['convergence', 'joblib', 'fitfailed', 'qda'],
+                    choices=['convergence', 'joblib', 'fitfailed', 'qda',
+                             'sfm'],
                     help='filter warnings')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
@@ -1900,6 +1921,8 @@ parser.add_argument('--load-only', default=False, action='store_true',
                     help='set up model selection and load dataset only')
 args = parser.parse_args()
 
+if args.sfm_slr_thres is not None:
+    args.sfm_slr_thres = [-np.inf if t == 0 else t for t in args.sfm_slr_thres]
 if args.test_size >= 1.0:
     args.test_size = int(args.test_size)
 if args.scv_size >= 1.0:
@@ -1956,6 +1979,11 @@ if args.filter_warnings:
                 'ignore', category=UserWarning,
                 message='^Variables are collinear',
                 module='sklearn.discriminant_analysis')
+        if 'sfm' in args.filter_warnings:
+            warnings.filterwarnings(
+                'ignore', category=UserWarning,
+                message='^No features were selected',
+                module='sklearn_extensions.feature_selection._base')
     else:
         python_warnings = ([os.environ['PYTHONWARNINGS']]
                            if 'PYTHONWARNINGS' in os.environ else [])
@@ -1981,6 +2009,10 @@ if args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Variables are collinear',
                  'UserWarning', 'sklearn.discriminant_analysis']))
+        if 'sfm' in args.filter_warnings:
+            python_warnings.append(':'.join(
+                ['ignore', 'No features were selected', 'UserWarning',
+                 'sklearn_extensions.feature_selection._base']))
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 
 inner_max_num_threads = 1 if args.parallel_backend in ('loky') else None
@@ -2009,6 +2041,11 @@ if args.pipe_memory:
     lsvc_clf = CachedLinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, memory=memory,
         penalty='l1', random_state=args.random_seed, tol=args.lsvc_clf_tol)
+    lgr_clf = CachedLogisticRegression(
+        dual=args.sfm_slr_lgr_dual, max_iter=args.lgr_clf_max_iter,
+        memory=memory, penalty=args.sfm_slr_lgr_penalty,
+        random_state=args.random_seed, solver=args.sfm_slr_lgr_solver,
+        verbose=args.lgr_clf_verbose)
     rf_clf = CachedRandomForestClassifier(memory=memory,
                                           random_state=args.random_seed)
     ext_clf = CachedExtraTreesClassifier(memory=memory,
@@ -2024,6 +2061,10 @@ else:
     lsvc_clf = LinearSVC(
         dual=False, max_iter=args.lsvc_clf_max_iter, penalty='l1',
         random_state=args.random_seed, tol=args.lsvc_clf_tol)
+    lgr_clf = LogisticRegression(
+        dual=args.sfm_slr_lgr_dual, max_iter=args.lgr_clf_max_iter,
+        penalty=args.sfm_slr_lgr_penalty, random_state=args.random_seed,
+        solver=args.sfm_slr_lgr_solver, verbose=args.lgr_clf_verbose)
     rf_clf = RandomForestClassifier(random_state=args.random_seed)
     ext_clf = ExtraTreesClassifier(random_state=args.random_seed)
     grb_clf = GradientBoostingClassifier(random_state=args.random_seed)
@@ -2044,19 +2085,19 @@ if cv_params['col_slr_file']:
         cv_params['col_slr_cols'].append(feature_names)
 for cv_param, cv_param_values in cv_params.copy().items():
     if cv_param_values is None:
-        if cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'lgr_clf_ce',
-                        'ada_clf_lgr_ce', 'sgd_clf_ae'):
+        if cv_param in ('sfm_slr_svc_ce', 'sfm_slr_lgr_ce', 'svc_clf_ce',
+                        'lgr_clf_ce', 'ada_clf_lgr_ce', 'sgd_clf_ae'):
             cv_params[cv_param[:-1]] = None
         continue
     if cv_param in ('col_slr_cols', 'cft_slr_thres', 'mnt_slr_thres',
                     'mdt_slr_thres', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
                     'rna_slr_pv', 'rna_slr_fc', 'sfm_slr_thres',
-                    'sfm_slr_rf_thres', 'sfm_slr_rf_e', 'sfm_slr_ext_thres',
-                    'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_d',
-                    'rlf_slr_n', 'rlf_slr_s', 'rfe_clf_step', 'svc_clf_deg',
-                    'svc_clf_g', 'knn_clf_k', 'knn_clf_w', 'rf_clf_e',
-                    'ext_clf_e', 'ada_clf_e', 'grb_clf_e', 'grb_clf_d',
-                    'mlp_clf_hls', 'mlp_clf_a', 'mlp_clf_lr', 'sgd_clf_l1r'):
+                    'sfm_slr_lgr_l1r', 'sfm_slr_rf_e', 'sfm_slr_ext_e',
+                    'sfm_slr_grb_e', 'sfm_slr_grb_d', 'rlf_slr_n', 'rlf_slr_s',
+                    'rfe_clf_step', 'svc_clf_deg', 'svc_clf_g', 'knn_clf_k',
+                    'knn_clf_w', 'rf_clf_e', 'ext_clf_e', 'ada_clf_e',
+                    'grb_clf_e', 'grb_clf_d', 'mlp_clf_hls', 'mlp_clf_a',
+                    'mlp_clf_lr', 'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
     elif cv_param in ('rna_slr_ft', 'rna_trf_ft', 'rna_slr_mb', 'rna_trf_mb',
                       'nsn_trf_cc', 'nsn_trf_bg', 'nsn_trf_bg_t', 'nsn_trf_sc',
@@ -2077,18 +2118,19 @@ for cv_param, cv_param_values in cv_params.copy().items():
                 cv_params['{}_max'.format(cv_param)]
                 + cv_params['{}_step'.format(cv_param)],
                 cv_params['{}_step'.format(cv_param)]))
-    elif cv_param in ('sfm_slr_svc_ce', 'svc_clf_ce', 'lgr_clf_ce',
-                      'ada_clf_lgr_ce', 'sgd_clf_ae'):
+    elif cv_param in ('sfm_slr_svc_ce', 'sfm_slr_lgr_ce', 'svc_clf_ce',
+                      'lgr_clf_ce', 'ada_clf_lgr_ce', 'sgd_clf_ae'):
         cv_params[cv_param[:-1]] = 10. ** np.asarray(cv_param_values)
-    elif cv_param in ('sfm_slr_svc_ce_max', 'svc_clf_ce_max', 'lgr_clf_ce_max',
-                      'ada_clf_lgr_ce_max', 'sgd_clf_ae_max'):
+    elif cv_param in ('sfm_slr_svc_ce_max', 'sfm_slr_lgr_ce_max',
+                      'svc_clf_ce_max', 'lgr_clf_ce_max', 'ada_clf_lgr_ce_max',
+                      'sgd_clf_ae_max'):
         cv_param = '_'.join(cv_param.split('_')[:-1])
         cv_param_v_min = cv_params['{}_min'.format(cv_param)]
         cv_param_v_max = cv_param_values
         cv_params[cv_param[:-1]] = np.logspace(
             cv_param_v_min, cv_param_v_max,
             cv_param_v_max - cv_param_v_min + 1, base=10)
-    elif cv_param in ('lgr_clf_l1r_max', 'sgd_clf_l1r_max'):
+    elif cv_param in ('sfm_slr_lgr_l1r', 'lgr_clf_l1r_max', 'sgd_clf_l1r_max'):
         cv_param = '_'.join(cv_param.split('_')[:3])
         cv_params[cv_param] = np.round(
             np.linspace(cv_params['{}_min'.format(cv_param)],
@@ -2152,6 +2194,15 @@ pipe_config = {
         'param_grid': {
             'estimator__C': cv_params['sfm_slr_svc_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
+            'max_features': cv_params['skb_slr_k'],
+            'threshold': cv_params['sfm_slr_thres']},
+        'param_routing': ['sample_weight']},
+    'SelectFromModel-LogisticRegression': {
+        'estimator': SelectFromModel(lgr_clf),
+        'param_grid': {
+            'estimator__C': cv_params['sfm_slr_lgr_c'],
+            'estimator__l1_ratio': cv_params['sfm_slr_lgr_l1r'],
+            'estimator__class_weight': cv_params['lgr_clf_cw'],
             'max_features': cv_params['skb_slr_k'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
@@ -2472,6 +2523,7 @@ params_lin_xticks = [
     'slr__k',
     'slr__max_features',
     'slr__score_func__n_neighbors',
+    'slr__estimator__l1_ratio',
     'slr__estimator__n_estimators',
     'slr__n_neighbors',
     'slr__sample_size',

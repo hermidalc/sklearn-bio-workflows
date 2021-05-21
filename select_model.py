@@ -2212,7 +2212,7 @@ pipe_config = {
         'param_grid': {
             'estimator__C': cv_params['sfm_slr_svc_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
-            'max_features': cv_params['skb_slr_k'],
+            'max_features': cv_params['skb_slr_k_max'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'SelectFromModel-LogisticRegression': {
@@ -2221,7 +2221,7 @@ pipe_config = {
             'estimator__C': cv_params['sfm_slr_lgr_c'],
             'estimator__l1_ratio': cv_params['sfm_slr_lgr_l1r'],
             'estimator__class_weight': cv_params['lgr_clf_cw'],
-            'max_features': cv_params['skb_slr_k'],
+            'max_features': cv_params['skb_slr_k_max'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'SelectFromModel-RandomForestClassifier': {
@@ -2231,7 +2231,7 @@ pipe_config = {
             'estimator__max_depth': cv_params['sfm_slr_rf_d'],
             'estimator__max_features': cv_params['sfm_slr_rf_f'],
             'estimator__class_weight': cv_params['rf_clf_cw'],
-            'max_features': cv_params['skb_slr_k'],
+            'max_features': cv_params['skb_slr_k_max'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'SelectFromModel-ExtraTreesClassifier': {
@@ -2241,7 +2241,7 @@ pipe_config = {
             'estimator__max_depth': cv_params['sfm_slr_ext_d'],
             'estimator__max_features': cv_params['sfm_slr_ext_f'],
             'estimator__class_weight': cv_params['ext_clf_cw'],
-            'max_features': cv_params['skb_slr_k'],
+            'max_features': cv_params['skb_slr_k_max'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'SelectFromModel-GradientBoostingClassifier': {
@@ -2251,7 +2251,7 @@ pipe_config = {
             'estimator__learning_rate': cv_params['sfm_slr_grb_lr'],
             'estimator__max_depth': cv_params['sfm_slr_grb_d'],
             'estimator__max_features': cv_params['sfm_slr_grb_f'],
-            'max_features': cv_params['skb_slr_k'],
+            'max_features': cv_params['skb_slr_k_max'],
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'DESeq2': {

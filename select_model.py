@@ -7,6 +7,7 @@ import sys
 import threading
 import warnings
 from argparse import ArgumentParser, ArgumentTypeError
+from decimal import Decimal
 from glob import glob
 from itertools import product
 from pprint import pprint
@@ -1366,6 +1367,11 @@ def run_model_selection():
             for feature_annot_col in feature_annots.columns:
                 if is_integer_dtype(feature_annots[feature_annot_col]):
                     feature_results_floatfmt.append('.0f')
+                elif is_float_dtype(feature_annots[feature_annot_col]):
+                    feature_results_floatfmt.append('.{:d}f'.format(
+                        max(abs(Decimal(f).as_tuple().exponent)
+                            for f in (feature_annots[feature_annot_col]
+                                      .astype(str)))))
                 else:
                     feature_results_floatfmt.append('')
             feature_results['Frequency'] = feature_frequency
@@ -1383,6 +1389,11 @@ def run_model_selection():
                 for feature_annot_col in feature_annots.columns:
                     if is_integer_dtype(feature_annots[feature_annot_col]):
                         feature_results_floatfmt.append('.0f')
+                    elif is_float_dtype(feature_annots[feature_annot_col]):
+                        feature_results_floatfmt.append('.{:d}f'.format(
+                            max(abs(Decimal(f).as_tuple().exponent)
+                                for f in (feature_annots[feature_annot_col]
+                                          .astype(str)))))
                     else:
                         feature_results_floatfmt.append('')
                 feature_frequency = feature_scores[metric].count(axis=1)

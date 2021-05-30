@@ -1751,7 +1751,7 @@ parser.add_argument('--lgr-clf-l1r-step', type=float, default=0.05,
 parser.add_argument('--lgr-clf-cw', type=str, nargs='+',
                     help='LogisticRegression class weight')
 parser.add_argument('--lgr-clf-dual', default=False, action='store_true',
-                    help='LogisticRegression max_iter')
+                    help='LogisticRegression dual')
 parser.add_argument('--lgr-clf-solver', type=str,
                     choices=['newton-cg', 'libfgs', 'liblinear', 'sag',
                              'saga'], default='lbfgs',

@@ -15,13 +15,13 @@ dependencies:
   - bioconductor-sva
   - bioconductor-variancepartition
   - eli5
-  - joblib=1.0.1
+  - joblib
   - libopenblas
   - matplotlib
   - natsort
-  - numpy=1.18
+  - numpy
   - openjdk=11.0.8=hacce0ff_0
-  - pandas=1.0
+  - pandas
   - pillow
   - python=3.8
   - r-argparse
@@ -40,7 +40,7 @@ dependencies:
   - r-pamr
   - r-rcpparmadillo
   - r-rjava=0.9_13=r36hcfec24a_5
-  - r-statmod=1.4.35
+  - r-statmod
   - rpy2=3.1
   - scikit-learn=0.22.2
   - seaborn

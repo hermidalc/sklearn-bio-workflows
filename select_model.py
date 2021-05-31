@@ -908,6 +908,14 @@ def run_model_selection():
             pprint(sample_weights)
     if args.load_only:
         sys.exit()
+    if args.save_model_code is not None:
+        if dataset_name.split('_')[-1] == 'eset':
+            model_name = '_'.join([dataset_name.rpartition('_')[0],
+                                   args.save_model_code])
+        else:
+            model_name = '_'.join([dataset_name, args.save_model_code])
+    else:
+        model_name = dataset_name
     # train w/ independent test sets
     if args.test_dataset:
         pipe_fit_params = {}
@@ -930,7 +938,7 @@ def run_model_selection():
         param_cv_scores = add_param_cv_scores(search, param_grid_dict)
         final_feature_meta = transform_feature_meta(best_pipe, feature_meta)
         if args.verbose > 0:
-            print('Train:', dataset_name, end=' ')
+            print('Model:', model_name, end=' ')
             for metric in args.scv_scoring:
                 print(' {} (CV): {:.4f}'.format(
                     metric_label[metric], search.cv_results_[
@@ -1119,14 +1127,6 @@ def run_model_selection():
                 ax_pre.tick_params(labelsize=args.axis_font_size)
                 ax_pre.grid(False)
         if args.save_models:
-            if args.save_model_code is not None:
-                if dataset_name.split('_')[-1] == 'eset':
-                    model_name = '_'.join([dataset_name.rpartition('_')[0],
-                                           args.save_model_code])
-                else:
-                    model_name = '_'.join([dataset_name, args.save_model_code])
-            else:
-                model_name = dataset_name
             if args.pipe_memory:
                 best_pipe = unset_pipe_memory(best_pipe)
             dump(best_pipe, '{}/{}_model.pkl'.format(args.out_dir, model_name))
@@ -1202,7 +1202,7 @@ def run_model_selection():
                 if args.scv_error_score == 'raise':
                     raise
                 if args.verbose > 0:
-                    print('Dataset:', dataset_name, ' Split: {:>{width}d}'
+                    print('Model:', model_name, ' Split: {:>{width}d}'
                           .format(split_idx + 1,
                                   width=len(str(args.test_splits))), end=' ',
                           flush=True)
@@ -1219,7 +1219,7 @@ def run_model_selection():
                 final_feature_meta = transform_feature_meta(best_pipe,
                                                             feature_meta)
                 if args.verbose > 0:
-                    print('Dataset:', dataset_name, ' Split: {:>{width}d}'
+                    print('Model:', model_name, ' Split: {:>{width}d}'
                           .format(split_idx + 1,
                                   width=len(str(args.test_splits))), end=' ')
                     for metric in args.scv_scoring:
@@ -1250,14 +1250,6 @@ def run_model_selection():
                 split_models.append(best_pipe)
             if args.pipe_memory:
                 memory.clear(warn=False)
-        if args.save_model_code is not None:
-            if dataset_name.split('_')[-1] == 'eset':
-                model_name = '_'.join([dataset_name.rpartition('_')[0],
-                                       args.save_model_code])
-            else:
-                model_name = '_'.join([dataset_name, args.save_model_code])
-        else:
-            model_name = dataset_name
         if args.save_models:
             dump(split_models, '{}/{}_split_models.pkl'
                  .format(args.out_dir, model_name))
@@ -1291,7 +1283,7 @@ def run_model_selection():
                     != 0].shape[0])
             else:
                 num_features.append(split_feature_meta.shape[0])
-        print('Dataset:', dataset_name, X.shape, end=' ')
+        print('Model:', model_name, end=' ')
         for metric in args.scv_scoring:
             print(' Mean {} (CV / Test): {:.4f} / {:.4f}'.format(
                 metric_label[metric], np.mean(scores['cv'][metric]),
@@ -1408,14 +1400,6 @@ def run_model_selection():
                     how='left')
                 feature_results_floatfmt.append('.4f')
         if args.save_results:
-            if args.save_model_code is not None:
-                if dataset_name.split('_')[-1] == 'eset':
-                    model_name = '_'.join([dataset_name.rpartition('_')[0],
-                                           args.save_model_code])
-                else:
-                    model_name = '_'.join([dataset_name, args.save_model_code])
-            else:
-                model_name = dataset_name
             dump(feature_results, '{}/{}_feature_results.pkl'
                  .format(args.out_dir, model_name))
             r_base.saveRDS(feature_results, '{}/{}_feature_results.rds'

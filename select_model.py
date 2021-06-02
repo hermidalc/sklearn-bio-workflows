@@ -1541,24 +1541,42 @@ def dir_path(path):
     raise ArgumentTypeError('{} is not a valid path'.format(path))
 
 
+def add_col_trf_args(args, argv, level=1):
+    parser = ArgumentParser()
+    parser.add_argument('--col-trf-{}-pipe-steps'.format(level), type=str_list,
+                        nargs='+', required=True, action='append',
+                        help=('ColumnTransformer {} pipeline step names'
+                              .format(level)))
+    parser.add_argument('--col-trf-{}-patterns'.format(level), type=str,
+                        nargs='+',
+                        help=('ColumnTransformer {} column patterns'
+                              .format(level)))
+    parser.add_argument('--col-trf-{}-dtypes'.format(level), type=str,
+                        nargs='+', choices=['category', 'float', 'int'],
+                        help=('ColumnTransformer {} column dtypes'
+                              .format(level)))
+    parser.add_argument('--col-trf-{}-remainder'.format(level), type=str,
+                        choices=['drop', 'passthrough'], default='passthrough',
+                        help='ColumnTransformer {} remainder'.format(level))
+    if not (getattr(args, 'col_trf_{}_patterns'.format(level))
+            or getattr(args, 'col_trf_{}_dtypes'.format(level))):
+        parser.error('one of the following arguments is required: {}'.format(
+            ' '.join(['col_trf_{}_patterns'.format(level),
+                      'col_trf_{}_dtypes'.format(level)])))
+    args, argv = parser.parse_known_args(argv, namespace=args)
+    if (getattr(args, 'col_trf_{}_pipe_steps'.format(level))[0][0]
+            == ['ColumnTransformer']):
+        args, argv = add_col_trf_args(args, argv, level=level + 1)
+    return args, argv
+
+
 parser = ArgumentParser()
-parser.add_argument('--train-dataset', '--dataset', '--train-eset', '--train',
-                    type=str, required=True, help='training dataset')
 parser.add_argument('--pipe-steps', type=str_list, nargs='+', required=True,
                     help='Pipeline step names')
+parser.add_argument('--train-dataset', '--dataset', '--train-eset', '--train',
+                    type=str, required=True, help='training dataset')
 parser.add_argument('--test-dataset', '--test-eset', '--test', type=str,
                     nargs='+', help='test datasets')
-parser.add_argument('--col-trf-pipe-steps', type=str_list, nargs='+',
-                    action='append',
-                    help='ColumnTransformer pipeline step names')
-parser.add_argument('--col-trf-patterns', type=str, nargs='+',
-                    help='ColumnTransformer column patterns')
-parser.add_argument('--col-trf-dtypes', type=str, nargs='+',
-                    choices=['category', 'float', 'int'],
-                    help='ColumnTransformer column dtypes')
-parser.add_argument('--col-trf-remainder', type=str,
-                    choices=['drop', 'passthrough'], default='passthrough',
-                    help='ColumnTransfomer remainder')
 parser.add_argument('--sample-meta-cols', type=str, nargs='+',
                     help='sample metadata columns to include')
 parser.add_argument('--ordinal-encode-cols', type=str, nargs='+',
@@ -1931,7 +1949,12 @@ parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
 parser.add_argument('--load-only', default=False, action='store_true',
                     help='set up model selection and load dataset only')
-args = parser.parse_args()
+
+args, argv = parser.parse_known_args()
+if args.pipe_steps[0] == ['ColumnTransformer']:
+    args, argv = add_col_trf_args(args, argv)
+if argv:
+    parser.error('unrecognized arguments: {}'.format(' '.join(argv)))
 
 if args.sfm_slr_thres is not None:
     args.sfm_slr_thres = [-np.inf if t == 0 else t for t in args.sfm_slr_thres]

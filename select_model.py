@@ -1558,12 +1558,12 @@ def add_col_trf_args(args, argv, level=1):
     parser.add_argument('--col-trf-{}-remainder'.format(level), type=str,
                         choices=['drop', 'passthrough'], default='passthrough',
                         help='ColumnTransformer {} remainder'.format(level))
+    args, argv = parser.parse_known_args(argv, namespace=args)
     if not (getattr(args, 'col_trf_{}_patterns'.format(level))
             or getattr(args, 'col_trf_{}_dtypes'.format(level))):
         parser.error('one of the following arguments is required: {}'.format(
             ' '.join(['col_trf_{}_patterns'.format(level),
                       'col_trf_{}_dtypes'.format(level)])))
-    args, argv = parser.parse_known_args(argv, namespace=args)
     if (getattr(args, 'col_trf_{}_pipe_steps'.format(level))[0][0]
             == ['ColumnTransformer']):
         args, argv = add_col_trf_args(args, argv, level=level + 1)

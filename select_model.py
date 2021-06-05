@@ -835,6 +835,8 @@ def run_model_selection():
               X.shape, end='')
         if isinstance(pipe[0], ColumnTransformer):
             print(col_trf_info(pipe[0]))
+        else:
+            print()
     if args.verbose > 0:
         if groups is not None:
             print('Groups:')

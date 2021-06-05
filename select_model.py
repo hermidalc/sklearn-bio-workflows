@@ -40,7 +40,7 @@ from joblib._memmapping_reducer import TemporaryResourcesManager
 from natsort import natsorted
 from rpy2.robjects import numpy2ri, pandas2ri
 from rpy2.robjects.packages import importr
-from sklearn.base import BaseEstimator, is_classifier, is_regressor
+from sklearn.base import BaseEstimator, clone, is_classifier, is_regressor
 from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import (
     LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis)
@@ -88,7 +88,8 @@ from sklearn_extensions.model_selection import (
     StratifiedSampleFromGroupKFold, RepeatedStratifiedGroupKFold,
     RepeatedStratifiedSampleFromGroupKFold, StratifiedGroupShuffleSplit,
     StratifiedSampleFromGroupShuffleSplit)
-from sklearn_extensions.pipeline import ExtendedPipeline
+from sklearn_extensions.pipeline import (ExtendedPipeline,
+                                         transform_feature_meta)
 from sklearn_extensions.preprocessing import (
     DESeq2RLEVST, EdgeRTMMLogCPM, EdgeRTMMTPM, LimmaBatchEffectRemover,
     LogTransformer, NanoStringNormalizer, NanoStringDiffNormalizer)
@@ -224,31 +225,40 @@ def load_dataset(dataset_file):
             1 if args.penalize_sample_meta_cols else 0)
         feature_meta = feature_meta.append(new_feature_meta,
                                            verify_integrity=True)
-    col_trf_columns = []
-    if args.col_trf_patterns:
-        for pattern in args.col_trf_patterns:
-            col_trf_columns.append(X.columns.str.contains(pattern, regex=True))
-    elif args.col_trf_dtypes:
-        for dtype in args.col_trf_dtypes:
-            if dtype == 'int':
-                col_trf_columns.append(X.dtypes.apply(is_integer_dtype)
-                                       .to_numpy())
-            elif dtype == 'float':
-                col_trf_columns.append(X.dtypes.apply(is_float_dtype)
-                                       .to_numpy())
-            elif dtype == 'category':
-                col_trf_columns.append(
-                    X.dtypes.apply(lambda d: (
-                        is_bool_dtype(d) or is_categorical_dtype(d)
-                        or is_object_dtype(d) or is_string_dtype(d)))
-                    .to_numpy())
-    if col_trf_columns and args.max_nbytes is None:
-        col_trf_columns = convert_to_memmap(col_trf_columns)
+    col_trf_col_grps = None
+    if num_col_trfs > 0:
+        X_ct = X.copy()
+        col_trf_col_grps = []
+        for n in range(1, num_col_trfs + 1):
+            col_trf_cols = []
+            if hasattr(args, 'col_trf_{}_patterns'.format(n)):
+                for pattern in getattr(args, 'col_trf_{}_patterns'.format(n)):
+                    col_trf_cols.append(
+                        X_ct.columns.str.contains(pattern, regex=True))
+            elif hasattr(args, 'col_trf_{}_dtypes'.format(n)):
+                for dtype in getattr(args, 'col_trf_{}_dtypes'.format(n)):
+                    if dtype == 'int':
+                        col_trf_cols.append(
+                            X_ct.dtypes.apply(is_integer_dtype).to_numpy())
+                    elif dtype == 'float':
+                        col_trf_cols.append(
+                            X_ct.dtypes.apply(is_float_dtype).to_numpy())
+                    elif dtype == 'category':
+                        col_trf_cols.append(
+                            X_ct.dtypes.apply(lambda d: (
+                                is_bool_dtype(d) or is_categorical_dtype(d)
+                                or is_object_dtype(d) or is_string_dtype(d)))
+                            .to_numpy())
+            X_ct = X_ct.loc[:, col_trf_cols[0]]
+            col_trf_col_grps.append(col_trf_cols)
+    if col_trf_col_grps and args.max_nbytes is None:
+        col_trf_col_grps = convert_to_memmap(col_trf_col_grps)
     return (dataset_name, X, y, groups, group_weights, sample_weights,
-            sample_meta, feature_meta, col_trf_columns)
+            sample_meta, feature_meta, col_trf_col_grps)
 
 
-def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_columns=None):
+def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
+                              col_trf_grp_idx=0):
     pipe_steps = []
     pipe_param_routing = None
     pipe_step_names = []
@@ -358,21 +368,26 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_columns=None):
                 ['.'.join([type(v).__module__, type(v).__qualname__])
                  if isinstance(v, BaseEstimator) else v for v in param_values],
                 key=lambda x: (x is None, x))
-    if (isinstance(pipe[0], ColumnTransformer)
-            and args.col_trf_pipe_steps is not None):
+    if isinstance(pipe[0], ColumnTransformer):
+        pipe = clone(pipe)
         col_trf_name, col_trf_estimator = pipe.steps[0]
         col_trf_pipe_names = []
         col_trf_transformers = []
         col_trf_param_grids = []
         col_trf_param_routing = None
-        for trf_idx, trf_pipe_steps in enumerate(args.col_trf_pipe_steps):
+        col_trf_pipe_steps = getattr(
+            args, 'col_trf_{}_pipe_steps'.format(col_trf_grp_idx + 1))
+        col_trf_remainder = getattr(
+            args, 'col_trf_{}_remainder'.format(col_trf_grp_idx + 1))
+        for trf_idx, trf_pipe_steps in enumerate(col_trf_pipe_steps):
             (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
              trf_param_grid_dict, trf_param_grid_estimators) = (
-                 setup_pipe_and_param_grid(trf_pipe_steps))
+                 setup_pipe_and_param_grid(
+                     trf_pipe_steps, col_trf_col_grps, col_trf_grp_idx + 1))
             col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
             uniq_trf_name = 'trf{:d}'.format(trf_idx)
-            col_trf_transformers.append((uniq_trf_name, trf_pipe,
-                                         col_trf_columns[trf_idx]))
+            trf_cols = col_trf_col_grps[col_trf_grp_idx][trf_idx]
+            col_trf_transformers.append((uniq_trf_name, trf_pipe, trf_cols))
             if trf_param_grid:
                 col_trf_param_grids.append(
                     [{'{}__{}__{}'.format(col_trf_name, uniq_trf_name, k): v
@@ -383,7 +398,7 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_columns=None):
                         col_trf_name, uniq_trf_name, param)] = param_value
                 for param, estimator in trf_param_grid_estimators.items():
                     param_grid_estimators['{}__{}__{}'.format(
-                        col_trf_name, uniq_trf_name, param)] = estimator
+                        col_trf_name, uniq_trf_name, param)] = clone(estimator)
             if trf_pipe.param_routing is not None:
                 if col_trf_param_routing is None:
                     col_trf_param_routing = {}
@@ -400,6 +415,7 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_columns=None):
                 param_grid.append({k: v for params in param_grid_combo
                                    for k, v in params.items()})
         col_trf_estimator.set_params(param_routing=col_trf_param_routing,
+                                     remainder=col_trf_remainder,
                                      transformers=col_trf_transformers)
         if col_trf_param_routing is not None:
             pipe_param_routing = (pipe.param_routing if pipe.param_routing
@@ -407,9 +423,23 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_columns=None):
             pipe_param_routing[col_trf_name] = list(
                 {v for l in col_trf_param_routing.values() for v in l})
             pipe.set_params(param_routing=pipe_param_routing)
-        pipe_step_names[0] = ';'.join(col_trf_pipe_names)
+        pipe_step_names[0] = '||'.join(col_trf_pipe_names)
     return (pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict,
             param_grid_estimators)
+
+
+def col_trf_info(col_trf):
+    col_trf_col_str = ' ('
+    for trf_name, trf_transformer, trf_cols in col_trf.transformers:
+        col_trf_col_str += '{}: {:d}'.format(
+            trf_name, (np.count_nonzero(trf_cols)
+                       if _determine_key_type(trf_cols) == 'bool'
+                       else trf_cols.shape[0]))
+        if (isinstance(trf_transformer, Pipeline)
+                and isinstance(trf_transformer[0], ColumnTransformer)):
+            col_trf_col_str += col_trf_info(trf_transformer[0])
+    col_trf_col_str += ') '
+    return col_trf_col_str
 
 
 def get_param_type(param):
@@ -468,102 +498,30 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
     return scores
 
 
-def transform_feature_meta(pipe, feature_meta):
-    transformed_feature_meta = None
+def get_final_feature_meta(pipe, feature_meta):
     for estimator in pipe:
-        if isinstance(estimator, ColumnTransformer):
-            for _, trf_transformer, trf_columns in estimator.transformers_:
-                if (isinstance(trf_transformer, str)
-                        and trf_transformer == 'drop'):
-                    trf_feature_meta = feature_meta.iloc[
-                        ~feature_meta.index.isin(trf_columns)]
-                elif ((isinstance(trf_columns, slice)
-                       and (isinstance(trf_columns.start, str)
-                            or isinstance(trf_columns.stop, str)))
-                      or isinstance(trf_columns[0], str)):
-                    trf_feature_meta = feature_meta.loc[trf_columns]
-                else:
-                    trf_feature_meta = feature_meta.iloc[trf_columns]
-                if isinstance(trf_transformer, BaseEstimator):
-                    for transformer in trf_transformer:
-                        if hasattr(transformer, 'get_support'):
-                            trf_feature_meta = trf_feature_meta.loc[
-                                transformer.get_support()]
-                        elif hasattr(transformer, 'get_feature_names'):
-                            new_trf_feature_names = (
-                                transformer.get_feature_names(
-                                    input_features=(trf_feature_meta.index
-                                                    .values)).astype(str))
-                            new_trf_feature_meta = None
-                            for feature_name in trf_feature_meta.index:
-                                f_feature_meta = pd.concat(
-                                    [trf_feature_meta.loc[[feature_name]]]
-                                    * np.sum(np.char.startswith(
-                                        new_trf_feature_names,
-                                        '{}_'.format(feature_name))),
-                                    axis=0, ignore_index=True)
-                                if new_trf_feature_meta is None:
-                                    new_trf_feature_meta = f_feature_meta
-                                else:
-                                    new_trf_feature_meta = pd.concat(
-                                        [new_trf_feature_meta, f_feature_meta],
-                                        axis=0, ignore_index=True)
-                            trf_feature_meta = new_trf_feature_meta.set_index(
-                                new_trf_feature_names)
-                if transformed_feature_meta is None:
-                    transformed_feature_meta = trf_feature_meta
-                else:
-                    transformed_feature_meta = pd.concat(
-                        [transformed_feature_meta, trf_feature_meta], axis=0)
-        else:
-            if transformed_feature_meta is None:
-                transformed_feature_meta = feature_meta
-            if hasattr(estimator, 'get_support'):
-                transformed_feature_meta = (
-                    transformed_feature_meta.loc[estimator.get_support()])
-            elif hasattr(estimator, 'get_feature_names'):
-                new_feature_names = estimator.get_feature_names(
-                    input_features=transformed_feature_meta.index.values
-                ).astype(str)
-                new_transformed_feature_meta = None
-                for feature_name in transformed_feature_meta.index:
-                    f_feature_meta = pd.concat(
-                        [transformed_feature_meta.loc[[feature_name]]]
-                        * np.sum(np.char.startswith(
-                            new_feature_names, '{}_'.format(feature_name))),
-                        axis=0, ignore_index=True)
-                    if new_transformed_feature_meta is None:
-                        new_transformed_feature_meta = f_feature_meta
-                    else:
-                        new_transformed_feature_meta = pd.concat(
-                            [new_transformed_feature_meta, f_feature_meta],
-                            axis=0, ignore_index=True)
-                transformed_feature_meta = (new_transformed_feature_meta
-                                            .set_index(new_feature_names))
+        feature_meta = transform_feature_meta(estimator, feature_meta)
     final_estimator = pipe[-1]
     feature_weights = explain_weights_df(
-        final_estimator, feature_names=transformed_feature_meta.index.values)
+        final_estimator, feature_names=feature_meta.index.values)
     if feature_weights is None and hasattr(final_estimator, 'estimator_'):
         feature_weights = explain_weights_df(
             final_estimator.estimator_,
-            feature_names=transformed_feature_meta.index.values)
+            feature_names=feature_meta.index.values)
     if feature_weights is not None:
         feature_weights.set_index('feature', inplace=True,
                                   verify_integrity=True)
         feature_weights.columns = map(str.title, feature_weights.columns)
-        transformed_feature_meta = transformed_feature_meta.join(
-            feature_weights, how='inner')
-        if (transformed_feature_meta['Weight'] == 0).any():
-            if (args.penalty_factor_meta_col in
-                    transformed_feature_meta.columns):
-                transformed_feature_meta = transformed_feature_meta.loc[
-                    transformed_feature_meta[args.penalty_factor_meta_col] == 0
-                    or transformed_feature_meta['Weight'] != 0]
+        feature_meta = feature_meta.join(feature_weights, how='inner')
+        if (feature_meta['Weight'] == 0).any():
+            if args.penalty_factor_meta_col in feature_meta.columns:
+                feature_meta = feature_meta.loc[
+                    feature_meta[args.penalty_factor_meta_col] == 0
+                    or feature_meta['Weight'] != 0]
             else:
-                transformed_feature_meta = transformed_feature_meta.loc[
-                    transformed_feature_meta['Weight'] != 0]
-    transformed_feature_meta.index.rename('Feature', inplace=True)
-    return transformed_feature_meta
+                feature_meta = feature_meta.loc[feature_meta['Weight'] != 0]
+    feature_meta.index.rename('Feature', inplace=True)
+    return feature_meta
 
 
 def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
@@ -689,29 +647,19 @@ def unset_pipe_memory(pipe):
     for param, param_value in pipe.get_params(deep=True).items():
         if isinstance(param_value, Memory):
             pipe.set_params(**{param: None})
-    for estimator in pipe:
-        if isinstance(estimator, ColumnTransformer):
-            for _, trf_transformer, _ in estimator.transformers_:
-                if isinstance(trf_transformer, BaseEstimator):
-                    for param, param_value in (
-                            trf_transformer.get_params(deep=True).items()):
-                        if isinstance(param_value, Memory):
-                            trf_transformer.set_params(**{param: None})
+    if isinstance(pipe[0], ColumnTransformer):
+        for _, trf_transformer, _ in pipe[0].transformers_:
+            if isinstance(trf_transformer, Pipeline):
+                unset_pipe_memory(trf_transformer)
     return pipe
 
 
 def run_model_selection():
     (dataset_name, X, y, groups, group_weights, sample_weights, sample_meta,
-     feature_meta, col_trf_columns) = load_dataset(args.train_dataset)
+     feature_meta, col_trf_col_grps) = load_dataset(args.train_dataset)
     pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict, _ = (
-        setup_pipe_and_param_grid(args.pipe_steps, col_trf_columns))
-    if isinstance(pipe[0], ColumnTransformer):
-        pipe_name = '{}\n{}\n{}'.format(pipe_step_names[0],
-                                        '->'.join(pipe_step_names[1:-1]),
-                                        pipe_step_names[-1])
-    else:
-        pipe_name = '{}\n{}'.format('->'.join(pipe_step_names[:-1]),
-                                    pipe_step_names[-1])
+        setup_pipe_and_param_grid(args.pipe_steps, col_trf_col_grps))
+    pipe_name = '\n'.join(pipe_step_names)
     if args.sample_meta_cols:
         pipe_has_penalty_factor = False
         for param in pipe.get_params(deep=True).keys():
@@ -884,16 +832,9 @@ def run_model_selection():
             pprint(param_grid_dict)
     if args.verbose > 0 or args.scv_verbose > 0:
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
-              X.shape, end=' ')
-        if col_trf_columns:
-            print('(', ' '.join(
-                ['{}: {:d}'.format(
-                    pipe[0].transformers[i][0],
-                    np.sum(c) if _determine_key_type(c) == 'bool'
-                    else c.shape[0])
-                 for i, c in enumerate(col_trf_columns)]), ')', sep='')
-        else:
-            print()
+              X.shape, end='')
+        if isinstance(pipe[0], ColumnTransformer):
+            print(col_trf_info(pipe[0]))
     if args.verbose > 0:
         if groups is not None:
             print('Groups:')
@@ -936,7 +877,7 @@ def run_model_selection():
             search.fit(X, y, **search_fit_params)
         best_pipe = search.best_estimator_
         param_cv_scores = add_param_cv_scores(search, param_grid_dict)
-        final_feature_meta = transform_feature_meta(best_pipe, feature_meta)
+        final_feature_meta = get_final_feature_meta(best_pipe, feature_meta)
         if args.verbose > 0:
             print('Model:', model_name, end=' ')
             for metric in args.scv_scoring:
@@ -1216,7 +1157,7 @@ def run_model_selection():
             else:
                 param_cv_scores = add_param_cv_scores(search, param_grid_dict,
                                                       param_cv_scores)
-                final_feature_meta = transform_feature_meta(best_pipe,
+                final_feature_meta = get_final_feature_meta(best_pipe,
                                                             feature_meta)
                 if args.verbose > 0:
                     print('Model:', model_name, ' Split: {:>{width}d}'
@@ -1559,15 +1500,15 @@ def add_col_trf_args(args, argv, level=1):
                         choices=['drop', 'passthrough'], default='passthrough',
                         help='ColumnTransformer {} remainder'.format(level))
     args, argv = parser.parse_known_args(argv, namespace=args)
-    if not (getattr(args, 'col_trf_{}_patterns'.format(level))
-            or getattr(args, 'col_trf_{}_dtypes'.format(level))):
+    if not (hasattr(args, 'col_trf_{}_patterns'.format(level))
+            or hasattr(args, 'col_trf_{}_dtypes'.format(level))):
         parser.error('one of the following arguments is required: {}'.format(
             ' '.join(['col_trf_{}_patterns'.format(level),
                       'col_trf_{}_dtypes'.format(level)])))
     if (getattr(args, 'col_trf_{}_pipe_steps'.format(level))[0][0]
             == ['ColumnTransformer']):
-        args, argv = add_col_trf_args(args, argv, level=level + 1)
-    return args, argv
+        args, argv, level = add_col_trf_args(args, argv, level + 1)
+    return args, argv, level
 
 
 parser = ArgumentParser()
@@ -1950,9 +1891,10 @@ parser.add_argument('--verbose', type=int, default=1,
 parser.add_argument('--load-only', default=False, action='store_true',
                     help='set up model selection and load dataset only')
 
+num_col_trfs = 0
 args, argv = parser.parse_known_args()
 if args.pipe_steps[0] == ['ColumnTransformer']:
-    args, argv = add_col_trf_args(args, argv)
+    args, argv, num_col_trfs = add_col_trf_args(args, argv)
 if argv:
     parser.error('unrecognized arguments: {}'.format(' '.join(argv)))
 
@@ -2340,8 +2282,7 @@ pipe_config = {
         'estimator': CFS()},
     # transformers
     'ColumnTransformer': {
-        'estimator': ExtendedColumnTransformer(
-            [], n_jobs=1, remainder=args.col_trf_remainder)},
+        'estimator': ExtendedColumnTransformer([], n_jobs=1)},
     'OneHotEncoder': {
         'estimator': OneHotEncoder(
             drop=args.ohe_trf_drop, sparse=False,

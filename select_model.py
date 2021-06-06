@@ -17,8 +17,6 @@ from traceback import format_exception_only
 from uuid import uuid4
 
 warnings.filterwarnings('ignore', category=FutureWarning,
-                        module='sklearn.utils.deprecation')
-warnings.filterwarnings('ignore', category=FutureWarning,
                         module='rpy2.robjects.pandas2ri')
 
 import matplotlib.pyplot as plt

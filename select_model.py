@@ -429,17 +429,16 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
 
 
 def col_trf_info(col_trf):
-    col_trf_col_str = ' ('
+    col_trf_col_strs = []
     for trf_name, trf_transformer, trf_cols in col_trf.transformers:
-        col_trf_col_str += '{}: {:d}'.format(
+        col_trf_col_strs.append('{}: {:d}'.format(
             trf_name, (np.count_nonzero(trf_cols)
                        if _determine_key_type(trf_cols) == 'bool'
-                       else trf_cols.shape[0]))
+                       else trf_cols.shape[0])))
         if (isinstance(trf_transformer, Pipeline)
                 and isinstance(trf_transformer[0], ColumnTransformer)):
-            col_trf_col_str += col_trf_info(trf_transformer[0])
-    col_trf_col_str += ') '
-    return col_trf_col_str
+            col_trf_col_strs.append(col_trf_info(trf_transformer[0]))
+    return '({})'.format(' '.join(col_trf_col_strs))
 
 
 def get_param_type(param):
@@ -832,7 +831,7 @@ def run_model_selection():
             pprint(param_grid_dict)
     if args.verbose > 0 or args.scv_verbose > 0:
         print('Train:' if args.test_dataset else 'Dataset:', dataset_name,
-              X.shape, end='')
+              X.shape, end=' ')
         if isinstance(pipe[0], ColumnTransformer):
             print(col_trf_info(pipe[0]))
         else:

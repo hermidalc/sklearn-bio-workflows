@@ -1947,21 +1947,21 @@ if args.filter_warnings:
             warnings.filterwarnings(
                 'ignore', category=UserWarning,
                 message='^Persisting input arguments took')
-        if 'fitfailed' in args.filter_warnings:
+        if any(w in args.filter_warnings for w in ('fitfailed', 'sfm')):
             warnings.filterwarnings(
                 'ignore', category=FitFailedWarning,
                 message='^Estimator fit failed')
+        if 'sfm' in args.filter_warnings:
+            warnings.filterwarnings(
+                'ignore', category=UserWarning,
+                message='^No features were selected',
+                module='sklearn_extensions.feature_selection._base')
         if 'qda' in args.filter_warnings:
             # filter QDA collinearity warnings
             warnings.filterwarnings(
                 'ignore', category=UserWarning,
                 message='^Variables are collinear',
                 module='sklearn.discriminant_analysis')
-        if 'sfm' in args.filter_warnings:
-            warnings.filterwarnings(
-                'ignore', category=UserWarning,
-                message='^No features were selected',
-                module='sklearn_extensions.feature_selection._base')
     else:
         python_warnings = ([os.environ['PYTHONWARNINGS']]
                            if 'PYTHONWARNINGS' in os.environ else [])
@@ -1980,17 +1980,17 @@ if args.filter_warnings:
         if 'joblib' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Persisting input arguments took', 'UserWarning']))
-        if 'fitfailed' in args.filter_warnings:
+        if any(w in args.filter_warnings for w in ('fitfailed', 'coxnet')):
             python_warnings.append(':'.join(
                 ['ignore', 'Estimator fit failed', 'RuntimeWarning']))
-        if 'qda' in args.filter_warnings:
-            python_warnings.append(':'.join(
-                ['ignore', 'Variables are collinear',
-                 'UserWarning', 'sklearn.discriminant_analysis']))
         if 'sfm' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'No features were selected', 'UserWarning',
                  'sklearn_extensions.feature_selection._base']))
+        if 'qda' in args.filter_warnings:
+            python_warnings.append(':'.join(
+                ['ignore', 'Variables are collinear',
+                 'UserWarning', 'sklearn.discriminant_analysis']))
         os.environ['PYTHONWARNINGS'] = ','.join(python_warnings)
 
 inner_max_num_threads = 1 if args.parallel_backend in ('loky') else None

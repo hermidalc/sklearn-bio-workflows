@@ -1906,8 +1906,8 @@ parser.add_argument('--random-seed', type=int, default=777,
 parser.add_argument('--jvm-heap-size', type=int, default=500,
                     help='rjava jvm heap size')
 parser.add_argument('--filter-warnings', type=str, nargs='+',
-                    choices=['convergence', 'joblib', 'fitfailed', 'qda',
-                             'sfm'],
+                    choices=['convergence', 'joblib', 'fitfailed', 'slr',
+                             'qda'],
                     help='filter warnings')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
@@ -1969,11 +1969,11 @@ if args.filter_warnings:
             warnings.filterwarnings(
                 'ignore', category=UserWarning,
                 message='^Persisting input arguments took')
-        if any(w in args.filter_warnings for w in ('fitfailed', 'sfm')):
+        if any(w in args.filter_warnings for w in ('fitfailed', 'slr')):
             warnings.filterwarnings(
                 'ignore', category=FitFailedWarning,
                 message='^Estimator fit failed')
-        if 'sfm' in args.filter_warnings:
+        if 'slr' in args.filter_warnings:
             warnings.filterwarnings(
                 'ignore', category=UserWarning,
                 message='^No features were selected',
@@ -2002,10 +2002,10 @@ if args.filter_warnings:
         if 'joblib' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Persisting input arguments took', 'UserWarning']))
-        if any(w in args.filter_warnings for w in ('fitfailed', 'coxnet')):
+        if any(w in args.filter_warnings for w in ('fitfailed', 'slr')):
             python_warnings.append(':'.join(
                 ['ignore', 'Estimator fit failed', 'RuntimeWarning']))
-        if 'sfm' in args.filter_warnings:
+        if 'slr' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'No features were selected', 'UserWarning',
                  'sklearn_extensions.feature_selection._base']))

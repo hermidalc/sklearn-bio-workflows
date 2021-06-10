@@ -1577,15 +1577,15 @@ parser.add_argument('--mui-slr-n-max', type=int,
 parser.add_argument('--mui-slr-n-step', type=int, default=1,
                     help='MutualInfoScorer n_neighbors step')
 parser.add_argument('--skb-slr-k', type=int, nargs='+',
-                    help='Selector k')
+                    help='SelectKBest k')
 parser.add_argument('--skb-slr-k-min', type=int, default=1,
-                    help='Selector k min')
+                    help='SelectKBest k min')
 parser.add_argument('--skb-slr-k-max', type=int,
-                    help='Selector k max')
+                    help='SelectKBest k max')
 parser.add_argument('--skb-slr-k-step', type=int, default=1,
-                    help='Selector k step')
+                    help='SelectKBest k step')
 parser.add_argument('--skb-slr-k-lim', default=False, action='store_true',
-                    help='Selector k sample limit')
+                    help='SelectKBest k sample limit')
 parser.add_argument('--rna-slr-pv', type=float, nargs='+',
                     help='RNA slr adj p-value')
 parser.add_argument('--rna-slr-fc', type=float, nargs='+',

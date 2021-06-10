@@ -889,7 +889,18 @@ def run_model_selection():
             print(' Params:', {
                 k: ('.'.join([type(v).__module__, type(v).__qualname__])
                     if isinstance(v, BaseEstimator) else v)
-                for k, v in search.best_params_.items()})
+                for k, v in search.best_params_.items()}, end=' ')
+            if (args.penalty_factor_meta_col
+                    in final_feature_meta.columns):
+                num_features = final_feature_meta.loc[
+                    final_feature_meta[args.penalty_factor_meta_col]
+                    != 0].shape[0]
+            else:
+                num_features = final_feature_meta.shape[0]
+            if pipe_props['has_selector'] or num_features < X.shape[1]:
+                print(' Features: {:.0f}'.format(num_features))
+            else:
+                print()
             if 'Weight' in final_feature_meta.columns:
                 print(tabulate(final_feature_meta.iloc[
                     (-final_feature_meta['Weight'].abs()).argsort()],
@@ -1175,7 +1186,18 @@ def run_model_selection():
                         k: ('.'.join([type(v).__module__,
                                       type(v).__qualname__])
                             if isinstance(v, BaseEstimator) else v)
-                        for k, v in best_params.items()})
+                        for k, v in best_params.items()}, end=' ')
+                    if (args.penalty_factor_meta_col
+                            in final_feature_meta.columns):
+                        num_features = final_feature_meta.loc[
+                            final_feature_meta[args.penalty_factor_meta_col]
+                            != 0].shape[0]
+                    else:
+                        num_features = final_feature_meta.shape[0]
+                    if pipe_props['has_selector'] or num_features < X.shape[1]:
+                        print(' Features: {:.0f}'.format(num_features))
+                    else:
+                        print()
                 if args.verbose > 1:
                     if 'Weight' in final_feature_meta.columns:
                         print(tabulate(final_feature_meta.iloc[

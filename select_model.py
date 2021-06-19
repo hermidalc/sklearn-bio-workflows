@@ -1947,10 +1947,14 @@ if args.parallel_backend != 'multiprocessing':
 if args.filter_warnings:
     if args.parallel_backend == 'multiprocessing':
         if 'convergence' in args.filter_warnings:
-            # filter LinearSVC convergence warnings
+            # filter SVC convergence warnings
             warnings.filterwarnings(
                 'ignore', category=ConvergenceWarning,
                 message='^Liblinear failed to converge',
+                module='sklearn.svm._base')
+            warnings.filterwarnings(
+                'ignore', category=ConvergenceWarning,
+                message='^Solver terminated early',
                 module='sklearn.svm._base')
             # filter LogisticRegression convergence warnings
             warnings.filterwarnings(
@@ -1990,6 +1994,9 @@ if args.filter_warnings:
         if 'convergence' in args.filter_warnings:
             python_warnings.append(':'.join(
                 ['ignore', 'Liblinear failed to converge', 'UserWarning',
+                 'sklearn.svm._base']))
+            python_warnings.append(':'.join(
+                ['ignore', 'Solver terminated early', 'UserWarning',
                  'sklearn.svm._base']))
             python_warnings.append(':'.join(
                 ['ignore',

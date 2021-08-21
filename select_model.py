@@ -1608,6 +1608,8 @@ parser.add_argument('--rna-slr-fc', type=float, nargs='+',
                     help='RNA slr fold change')
 parser.add_argument('--rna-slr-mb', type=str_bool, nargs='+',
                     help='RNA slr model batch')
+parser.add_argument('--rna-slr-sm', type=str, nargs='+',
+                    help='RNA scoring method')
 parser.add_argument('--rna-slr-ft', type=str, nargs='+',
                     help='RNA fit type')
 parser.add_argument('--sfm-slr-thres', type=float, nargs='+',
@@ -1829,7 +1831,7 @@ parser.add_argument('--sgd-clf-max-iter', type=int, default=1000,
 parser.add_argument('--deseq2-no-lfc-shrink', default=False,
                     action='store_true',
                     help='deseq2 no lfc shrink')
-parser.add_argument('--edger-prior-count', type=int, default=1,
+parser.add_argument('--edger-prior-count', type=int, default=2,
                     help='edger prior count')
 parser.add_argument('--limma-robust', default=False, action='store_true',
                     help='limma robust')
@@ -2123,10 +2125,10 @@ for cv_param, cv_param_values in cv_params.copy().items():
                     'grb_clf_d', 'mlp_clf_hls', 'mlp_clf_a', 'mlp_clf_lr',
                     'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
-    elif cv_param in ('rna_slr_ft', 'rna_trf_ft', 'rna_slr_mb', 'rna_trf_mb',
-                      'nsn_trf_cc', 'nsn_trf_bg', 'nsn_trf_bg_t', 'nsn_trf_sc',
-                      'pwr_trf_meth', 'svc_clf_kern', 'mlp_clf_act',
-                      'mlp_clf_slvr', 'sgd_clf_loss'):
+    elif cv_param in ('rna_slr_ft', 'rna_trf_ft', 'rna_slr_mb', 'rna_slr_sm',
+                      'rna_trf_mb', 'nsn_trf_cc', 'nsn_trf_bg', 'nsn_trf_bg_t',
+                      'nsn_trf_sc', 'pwr_trf_meth', 'svc_clf_kern',
+                      'mlp_clf_act', 'mlp_clf_slvr', 'sgd_clf_loss'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param in ('mui_slr_n_max', 'skb_slr_k_max'):
         cv_param = '_'.join(cv_param.split('_')[:3])
@@ -2261,21 +2263,22 @@ pipe_config = {
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'DESeq2': {
-        'estimator': DESeq2(memory=memory,
-                            lfc_shrink=not args.deseq2_no_lfc_shrink),
+        'estimator': DESeq2(lfc_shrink=not args.deseq2_no_lfc_shrink),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
             'fc': cv_params['rna_slr_fc'],
+            'scoring_meth': cv_params['rna_slr_sm'],
             'fit_type': cv_params['rna_slr_ft'],
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'EdgeR': {
-        'estimator': EdgeR(memory=memory, prior_count=args.edger_prior_count),
+        'estimator': EdgeR(prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
             'fc': cv_params['rna_slr_fc'],
+            'scoring_meth': cv_params['rna_slr_sm'],
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'EdgeRFilterByExpr': {
@@ -2284,31 +2287,31 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'LimmaVoom': {
-        'estimator': LimmaVoom(memory=memory,
-                               model_dupcor=args.limma_model_dupcor,
+        'estimator': LimmaVoom(model_dupcor=args.limma_model_dupcor,
                                prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
             'fc': cv_params['rna_slr_fc'],
+            'scoring_meth': cv_params['rna_slr_sm'],
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'DreamVoom': {
-        'estimator': DreamVoom(memory=memory,
-                               prior_count=args.edger_prior_count),
+        'estimator': DreamVoom(prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
             'fc': cv_params['rna_slr_fc'],
+            'scoring_meth': cv_params['rna_slr_sm'],
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'Limma': {
-        'estimator': Limma(memory=memory, robust=args.limma_robust,
-                           trend=args.limma_trend),
+        'estimator': Limma(robust=args.limma_robust, trend=args.limma_trend),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
             'fc': cv_params['rna_slr_fc'],
+            'scoring_meth': cv_params['rna_slr_sm'],
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'NanoStringEndogenousSelector': {
@@ -2347,17 +2350,16 @@ pipe_config = {
     'StandardScaler': {
         'estimator': StandardScaler()},
     'DESeq2RLEVST': {
-        'estimator': DESeq2RLEVST(memory=memory),
+        'estimator': DESeq2RLEVST(),
         'param_grid': {
             'fit_type': cv_params['rna_trf_ft'],
             'model_batch': cv_params['rna_trf_mb']},
         'param_routing': ['sample_meta']},
     'EdgeRTMMLogCPM': {
-        'estimator': EdgeRTMMLogCPM(memory=memory,
-                                    prior_count=args.edger_prior_count),
+        'estimator': EdgeRTMMLogCPM(prior_count=args.edger_prior_count),
         'param_routing': ['sample_meta']},
     'EdgeRTMMTPM': {
-        'estimator': EdgeRTMMTPM(memory=memory),
+        'estimator': EdgeRTMMTPM(),
         'param_routing': ['feature_meta']},
     'LimmaBatchEffectRemover': {
         'estimator': LimmaBatchEffectRemover(preserve_design=True),
@@ -2580,6 +2582,7 @@ params_fixed_xticks = [
     'slr__fc',
     'slr__model_batch',
     'slr__pv',
+    'slr__scoring_meth',
     'slr__sv',
     'slr__threshold',
     'trf',

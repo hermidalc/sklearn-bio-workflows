@@ -2263,7 +2263,8 @@ pipe_config = {
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'DESeq2': {
-        'estimator': DESeq2(lfc_shrink=not args.deseq2_no_lfc_shrink),
+        'estimator': DESeq2(memory=memory,
+                            lfc_shrink=not args.deseq2_no_lfc_shrink),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
@@ -2273,7 +2274,8 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'EdgeR': {
-        'estimator': EdgeR(prior_count=args.edger_prior_count),
+        'estimator': EdgeR(memory=memory,
+                           prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
@@ -2287,7 +2289,8 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'LimmaVoom': {
-        'estimator': LimmaVoom(model_dupcor=args.limma_model_dupcor,
+        'estimator': LimmaVoom(memory=memory,
+                               model_dupcor=args.limma_model_dupcor,
                                prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
@@ -2297,7 +2300,8 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'DreamVoom': {
-        'estimator': DreamVoom(prior_count=args.edger_prior_count),
+        'estimator': DreamVoom(memory=memory,
+                               prior_count=args.edger_prior_count),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
@@ -2306,7 +2310,8 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'Limma': {
-        'estimator': Limma(robust=args.limma_robust, trend=args.limma_trend),
+        'estimator': Limma(memory=memory, robust=args.limma_robust,
+                           trend=args.limma_trend),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],

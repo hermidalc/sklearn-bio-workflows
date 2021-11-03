@@ -1667,8 +1667,12 @@ parser.add_argument('--rlf-slr-n', type=int, nargs='+',
                     help='ReliefF n neighbors')
 parser.add_argument('--rlf-slr-s', type=int, nargs='+',
                     help='ReliefF sample size')
+parser.add_argument('--ohe-trf-categories', type=str_list, nargs='+',
+                    help='OneHotEncoder categories')
 parser.add_argument('--ohe-trf-drop', type=str, choices=['first'],
                     help='OneHotEncoder drop')
+parser.add_argument('--ord-trf-categories', type=str_list, nargs='+',
+                    help='OrdinalEncoder categories')
 parser.add_argument('--mms-trf-feature-range', type=int_list, default=(0, 1),
                     help='MinMaxScaler feature range')
 parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
@@ -2339,9 +2343,15 @@ pipe_config = {
         'estimator': ExtendedColumnTransformer([], n_jobs=1)},
     'OneHotEncoder': {
         'estimator': OneHotEncoder(
-            drop=args.ohe_trf_drop, sparse=False,
+            categories=(args.ohe_trf_categories if args.ohe_trf_categories else
+                        'auto'), drop=args.ohe_trf_drop,
             handle_unknown=('ignore' if args.ohe_trf_drop is None else
-                            'error'))},
+                            'error'),
+            sparse=False)},
+    'OrdinalEncoder': {
+        'estimator': OrdinalEncoder(
+            categories=(args.ord_trf_categories if args.ord_trf_categories else
+                        'auto'))},
     'LogTransformer': {
         'estimator':  LogTransformer(base=2, shift=1)},
     'PowerTransformer': {

@@ -24,9 +24,6 @@ warnings.filterwarnings('ignore', category=FutureWarning,
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas.api.types import (
-    is_bool_dtype, is_categorical_dtype, is_integer_dtype, is_float_dtype,
-    is_object_dtype, is_string_dtype)
 import rpy2.rinterface_lib.embedded as r_embedded
 
 r_embedded.set_initoptions(
@@ -37,9 +34,14 @@ import seaborn as sns
 from eli5 import explain_weights_df
 from joblib import Memory, Parallel, delayed, dump, load, parallel_backend
 from joblib._memmapping_reducer import TemporaryResourcesManager
+from matplotlib.offsetbox import AnchoredText
 from natsort import natsorted
+from pandas.api.types import (
+    is_bool_dtype, is_categorical_dtype, is_integer_dtype, is_float_dtype,
+    is_object_dtype, is_string_dtype)
 from rpy2.robjects import numpy2ri, pandas2ri
 from rpy2.robjects.packages import importr
+from scipy.stats import iqr
 from sklearn.base import BaseEstimator, clone, is_classifier, is_regressor
 from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import (
@@ -87,7 +89,7 @@ from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedSampleFromGroupKFold, RepeatedStratifiedGroupKFold,
     RepeatedStratifiedSampleFromGroupKFold, StratifiedGroupShuffleSplit,
-    StratifiedSampleFromGroupShuffleSplit)
+    StratifiedSampleFromGroupShuffleSplit, permutation_test_score)
 from sklearn_extensions.pipeline import (ExtendedPipeline,
                                          transform_feature_meta)
 from sklearn_extensions.preprocessing import (
@@ -454,7 +456,7 @@ def get_param_type(param):
 
 
 def fit_pipeline(X, y, steps, params=None, param_routing=None,
-                 fit_params=None):
+                 fit_params=None, verbose=0):
     pipe = ExtendedPipeline(steps, memory=memory, param_routing=param_routing)
     if params is None:
         params = {}
@@ -462,20 +464,20 @@ def fit_pipeline(X, y, steps, params=None, param_routing=None,
     if fit_params is None:
         fit_params = {}
     pipe.fit(X, y, **fit_params)
-    if args.scv_verbose == 0:
+    if verbose == 0:
         print('.', end='', flush=True)
     return pipe
 
 
-def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
+def calculate_test_scores(estimator, X_test, y_test, metrics, predict_params,
                           test_sample_weights=None):
     scores = {}
-    if hasattr(pipe, 'decision_function'):
-        y_score = pipe.decision_function(X_test, **pipe_predict_params)
+    if hasattr(estimator, 'decision_function'):
+        y_score = estimator.decision_function(X_test, **predict_params)
     else:
-        y_score = pipe.predict_proba(X_test, **pipe_predict_params)[:, 1]
+        y_score = estimator.predict_proba(X_test, **predict_params)[:, 1]
     scores['y_score'] = y_score
-    for metric in args.scv_scoring:
+    for metric in metrics:
         if metric == 'roc_auc':
             scores[metric] = roc_auc_score(
                 y_test, y_score, sample_weight=test_sample_weights)
@@ -483,7 +485,7 @@ def calculate_test_scores(pipe, X_test, y_test, pipe_predict_params,
                 y_test, y_score, pos_label=1,
                 sample_weight=test_sample_weights)
         elif metric == 'balanced_accuracy':
-            y_pred = pipe.predict(X_test, **pipe_predict_params)
+            y_pred = estimator.predict(X_test, **predict_params)
             scores['y_pred'] = y_pred
             scores[metric] = balanced_accuracy_score(
                 y_test, y_pred, sample_weight=test_sample_weights)
@@ -937,7 +939,7 @@ def run_model_selection():
             if 'feature_meta' in pipe_fit_params:
                 pipe_predict_params['feature_meta'] = test_feature_meta
             test_scores = calculate_test_scores(
-                search, X_test, y_test, pipe_predict_params,
+                search, X_test, y_test, args.scv_scoring, pipe_predict_params,
                 test_sample_weights=test_sample_weights)
             if args.verbose > 0:
                 print('Test:', test_dataset_name, end=' ')
@@ -1014,7 +1016,8 @@ def run_model_selection():
                     delayed(fit_pipeline)(X, y, tf_pipe_steps,
                                           params={'slrc__cols': feature_names},
                                           param_routing=tf_pipe_param_routing,
-                                          fit_params=tf_pipe_fit_params)
+                                          fit_params=tf_pipe_fit_params,
+                                          verbose=args.scv_verbose)
                     for feature_names in tf_name_sets)
             if args.scv_verbose == 0:
                 print(flush=True)
@@ -1056,7 +1059,8 @@ def run_model_selection():
                 tf_test_scores = {}
                 for tf_pipe in tf_pipes:
                     test_scores = calculate_test_scores(
-                        tf_pipe, X_test, y_test, pipe_predict_params,
+                        tf_pipe, X_test, y_test, args.scv_scoring,
+                        pipe_predict_params,
                         test_sample_weights=test_sample_weights)
                     for metric in args.scv_scoring:
                         if metric in test_scores:
@@ -1143,7 +1147,8 @@ def run_model_selection():
                                 X.iloc[train_idxs], y[train_idxs], pipe.steps,
                                 params=pipe_params,
                                 param_routing=pipe.param_routing,
-                                fit_params=pipe_fit_params)
+                                fit_params=pipe_fit_params,
+                                verbose=args.scv_verbose)
                             for pipe_params in [best_params])[0]
                     if args.scv_verbose == 0:
                         print(flush=True)
@@ -1165,7 +1170,7 @@ def run_model_selection():
                     pipe_predict_params['feature_meta'] = feature_meta
                 split_scores['te'] = calculate_test_scores(
                     best_pipe, X.iloc[test_idxs], y[test_idxs],
-                    pipe_predict_params,
+                    args.scv_scoring, pipe_predict_params,
                     test_sample_weights=test_sample_weights)
             except Exception as e:
                 if args.scv_error_score == 'raise':
@@ -1224,7 +1229,7 @@ def run_model_selection():
                 split_result = {'feature_meta': final_feature_meta,
                                 'scores': split_scores}
             split_results.append(split_result)
-            if args.save_models:
+            if args.save_models or args.run_perm_test:
                 if args.pipe_memory and best_pipe is not None:
                     best_pipe = unset_pipe_memory(best_pipe)
                 split_models.append(best_pipe)
@@ -1238,6 +1243,29 @@ def run_model_selection():
                  .format(args.out_dir, model_name))
             dump(param_cv_scores, '{}/{}_param_cv_scores.pkl'
                  .format(args.out_dir, model_name))
+        if args.run_perm_test:
+            search_fit_params = {}
+            if search_param_routing:
+                if 'sample_meta' in search_param_routing['estimator']:
+                    search_fit_params['sample_meta'] = sample_meta
+                if 'feature_meta' in search_param_routing['estimator']:
+                    search_fit_params['feature_meta'] = feature_meta
+                if 'sample_weight' in search_param_routing['estimator']:
+                    search_fit_params['sample_weight'] = sample_weights
+            if groups is not None:
+                search_fit_params['groups'] = groups
+                if group_weights is not None and pass_cv_group_weights:
+                    search_fit_params['group_weights'] = group_weights
+            print('Running permutation test ({:d} permutations x {:d} splits)'
+                  .format(args.n_perms, test_splitter.get_n_splits()))
+            with parallel_backend(args.parallel_backend, n_jobs=args.n_jobs,
+                                  inner_max_num_threads=inner_max_num_threads):
+                mean_score, perm_scores, perm_pvalue = permutation_test_score(
+                        split_models, X, y, scoring=args.scv_refit,
+                        cv=test_splitter, n_permutations=args.n_perms,
+                        n_jobs=None, random_state=args.random_seed,
+                        verbose=args.verbose, fit_params=search_fit_params,
+                        param_routing=search_param_routing)
         scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
@@ -1273,7 +1301,11 @@ def run_model_selection():
                     np.mean(scores['te']['pr_auc'])), end=' ')
         if num_features and (pipe_props['has_selector']
                              or np.mean(num_features) < X.shape[1]):
-            print(' Mean Features: {:.0f}'.format(np.mean(num_features)))
+            print(' Mean Features: {:.0f}'.format(np.mean(num_features)),
+                  end=' ')
+        if args.run_perm_test:
+            print(' Permutation Test: Original {} = {:.4f} p = {:.4f}'.format(
+                metric_label[args.scv_refit], mean_score, perm_pvalue))
         else:
             print()
         # feature mean rankings and scores
@@ -1485,6 +1517,32 @@ def run_model_selection():
             plt.legend(loc='lower right', fontsize='medium')
             plt.tick_params(labelsize=args.axis_font_size)
             plt.grid(False)
+        # plot permutation test histogram
+        if args.run_perm_test:
+            sns.set_palette(sns.color_palette('hls', len(args.scv_scoring)))
+            _, ax = plt.subplots(figsize=(args.fig_width, args.fig_height))
+            plt.title('{}\n{}'.format(dataset_name, pipe_name),
+                      fontsize=args.title_font_size - 2)
+            plt.suptitle('Permutation Test', fontsize=args.title_font_size)
+            # freedman-draconis rule
+            bins = int(np.round(
+                (np.max(perm_scores) - np.min(perm_scores))
+                / (2 * iqr(perm_scores) / np.cbrt(perm_scores.size))))
+            sns.histplot(perm_scores, bins=bins, kde=True,
+                         stat=args.hist_plot_stat, edgecolor='white')
+            plt.axvline(mean_score, ls='--', color='darkgrey')
+            ax.add_artist(AnchoredText(
+                r'Original {} = {:.2f}' '\n' r'$\itp = \bf{:.2e}$'
+                .format(metric_label[args.scv_refit], mean_score, perm_pvalue),
+                loc='upper left', frameon=False,
+                prop={'size': args.axis_font_size}))
+            plt.xticks(np.arange(0.0, 1.1, 0.2))
+            plt.xlim([-0.01, 1.01])
+            plt.xlabel(metric_label[args.scv_refit],
+                       fontsize=args.axis_font_size)
+            plt.ylabel('Density', fontsize=args.axis_font_size)
+            plt.tick_params(labelsize=args.axis_font_size)
+
 
 
 def run_cleanup():
@@ -1888,6 +1946,10 @@ parser.add_argument('--feature-rank-meth', type=str,
                     choices=['num_select_plus1', 'num_total'],
                     default='num_select_plus1',
                     help='feature rank method')
+parser.add_argument_group('--hist-plot-stat', type=str, default='density',
+                          choices=['count', 'frequency', 'probability',
+                                   'percent', 'density'],
+                          help='Histogram plot aggregate statistic')
 parser.add_argument('--title-font-size', type=int, default=14,
                     help='figure title font size')
 parser.add_argument('--axis-font-size', type=int, default=14,
@@ -1931,6 +1993,11 @@ parser.add_argument('--filter-warnings', type=str, nargs='+',
                     choices=['convergence', 'joblib', 'fitfailed', 'slr',
                              'qda'],
                     help='filter warnings')
+parser.add_argument('--run-perm-test', default=False,
+                    action='store_true',
+                    help='run permutation test')
+parser.add_argument('--n-perms', type=int, default=1000,
+                    help='permutation test n permutations')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
 parser.add_argument('--load-only', default=False, action='store_true',

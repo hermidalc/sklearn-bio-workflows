@@ -1479,7 +1479,7 @@ def run_model_selection():
             plt.tick_params(labelsize=args.axis_font_size)
             plt.grid(False)
         if 'average_precision' in args.scv_scoring:
-            sns.set_palette(sns.color_palette('hls', 10))
+            sns.set_palette(sns.color_palette('hls', 2))
             plt.figure(figsize=(args.fig_width, args.fig_height))
             plt.suptitle('PR Curve', fontsize=args.title_font_size)
             plt.title('{}\n{}'.format(dataset_name, pipe_name),
@@ -1525,9 +1525,8 @@ def run_model_selection():
                       fontsize=args.title_font_size - 2)
             plt.suptitle('Permutation Test', fontsize=args.title_font_size)
             # freedman-draconis rule
-            bins = int(np.round(
-                (np.max(perm_scores) - np.min(perm_scores))
-                / (2 * iqr(perm_scores) / np.cbrt(perm_scores.size))))
+            bins = round((np.max(perm_scores) - np.min(perm_scores))
+                         / (2 * iqr(perm_scores) / np.cbrt(perm_scores.size)))
             sns.histplot(perm_scores, bins=bins, kde=True,
                          stat=args.hist_plot_stat, edgecolor='white')
             plt.axvline(mean_score, ls='--', color='darkgrey')
@@ -1540,7 +1539,8 @@ def run_model_selection():
             plt.xlim([-0.01, 1.01])
             plt.xlabel(metric_label[args.scv_refit],
                        fontsize=args.axis_font_size)
-            plt.ylabel('Density', fontsize=args.axis_font_size)
+            plt.ylabel(args.hist_plot_stat.title(),
+                       fontsize=args.axis_font_size)
             plt.tick_params(labelsize=args.axis_font_size)
 
 
@@ -2232,9 +2232,9 @@ for cv_param, cv_param_values in cv_params.copy().items():
         cv_params[cv_param] = np.round(
             np.linspace(cv_params['{}_min'.format(cv_param)],
                         cv_params['{}_max'.format(cv_param)],
-                        int(np.round((cv_params['{}_max'.format(cv_param)]
-                                      - cv_params['{}_min'.format(cv_param)])
-                                     / cv_params['{}_step'.format(cv_param)]))
+                        round((cv_params['{}_max'.format(cv_param)]
+                               - cv_params['{}_min'.format(cv_param)])
+                              / cv_params['{}_step'.format(cv_param)])
                         + 1), decimals=3)
     elif cv_param in ('sfm_slr_rf_f', 'sfm_slr_ext_f', 'sfm_slr_grb_f',
                       'svc_clf_cw', 'lgr_clf_cw', 'dt_clf_f', 'dt_clf_cw',

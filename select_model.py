@@ -598,7 +598,8 @@ def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
 
 def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                           param_cv_scores):
-    cv_metric_colors = sns.color_palette('hls', len(args.scv_scoring))
+    metric_colors = sns.color_palette(args.sns_color_palette,
+                                      len(args.scv_scoring))
     for param in param_cv_scores:
         mean_cv_scores, std_cv_scores = {}, {}
         for metric in args.scv_scoring:
@@ -644,14 +645,14 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
         plt.ylabel('CV Score', fontsize=args.axis_font_size)
         for metric_idx, metric in enumerate(args.scv_scoring):
             plt.plot(x_axis, mean_cv_scores[metric],
-                     color=cv_metric_colors[metric_idx], lw=2, alpha=0.8,
+                     color=metric_colors[metric_idx], lw=2, alpha=0.8,
                      label='Mean {}'.format(metric_label[metric]))
             plt.fill_between(x_axis,
                              [m - s for m, s in zip(mean_cv_scores[metric],
                                                     std_cv_scores[metric])],
                              [m + s for m, s in zip(mean_cv_scores[metric],
                                                     std_cv_scores[metric])],
-                             alpha=0.1, color=cv_metric_colors[metric_idx],
+                             alpha=0.1, color=metric_colors[metric_idx],
                              label=(r'$\pm$ 1 std. dev.'
                                     if metric_idx == len(args.scv_scoring) - 1
                                     else None))
@@ -1045,7 +1046,7 @@ def run_model_selection():
             ax_pre.set_xlim([-0.01, 1.01])
             ax_pre.set_ylim([-0.01, 1.01])
         test_metric_colors = sns.color_palette(
-            'hls', len(test_datasets) * len(args.scv_scoring))
+            args.sns_color_palette, len(test_datasets) * len(args.scv_scoring))
         for test_idx, test_dataset in enumerate(test_datasets):
             (test_dataset_name, X_test, y_test, _, _, test_sample_weights,
              test_sample_meta, test_feature_meta, _) = (
@@ -1260,12 +1261,18 @@ def run_model_selection():
                   .format(args.n_perms, test_splitter.get_n_splits()))
             with parallel_backend(args.parallel_backend, n_jobs=args.n_jobs,
                                   inner_max_num_threads=inner_max_num_threads):
-                mean_score, perm_scores, perm_pvalue = permutation_test_score(
+                true_score, perm_scores, perm_pvalue = permutation_test_score(
                         split_models, X, y, scoring=args.scv_refit,
                         cv=test_splitter, n_permutations=args.n_perms,
                         n_jobs=None, random_state=args.random_seed,
-                        verbose=args.verbose, fit_params=search_fit_params,
+                        verbose=args.scv_verbose, fit_params=search_fit_params,
                         param_routing=search_param_routing)
+            if args.save_results:
+                perm_results = {'true_score': true_score,
+                                'scores': perm_scores,
+                                'pvalue': perm_pvalue}
+                dump(perm_results, '{}/{}_perm_results.pkl'
+                     .format(args.out_dir, model_name))
         scores = {'cv': {}, 'te': {}}
         num_features = []
         for split_result in split_results:
@@ -1304,8 +1311,8 @@ def run_model_selection():
             print(' Mean Features: {:.0f}'.format(np.mean(num_features)),
                   end=' ')
         if args.run_perm_test:
-            print(' Permutation Test: Original {} = {:.4f} p = {:.4f}'.format(
-                metric_label[args.scv_refit], mean_score, perm_pvalue))
+            print(' Permutation Test: True {} = {:.4f} p = {:.4f}'.format(
+                metric_label[args.scv_refit], true_score, perm_pvalue))
         else:
             print()
         # feature mean rankings and scores
@@ -1435,8 +1442,10 @@ def run_model_selection():
         plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
                               param_cv_scores)
         # plot roc and pr curves
+        metric_colors = sns.color_palette(args.sns_color_palette,
+                                          len(args.scv_scoring))
         if 'roc_auc' in args.scv_scoring:
-            sns.set_palette(sns.color_palette('hls', 2))
+            metric_idx = args.scv_scoring.index('roc_auc')
             plt.figure(figsize=(args.fig_width, args.fig_height))
             plt.suptitle('ROC Curve', fontsize=args.title_font_size)
             plt.title('{}\n{}'.format(dataset_name, pipe_name),
@@ -1463,11 +1472,12 @@ def run_model_selection():
             std_roc_auc = np.std(scores['te']['roc_auc'])
             mean_num_features = np.mean(num_features)
             std_num_features = np.std(num_features)
-            plt.plot(mean_fpr, mean_tpr, lw=2, alpha=0.8, label=(
-                r'Test Mean ROC (AUC = {:.4f} $\pm$ {:.2f}, '
-                r'Features = {:.0f} $\pm$ {:.0f})').format(
-                    mean_roc_auc, std_roc_auc, mean_num_features,
-                    std_num_features))
+            plt.plot(mean_fpr, mean_tpr, lw=2, alpha=0.8,
+                     color=metric_colors[metric_idx],
+                     label=(r'Test Mean ROC (AUC = {:.4f} $\pm$ {:.2f}, '
+                            r'Features = {:.0f} $\pm$ {:.0f})').format(
+                                mean_roc_auc, std_roc_auc, mean_num_features,
+                                std_num_features))
             std_tpr = np.std(tprs, axis=0)
             tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
             tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
@@ -1479,7 +1489,7 @@ def run_model_selection():
             plt.tick_params(labelsize=args.axis_font_size)
             plt.grid(False)
         if 'average_precision' in args.scv_scoring:
-            sns.set_palette(sns.color_palette('hls', 2))
+            metric_idx = args.scv_scoring.index('average_precision')
             plt.figure(figsize=(args.fig_width, args.fig_height))
             plt.suptitle('PR Curve', fontsize=args.title_font_size)
             plt.title('{}\n{}'.format(dataset_name, pipe_name),
@@ -1504,7 +1514,8 @@ def run_model_selection():
             std_pr_auc = np.std(scores['te']['pr_auc'])
             mean_num_features = np.mean(num_features)
             std_num_features = np.std(num_features)
-            plt.step(mean_rec, mean_pre, alpha=0.8, lw=2, where='post',
+            plt.step(mean_rec, mean_pre, alpha=0.8, lw=2,
+                     color=metric_colors[metric_idx], where='post',
                      label=(r'Test Mean PR (AUC = {:.4f} $\pm$ {:.2f}, '
                             r'Features = {:.0f} $\pm$ {:.0f})').format(
                                 mean_pr_auc, std_pr_auc, mean_num_features,
@@ -1519,7 +1530,7 @@ def run_model_selection():
             plt.grid(False)
         # plot permutation test histogram
         if args.run_perm_test:
-            sns.set_palette(sns.color_palette('hls', len(args.scv_scoring)))
+            metric_idx = args.scv_scoring.index(args.scv_refit)
             _, ax = plt.subplots(figsize=(args.fig_width, args.fig_height))
             plt.title('{}\n{}'.format(dataset_name, pipe_name),
                       fontsize=args.title_font_size - 2)
@@ -1528,15 +1539,15 @@ def run_model_selection():
             bins = round((np.max(perm_scores) - np.min(perm_scores))
                          / (2 * iqr(perm_scores) / np.cbrt(perm_scores.size)))
             sns.histplot(perm_scores, bins=bins, kde=True,
+                         color=metric_colors[metric_idx],
                          stat=args.hist_plot_stat, edgecolor='white')
-            plt.axvline(mean_score, ls='--', color='darkgrey')
+            plt.axvline(true_score, ls='--', color='darkgrey')
             ax.add_artist(AnchoredText(
-                r'Original {} = {:.2f}' '\n' r'$\itp = \bf{:.2e}$'
-                .format(metric_label[args.scv_refit], mean_score, perm_pvalue),
+                r'True {} = {:.2f}' '\n' r'$\itp$ = {:.2e}'
+                .format(metric_label[args.scv_refit], true_score, perm_pvalue),
                 loc='upper left', frameon=False,
                 prop={'size': args.axis_font_size}))
             plt.xticks(np.arange(0.0, 1.1, 0.2))
-            plt.xlim([-0.01, 1.01])
             plt.xlabel(metric_label[args.scv_refit],
                        fontsize=args.axis_font_size)
             plt.ylabel(args.hist_plot_stat.title(),
@@ -1946,10 +1957,12 @@ parser.add_argument('--feature-rank-meth', type=str,
                     choices=['num_select_plus1', 'num_total'],
                     default='num_select_plus1',
                     help='feature rank method')
-parser.add_argument_group('--hist-plot-stat', type=str, default='density',
-                          choices=['count', 'frequency', 'probability',
-                                   'percent', 'density'],
-                          help='Histogram plot aggregate statistic')
+parser.add_argument('--hist-plot-stat', type=str, default='density',
+                    choices=['count', 'frequency', 'probability', 'percent',
+                             'density'],
+                    help='Histogram plot aggregate statistic')
+parser.add_argument('--sns-color-palette', type=str, default='hls',
+                    help='Seaborn/matplotlib color palette')
 parser.add_argument('--title-font-size', type=int, default=14,
                     help='figure title font size')
 parser.add_argument('--axis-font-size', type=int, default=14,

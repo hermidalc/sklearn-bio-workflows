@@ -21,8 +21,13 @@ export PYTHONUNBUFFERED=1
 python_warnings=(
     'ignore::FutureWarning:sklearn.utils.deprecation'
     'ignore::FutureWarning:rpy2.robjects.pandas2ri'
+    'ignore:Optimization did not converge:UserWarning'
+    'ignore:Optimization terminated early:UserWarning'
     'ignore:Persisting input arguments took:UserWarning'
     'ignore:Estimator fit failed:RuntimeWarning'
+    'ignore:Solver terminated early:UserWarning:sklearn.svm._base'
+    'ignore:The max_iter was reached which means the coef_ did not converge:UserWarning:sklearn.linear_model._sag'
+    'ignore:No features were selected:UserWarning:sklearn_extensions.feature_selection._base'
 )
 OIFS="$IFS"
 IFS=','

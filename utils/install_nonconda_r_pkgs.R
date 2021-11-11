@@ -2,7 +2,7 @@
 
 options(warn=1)
 options(repos=structure(c(CRAN="https://cloud.r-project.org/")))
-for (package_name in c("bapred", "FSelectorRcpp")) {
+for (package_name in c("fuzzyRankTests", "bapred", "FSelectorRcpp")) {
     if (!(package_name %in% installed.packages()))
         install.packages(package_name)
 }

@@ -2,7 +2,7 @@
 
 ## Installation
 
-Install and set up [Miniconda3](https://docs.conda.io/en/latest/miniconda.html)
+Install and set up [Miniforge3](https://github.com/conda-forge/miniforge#download)
 
 Clone git repository and submodules:
 

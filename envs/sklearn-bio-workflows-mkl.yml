@@ -32,7 +32,6 @@ dependencies:
   - r-essentials
   - r-fnn
   - r-fselector
-  - r-fuzzyranktests
   - r-jade
   - r-lme4
   - r-minqa

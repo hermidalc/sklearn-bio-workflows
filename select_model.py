@@ -1112,6 +1112,7 @@ def run_model_selection():
         split_models = []
         split_results = []
         param_cv_scores = {}
+        base_search = clone(search)
         for split_idx, (train_idxs, test_idxs) in enumerate(
                 test_splitter.split(X, y, groups, **test_split_params)):
             pipe_fit_params = {}
@@ -1132,6 +1133,7 @@ def run_model_selection():
                     search_fit_params['group_weights'] = (
                         group_weights[train_idxs])
             try:
+                search = clone(base_search)
                 with parallel_backend(
                         args.parallel_backend, n_jobs=args.n_jobs,
                         inner_max_num_threads=inner_max_num_threads):

@@ -1557,7 +1557,6 @@ def run_model_selection():
             plt.tick_params(labelsize=args.axis_font_size)
 
 
-
 def run_cleanup():
     if args.pipe_memory:
         rmtree(cachedir)

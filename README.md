@@ -2,7 +2,7 @@
 
 ## Installation
 
-Install and set up [Miniforge3](https://github.com/conda-forge/miniforge#download)
+Install and set up [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge)
 
 Clone git repository and submodules:
 
@@ -15,19 +15,19 @@ git submodule update --init --recursive
 To install conda environment on Intel architecture hardware:
 
 ```bash
-conda env create -f envs/sklearn-bio-workflows-mkl.yml
+mamba env create -f envs/sklearn-bio-workflows-mkl.yml
 ```
 
 Otherwise:
 
 ```bash
-conda env create -f envs/sklearn-bio-workflows.yml
+mamba env create -f envs/sklearn-bio-workflows.yml
 ```
 
 Activate the environment:
 
 ```bash
-conda activate sklearn-bio-workflows
+mamba activate sklearn-bio-workflows
 ```
 
 Install non-conda packages into environment:
@@ -48,11 +48,11 @@ git submodule update --recursive
 To update the conda environment on Intel architecture hardware:
 
 ```bash
-conda env update -f envs/sklearn-bio-workflows-mkl.yml
+mamba env update -f envs/sklearn-bio-workflows-mkl.yml
 ```
 
 Otherwise:
 
 ```bash
-conda env update -f envs/sklearn-bio-workflows.yml
+mamba env update -f envs/sklearn-bio-workflows.yml
 ```

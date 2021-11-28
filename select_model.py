@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import atexit
+import gc
 import os
 import re
 import sys
@@ -1238,6 +1239,7 @@ def run_model_selection():
                 split_models.append(best_pipe)
             if args.pipe_memory:
                 memory.clear(warn=False)
+        gc.collect()
         if args.save_models:
             dump(split_models, '{}/{}_split_models.pkl'
                  .format(args.out_dir, model_name))

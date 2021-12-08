@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import atexit
-import gc
 import os
 import re
 import sys
@@ -68,6 +67,7 @@ from sklearn.preprocessing import (
     RobustScaler, StandardScaler)
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.utils import check_random_state
 from tabulate import tabulate
 
 numpy2ri.activate()
@@ -90,7 +90,7 @@ from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
     StratifiedSampleFromGroupKFold, RepeatedStratifiedGroupKFold,
     RepeatedStratifiedSampleFromGroupKFold, StratifiedGroupShuffleSplit,
-    StratifiedSampleFromGroupShuffleSplit, permutation_test_score)
+    StratifiedSampleFromGroupShuffleSplit, permutation_test_score, shuffle_y)
 from sklearn_extensions.pipeline import (ExtendedPipeline,
                                          transform_feature_meta)
 from sklearn_extensions.preprocessing import (
@@ -470,34 +470,55 @@ def fit_pipeline(X, y, steps, params=None, param_routing=None,
     return pipe
 
 
-def calculate_test_scores(estimator, X_test, y_test, metrics, predict_params,
-                          test_sample_weights=None):
+def calculate_test_scores(estimator, X_test, y_test, metrics,
+                          predict_params=None, score_params=None):
     scores = {}
+    if predict_params is None:
+        predict_params = {}
     if hasattr(estimator, 'decision_function'):
         y_score = estimator.decision_function(X_test, **predict_params)
     else:
         y_score = estimator.predict_proba(X_test, **predict_params)[:, 1]
     scores['y_score'] = y_score
+    if score_params is None:
+        score_params = {}
+    if isinstance(metrics, str):
+        metrics = [metrics]
     for metric in metrics:
         if metric == 'roc_auc':
-            scores[metric] = roc_auc_score(
-                y_test, y_score, sample_weight=test_sample_weights)
+            scores[metric] = roc_auc_score(y_test, y_score, **score_params)
             scores['fpr'], scores['tpr'], _ = roc_curve(
-                y_test, y_score, pos_label=1,
-                sample_weight=test_sample_weights)
+                y_test, y_score, pos_label=1, **score_params)
         elif metric == 'balanced_accuracy':
             y_pred = estimator.predict(X_test, **predict_params)
             scores['y_pred'] = y_pred
             scores[metric] = balanced_accuracy_score(
-                y_test, y_pred, sample_weight=test_sample_weights)
+                y_test, y_pred, **score_params)
         elif metric == 'average_precision':
             scores[metric] = average_precision_score(
-                y_test, y_score, sample_weight=test_sample_weights)
+                y_test, y_score, **score_params)
             scores['pre'], scores['rec'], _ = precision_recall_curve(
-                y_test, y_score, pos_label=1,
-                sample_weight=test_sample_weights)
+                y_test, y_score, pos_label=1, **score_params)
             scores['pr_auc'] = auc(scores['rec'], scores['pre'])
     return scores
+
+
+def get_perm_test_split_data(X, perm_y, cv, cv_params=None):
+    if cv_params is None:
+        cv_params = {}
+    perm_split_idxs = list(cv.split(X, perm_y, **cv_params))
+    return perm_y, perm_split_idxs
+
+
+def fit_and_score(estimator, X_train, y_train, X_test, y_test, scoring,
+                  fit_params=None, predict_params=None, score_params=None):
+    if fit_params is None:
+        fit_params = {}
+    estimator.fit(X_train, y_train, **fit_params)
+    scores = calculate_test_scores(estimator, X_test, y_test, scoring,
+                                   predict_params=predict_params,
+                                   score_params=score_params)
+    return scores[scoring]
 
 
 def get_final_feature_meta(pipe, feature_meta):
@@ -701,9 +722,9 @@ def run_model_selection():
                               inplace=True)
     if groups is not None:
         search_param_routing = {'estimator': [], 'scoring': []}
-        search_param_routing['cv'] = ('groups' if group_weights is None else
-                                      {'groups': 'groups',
-                                       'weights': 'group_weights'})
+        search_param_routing['cv'] = ('groups' if group_weights is None
+                                      else {'groups': 'groups',
+                                            'weights': 'group_weights'})
     else:
         search_param_routing = None
     if pipe.param_routing:
@@ -715,6 +736,7 @@ def run_model_selection():
                 search_param_routing['scoring'].append(param)
     scv_refit = (args.scv_refit if args.test_dataset
                  or not pipe_props['uses_rjava'] else False)
+    test_split_params = {'groups': groups} if groups is not None else {}
     pass_cv_group_weights = False
     if groups is None:
         if args.scv_use_ssplit:
@@ -770,7 +792,6 @@ def run_model_selection():
         cv_splitter = StratifiedKFold(
             n_splits=args.scv_splits, random_state=args.random_seed,
             shuffle=True)
-    test_split_params = {}
     if groups is None:
         if args.test_use_ssplit:
             test_splitter = StratifiedShuffleSplit(
@@ -793,7 +814,7 @@ def run_model_selection():
             test_splitter = StratifiedSampleFromGroupShuffleSplit(
                 n_splits=args.test_splits, test_size=args.test_size,
                 random_state=args.random_seed)
-            test_split_params = {'weights': group_weights}
+            test_split_params['weights'] = group_weights
     elif args.test_repeats > 0:
         if 'sample_weight' in search_param_routing['estimator']:
             test_splitter = RepeatedStratifiedGroupKFold(
@@ -803,7 +824,7 @@ def run_model_selection():
             test_splitter = RepeatedStratifiedSampleFromGroupKFold(
                 n_splits=args.test_splits, n_repeats=args.test_repeats,
                 random_state=args.random_seed)
-            test_split_params = {'weights': group_weights}
+            test_split_params['weights'] = group_weights
     elif 'sample_weight' in search_param_routing['estimator']:
         test_splitter = StratifiedGroupKFold(
             n_splits=args.test_splits, random_state=args.random_seed,
@@ -812,12 +833,12 @@ def run_model_selection():
         test_splitter = StratifiedSampleFromGroupKFold(
             n_splits=args.test_splits, random_state=args.random_seed,
             shuffle=True)
-        test_split_params = {'weights': group_weights}
+        test_split_params['weights'] = group_weights
     if args.skb_slr_k_lim:
         min_train_samples = (
-            X.shape[0] if args.test_dataset else
-            min(train.size for train, _ in test_splitter.split(
-                X, y, groups, **test_split_params)))
+            X.shape[0] if args.test_dataset
+            else min(train.size for train, _ in test_splitter.split(
+                X, y, **test_split_params)))
         for params in param_grid:
             for param, param_values in params.items():
                 param_type = get_param_type(param)
@@ -860,8 +881,7 @@ def run_model_selection():
         if groups is not None:
             print('Groups:')
             pprint(groups)
-            if (group_weights is not None and (
-                    test_split_params or pass_cv_group_weights)):
+            if group_weights is not None and pass_cv_group_weights:
                 print('Group weights:')
                 pprint(group_weights)
         if (sample_weights is not None and 'sample_weight' in
@@ -870,6 +890,19 @@ def run_model_selection():
             pprint(sample_weights)
     if args.load_only:
         sys.exit()
+    pipe_fit_params = {}
+    if search_param_routing:
+        if 'sample_meta' in search_param_routing['estimator']:
+            pipe_fit_params['sample_meta'] = sample_meta
+        if 'feature_meta' in search_param_routing['estimator']:
+            pipe_fit_params['feature_meta'] = feature_meta
+        if 'sample_weight' in search_param_routing['estimator']:
+            pipe_fit_params['sample_weight'] = sample_weights
+    search_fit_params = pipe_fit_params.copy()
+    if groups is not None:
+        search_fit_params['groups'] = groups
+        if group_weights is not None and pass_cv_group_weights:
+            search_fit_params['group_weights'] = group_weights
     if args.save_model_code is not None:
         if dataset_name.split('_')[-1] == 'eset':
             model_name = '_'.join([dataset_name.rpartition('_')[0],
@@ -880,19 +913,6 @@ def run_model_selection():
         model_name = dataset_name
     # train w/ independent test sets
     if args.test_dataset:
-        pipe_fit_params = {}
-        if search_param_routing:
-            if 'sample_meta' in search_param_routing['estimator']:
-                pipe_fit_params['sample_meta'] = sample_meta
-            if 'feature_meta' in search_param_routing['estimator']:
-                pipe_fit_params['feature_meta'] = feature_meta
-            if 'sample_weight' in search_param_routing['estimator']:
-                pipe_fit_params['sample_weight'] = sample_weights
-        search_fit_params = pipe_fit_params.copy()
-        if groups is not None:
-            search_fit_params['groups'] = groups
-            if group_weights is not None and pass_cv_group_weights:
-                search_fit_params['group_weights'] = group_weights
         with parallel_backend(args.parallel_backend, n_jobs=args.n_jobs,
                               inner_max_num_threads=inner_max_num_threads):
             search.fit(X, y, **search_fit_params)
@@ -940,9 +960,10 @@ def run_model_selection():
                 pipe_predict_params['sample_meta'] = test_sample_meta
             if 'feature_meta' in pipe_fit_params:
                 pipe_predict_params['feature_meta'] = test_feature_meta
+            score_params = {'sample_weight': test_sample_weights}
             test_scores = calculate_test_scores(
-                search, X_test, y_test, args.scv_scoring, pipe_predict_params,
-                test_sample_weights=test_sample_weights)
+                search, X_test, y_test, args.scv_scoring,
+                predict_params=pipe_predict_params, score_params=score_params)
             if args.verbose > 0:
                 print('Test:', test_dataset_name, end=' ')
                 for metric in args.scv_scoring:
@@ -996,8 +1017,7 @@ def run_model_selection():
                         (-penalized_final_feature_meta['Weight'].abs())
                         .argsort()].index:
                     tf_name_sets.append(tf_name_sets[-1] + [feature_name]
-                                        if tf_name_sets
-                                        else [feature_name])
+                                        if tf_name_sets else [feature_name])
                 tf_name_sets = [feature_names + unpenalized_feature_names
                                 for feature_names in tf_name_sets]
                 x_axis = range(1, penalized_final_feature_meta.shape[0] + 1)
@@ -1006,8 +1026,7 @@ def run_model_selection():
                         (-final_feature_meta['Weight'].abs())
                         .argsort()].index:
                     tf_name_sets.append(tf_name_sets[-1] + [feature_name]
-                                        if tf_name_sets
-                                        else [feature_name])
+                                        if tf_name_sets else [feature_name])
                 x_axis = range(1, final_feature_meta.shape[0] + 1)
             ax_slr.set_xlim([min(x_axis), max(x_axis)])
             if len(x_axis) <= 30:
@@ -1057,13 +1076,14 @@ def run_model_selection():
                 pipe_predict_params['sample_meta'] = test_sample_meta
             if 'feature_meta' in pipe_fit_params:
                 pipe_predict_params['feature_meta'] = test_feature_meta
+            score_params = {'sample_weight': test_sample_weights}
             if 'Weight' in final_feature_meta.columns:
                 tf_test_scores = {}
                 for tf_pipe in tf_pipes:
                     test_scores = calculate_test_scores(
                         tf_pipe, X_test, y_test, args.scv_scoring,
-                        pipe_predict_params,
-                        test_sample_weights=test_sample_weights)
+                        predict_params=pipe_predict_params,
+                        score_params=score_params)
                     for metric in args.scv_scoring:
                         if metric in test_scores:
                             if metric not in tf_test_scores:
@@ -1113,25 +1133,29 @@ def run_model_selection():
         split_models = []
         split_results = []
         param_cv_scores = {}
+        if args.run_perm_test:
+            if args.perm_verbose > 0:
+                print('Generating permutation test input data')
+            random_state = check_random_state(args.random_seed)
+            perm_ys, perm_split_idxs = zip(*Parallel(
+                n_jobs=args.n_jobs, backend=args.parallel_backend,
+                verbose=args.perm_verbose)(delayed(get_perm_test_split_data)(
+                    X, shuffle_y(y, groups, random_state), test_splitter,
+                    cv_params=test_split_params) for _ in range(args.n_perms)))
+            split_perm_idxs = [*zip(*perm_split_idxs)]
         base_search = clone(search)
         for split_idx, (train_idxs, test_idxs) in enumerate(
-                test_splitter.split(X, y, groups, **test_split_params)):
-            pipe_fit_params = {}
-            if search_param_routing:
-                if 'sample_meta' in search_param_routing['estimator']:
-                    pipe_fit_params['sample_meta'] = (
-                        sample_meta.iloc[train_idxs])
-                if 'feature_meta' in search_param_routing['estimator']:
-                    pipe_fit_params['feature_meta'] = feature_meta
-                if 'sample_weight' in search_param_routing['estimator']:
-                    pipe_fit_params['sample_weight'] = (
-                        sample_weights[train_idxs]
-                        if sample_weights is not None else None)
-            search_fit_params = pipe_fit_params.copy()
+                test_splitter.split(X, y, **test_split_params)):
+            split_pipe_fit_params = {
+                k: (v.iloc[train_idxs] if k in ('sample_meta')
+                    else v[train_idxs] if k in ('sample_weight')
+                    else v)
+                for k, v in pipe_fit_params.items() if v is not None}
+            split_search_fit_params = split_pipe_fit_params.copy()
             if groups is not None:
-                search_fit_params['groups'] = groups[train_idxs]
+                split_search_fit_params['groups'] = groups[train_idxs]
                 if group_weights is not None and pass_cv_group_weights:
-                    search_fit_params['group_weights'] = (
+                    split_search_fit_params['group_weights'] = (
                         group_weights[train_idxs])
             try:
                 search = clone(base_search)
@@ -1139,7 +1163,7 @@ def run_model_selection():
                         args.parallel_backend, n_jobs=args.n_jobs,
                         inner_max_num_threads=inner_max_num_threads):
                     search.fit(X.iloc[train_idxs], y[train_idxs],
-                               **search_fit_params)
+                               **split_search_fit_params)
                 if pipe_props['uses_rjava']:
                     best_index = np.argmin(search.cv_results_[
                         'rank_test_{}'.format(args.scv_refit)])
@@ -1151,7 +1175,7 @@ def run_model_selection():
                                 X.iloc[train_idxs], y[train_idxs], pipe.steps,
                                 params=pipe_params,
                                 param_routing=pipe.param_routing,
-                                fit_params=pipe_fit_params,
+                                fit_params=split_pipe_fit_params,
                                 verbose=args.scv_verbose)
                             for pipe_params in [best_params])[0]
                     if args.scv_verbose == 0:
@@ -1164,18 +1188,53 @@ def run_model_selection():
                 for metric in args.scv_scoring:
                     split_scores['cv'][metric] = search.cv_results_[
                         'mean_test_{}'.format(metric)][best_index]
-                test_sample_weights = (sample_weights[test_idxs]
-                                       if sample_weights is not None else None)
-                pipe_predict_params = {}
-                if 'sample_meta' in pipe_fit_params:
-                    pipe_predict_params['sample_meta'] = (
-                        sample_meta.iloc[test_idxs])
-                if 'feature_meta' in pipe_fit_params:
-                    pipe_predict_params['feature_meta'] = feature_meta
+                split_pipe_predict_params = {
+                    k: v.iloc[test_idxs] if k in ('sample_meta') else v
+                    for k, v in pipe_fit_params.items()
+                    if k not in ('sample_weight') and v is not None}
+                split_score_params = {
+                    'sample_weight': (sample_weights[test_idxs]
+                                      if sample_weights is not None else None)}
                 split_scores['te'] = calculate_test_scores(
                     best_pipe, X.iloc[test_idxs], y[test_idxs],
-                    args.scv_scoring, pipe_predict_params,
-                    test_sample_weights=test_sample_weights)
+                    args.scv_scoring, predict_params=split_pipe_predict_params,
+                    score_params=split_score_params)
+                if args.run_perm_test:
+                    if args.perm_verbose > 0:
+                        print('Running permutation test ({:d} permutations)'
+                              .format(args.n_perms))
+                    split_perm_scores = Parallel(
+                        n_jobs=args.n_jobs, backend=args.parallel_backend,
+                        verbose=args.perm_verbose)(
+                            delayed(fit_and_score)(
+                                unset_pipe_memory(clone(best_pipe)),
+                                X.iloc[perm_train_idxs],
+                                perm_y[perm_train_idxs],
+                                X.iloc[perm_test_idxs],
+                                perm_y[perm_test_idxs],
+                                args.scv_refit,
+                                fit_params={
+                                    k: (v.iloc[perm_train_idxs]
+                                        if k in ('sample_meta')
+                                        else v[perm_train_idxs]
+                                        if k in ('sample_weight')
+                                        else v)
+                                    for k, v in pipe_fit_params.items()
+                                    if v is not None},
+                                predict_params={
+                                    k: (v.iloc[perm_test_idxs]
+                                        if k in ('sample_meta')
+                                        else v)
+                                    for k, v in pipe_fit_params.items()
+                                    if k not in ('sample_weight')
+                                    and v is not None},
+                                score_params={
+                                    'sample_weight': (
+                                        sample_weights[perm_test_idxs]
+                                        if sample_weights is not None
+                                        else None)})
+                            for perm_y, (perm_train_idxs, perm_test_idxs) in (
+                                zip(perm_ys, split_perm_idxs[split_idx])))
             except Exception as e:
                 if args.scv_error_score == 'raise':
                     raise
@@ -1185,12 +1244,12 @@ def run_model_selection():
                                   width=len(str(args.test_splits))), end=' ',
                           flush=True)
                 warnings.formatwarning = warning_format
-                warnings.warn('Estimator refit failed. This outer CV '
+                warnings.warn('Estimator fit/scoring failed. This outer CV '
                               'train-test split will be ignored. Details: {}'
                               .format(format_exception_only(type(e), e)[0]),
                               category=FitFailedWarning)
-                split_result = None
                 best_pipe = None
+                split_result = None
             else:
                 param_cv_scores = add_param_cv_scores(search, param_grid_dict,
                                                       param_cv_scores)
@@ -1231,54 +1290,27 @@ def run_model_selection():
                     else:
                         print(tabulate(final_feature_meta, headers='keys'))
                 split_result = {'feature_meta': final_feature_meta,
-                                'scores': split_scores}
+                                'scores': split_scores,
+                                'perm_scores': split_perm_scores}
             split_results.append(split_result)
-            if args.save_models or args.run_perm_test:
+            if args.save_models:
                 if args.pipe_memory and best_pipe is not None:
                     best_pipe = unset_pipe_memory(best_pipe)
                 split_models.append(best_pipe)
             if args.pipe_memory:
                 memory.clear(warn=False)
-        gc.collect()
-        if args.save_models:
-            dump(split_models, '{}/{}_split_models.pkl'
-                 .format(args.out_dir, model_name))
         if args.save_results:
             dump(split_results, '{}/{}_split_results.pkl'
                  .format(args.out_dir, model_name))
             dump(param_cv_scores, '{}/{}_param_cv_scores.pkl'
                  .format(args.out_dir, model_name))
-        if args.run_perm_test:
-            search_fit_params = {}
-            if search_param_routing:
-                if 'sample_meta' in search_param_routing['estimator']:
-                    search_fit_params['sample_meta'] = sample_meta
-                if 'feature_meta' in search_param_routing['estimator']:
-                    search_fit_params['feature_meta'] = feature_meta
-                if 'sample_weight' in search_param_routing['estimator']:
-                    search_fit_params['sample_weight'] = sample_weights
-            if groups is not None:
-                search_fit_params['groups'] = groups
-                if group_weights is not None and pass_cv_group_weights:
-                    search_fit_params['group_weights'] = group_weights
-            print('Running permutation test ({:d} permutations x {:d} splits)'
-                  .format(args.n_perms, test_splitter.get_n_splits()))
-            with parallel_backend(args.parallel_backend, n_jobs=args.n_jobs,
-                                  inner_max_num_threads=inner_max_num_threads):
-                true_score, perm_scores, perm_pvalue = permutation_test_score(
-                        split_models, X, y, scoring=args.scv_refit,
-                        cv=test_splitter, n_permutations=args.n_perms,
-                        n_jobs=None, random_state=args.random_seed,
-                        verbose=args.scv_verbose, fit_params=search_fit_params,
-                        param_routing=search_param_routing)
-            if args.save_results:
-                perm_results = {'true_score': true_score,
-                                'scores': perm_scores,
-                                'pvalue': perm_pvalue}
-                dump(perm_results, '{}/{}_perm_results.pkl'
-                     .format(args.out_dir, model_name))
+        if args.save_models:
+            dump(split_models, '{}/{}_split_models.pkl'
+                 .format(args.out_dir, model_name))
         scores = {'cv': {}, 'te': {}}
         num_features = []
+        if args.run_perm_test:
+            perm_scores = []
         for split_result in split_results:
             if split_result is None:
                 continue
@@ -1302,6 +1334,19 @@ def run_model_selection():
                     != 0].shape[0])
             else:
                 num_features.append(split_feature_meta.shape[0])
+            if args.run_perm_test:
+                perm_scores.append(split_result['perm_scores'])
+        if args.run_perm_test:
+            perm_scores = np.mean(perm_scores, axis=0)
+            true_score = np.mean(scores['te'][args.scv_refit])
+            perm_pvalue = ((np.sum(perm_scores >= true_score) + 1.0)
+                           / (args.n_perms + 1))
+            if args.save_results:
+                perm_results = {'true_score': true_score,
+                                'scores': perm_scores,
+                                'pvalue': perm_pvalue}
+                dump(perm_results, '{}/{}_perm_results.pkl'
+                     .format(args.out_dir, model_name))
         print('Model:', model_name, end=' ')
         for metric in args.scv_scoring:
             print(' Mean {} (CV / Test): {:.4f} / {:.4f}'.format(
@@ -1997,6 +2042,8 @@ parser.add_argument('--max-nbytes', type=str, default='1M',
                     help='joblib parallel max_nbytes')
 parser.add_argument('--pipe-memory', default=False, action='store_true',
                     help='turn on pipeline memory')
+parser.add_argument('--gbytes-limit', type=int,
+                    help='joblib memory cache size limit in GB')
 parser.add_argument('--out-dir', type=dir_path, default=os.getcwd(),
                     help='output dir')
 parser.add_argument('--tmp-dir', type=dir_path, default=gettempdir(),
@@ -2014,6 +2061,8 @@ parser.add_argument('--run-perm-test', default=False,
                     help='run permutation test')
 parser.add_argument('--n-perms', type=int, default=1000,
                     help='permutation test n permutations')
+parser.add_argument('--perm-verbose', type=int,
+                    help='permutation test verbosity')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
 parser.add_argument('--load-only', default=False, action='store_true',
@@ -2038,8 +2087,12 @@ elif args.scv_error_score == 'nan':
     args.scv_error_score = np.nan
 if args.scv_verbose is None:
     args.scv_verbose = args.verbose
+if args.perm_verbose is None:
+    args.perm_verbose = args.verbose
 if args.max_nbytes == 'None':
     args.max_nbytes = None
+if args.gbytes_limit == 'None':
+    args.gbytes_limit = None
 
 if args.parallel_backend != 'multiprocessing':
     python_warnings = ([os.environ['PYTHONWARNINGS']]
@@ -2145,7 +2198,9 @@ atexit.register(run_cleanup)
 
 if args.pipe_memory:
     cachedir = mkdtemp(dir=args.tmp_dir)
-    memory = Memory(location=cachedir, verbose=0)
+    bytes_limit = (args.gbytes_limit * 1024 ** 3
+                   if args.gbytes_limit is not None else None)
+    memory = Memory(location=cachedir, verbose=0, bytes_limit=bytes_limit)
     anova_clf_scorer = CachedANOVAFScorerClassification(memory=memory)
     chi2_scorer = CachedChi2Scorer(memory=memory)
     mui_clf_scorer = CachedMutualInfoScorerClassification(

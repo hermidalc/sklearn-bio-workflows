@@ -687,7 +687,8 @@ def unset_pipe_memory(pipe):
     for param, param_value in pipe.get_params(deep=True).items():
         if isinstance(param_value, Memory):
             pipe.set_params(**{param: None})
-    if isinstance(pipe[0], ColumnTransformer):
+    if (isinstance(pipe[0], ColumnTransformer)
+            and hasattr(pipe[0], 'transformers_')):
         for _, trf_transformer, _ in pipe[0].transformers_:
             if isinstance(trf_transformer, Pipeline):
                 unset_pipe_memory(trf_transformer)
@@ -1290,8 +1291,9 @@ def run_model_selection():
                     else:
                         print(tabulate(final_feature_meta, headers='keys'))
                 split_result = {'feature_meta': final_feature_meta,
-                                'scores': split_scores,
-                                'perm_scores': split_perm_scores}
+                                'scores': split_scores}
+                if args.run_perm_test:
+                    split_result['perm_scores'] = split_perm_scores
             split_results.append(split_result)
             if args.save_models:
                 if args.pipe_memory and best_pipe is not None:

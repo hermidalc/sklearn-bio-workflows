@@ -630,8 +630,10 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
             if any(len(scores) > 1 for scores in param_metric_scores):
                 mean_cv_scores[metric], std_cv_scores[metric] = [], []
                 for param_value_scores in param_metric_scores:
-                    mean_cv_scores[metric].append(np.mean(param_value_scores))
-                    std_cv_scores[metric].append(np.std(param_value_scores))
+                    mean_cv_scores[metric].append(
+                        np.nanmean(param_value_scores))
+                    std_cv_scores[metric].append(
+                        np.nanstd(param_value_scores))
             else:
                 mean_cv_scores[metric] = np.ravel(param_metric_scores)
                 std_cv_scores[metric] = np.ravel(param_metric_stdev)
@@ -645,8 +647,9 @@ def plot_param_cv_metrics(dataset_name, pipe_name, param_grid_dict,
             elif len(x_axis) <= 30:
                 plt.xticks(x_axis)
         elif param_type in params_log_xticks:
-            x_axis = param_grid_dict[param]
-            plt.xscale('log')
+            x_axis = np.ravel(param_grid_dict[param])
+            plt.xscale('log', base=(2 if np.all(np.frexp(x_axis)[0] == 0.5)
+                                    else 10))
         elif param_type in params_fixed_xticks:
             x_axis = range(len(param_grid_dict[param]))
             xtick_labels = [v.split('.')[-1]

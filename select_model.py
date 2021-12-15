@@ -722,10 +722,10 @@ def run_model_selection():
             feature_meta.drop(columns=[args.penalty_factor_meta_col],
                               inplace=True)
     if groups is not None:
-        search_param_routing = {'estimator': [], 'scoring': []}
-        search_param_routing['cv'] = ('groups' if group_weights is None
-                                      else {'groups': 'groups',
-                                            'weights': 'group_weights'})
+        search_param_routing = {'cv': ('groups' if group_weights is None
+                                       else {'groups': 'groups',
+                                             'weights': 'group_weights'}),
+                                'estimator': [], 'scoring': []}
     else:
         search_param_routing = None
     if pipe.param_routing:

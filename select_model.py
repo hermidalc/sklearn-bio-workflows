@@ -480,6 +480,8 @@ def calculate_test_scores(estimator, X_test, y_test, metrics,
     else:
         y_score = estimator.predict_proba(X_test, **predict_params)[:, 1]
     scores['y_score'] = y_score
+    y_pred = estimator.predict(X_test, **predict_params)
+    scores['y_pred'] = y_pred
     if score_params is None:
         score_params = {}
     if isinstance(metrics, str):
@@ -490,8 +492,6 @@ def calculate_test_scores(estimator, X_test, y_test, metrics,
             scores['fpr'], scores['tpr'], _ = roc_curve(
                 y_test, y_score, pos_label=1, **score_params)
         elif metric == 'balanced_accuracy':
-            y_pred = estimator.predict(X_test, **predict_params)
-            scores['y_pred'] = y_pred
             scores[metric] = balanced_accuracy_score(
                 y_test, y_pred, **score_params)
         elif metric == 'average_precision':

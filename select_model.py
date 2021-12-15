@@ -882,7 +882,7 @@ def run_model_selection():
         if groups is not None:
             print('Groups:')
             pprint(groups)
-            if group_weights is not None and pass_cv_group_weights:
+            if group_weights is not None:
                 print('Group weights:')
                 pprint(group_weights)
         if (sample_weights is not None and 'sample_weight' in

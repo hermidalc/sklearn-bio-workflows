@@ -598,18 +598,18 @@ def add_param_cv_scores(search, param_grid_dict, param_cv_scores=None):
             elif args.param_cv_score_meth == 'all':
                 for param_value_idx, param_value in enumerate(param_values):
                     for split_idx in range(search.n_splits_):
-                        split_scores_cv = (search.cv_results_
+                        split_cv_scores = (search.cv_results_
                                            ['split{:d}_test_{}'
                                             .format(split_idx, metric)]
                                            [param_cv_values == param_value])
-                        if split_scores_cv.size > 0:
+                        if split_cv_scores.size > 0:
                             if param_value_idx < len(param_metric_scores):
                                 param_metric_scores[param_value_idx] = (
                                     np.append(
                                         param_metric_scores[param_value_idx],
-                                        split_scores_cv))
+                                        split_cv_scores))
                             else:
-                                param_metric_scores.append(split_scores_cv)
+                                param_metric_scores.append(split_cv_scores)
                         elif param_value_idx < len(param_metric_scores):
                             param_metric_scores[param_value_idx] = np.append(
                                 param_metric_scores[param_value_idx], [np.nan])

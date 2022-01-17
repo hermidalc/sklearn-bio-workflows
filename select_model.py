@@ -1734,7 +1734,7 @@ parser.add_argument('--rna-slr-sm', type=str, nargs='+',
                     help='RNA slr scoring method')
 parser.add_argument('--rna-slr-ft', type=str, nargs='+',
                     help='RNA slr fit type')
-parser.add_argument('--rna-slr-pc', type=int, nargs='+',
+parser.add_argument('--rna-slr-pc', type=float, nargs='+',
                     help='RNA slr prior count')
 parser.add_argument('--sfm-slr-thres', type=float, nargs='+',
                     help='SelectFromModel threshold')
@@ -1810,7 +1810,7 @@ parser.add_argument('--rna-trf-ft', type=str, nargs='+',
                     help='RNA trf fit type')
 parser.add_argument('--rna-trf-mb', type=str_bool, nargs='+',
                     help='RNA trf model batch')
-parser.add_argument('--rna-trf-pc', type=int, nargs='+',
+parser.add_argument('--rna-trf-pc', type=float, nargs='+',
                     help='RNA trf prior count')
 parser.add_argument('--nsn-trf-cc', type=str, nargs='+',
                     help='NanoStringNormalizer code_count')

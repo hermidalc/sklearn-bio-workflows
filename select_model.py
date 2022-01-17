@@ -1801,7 +1801,7 @@ parser.add_argument('--mms-trf-feature-range', type=int_list, default=(0, 1),
                     help='MinMaxScaler feature range')
 parser.add_argument('--log-trf-base', type=int, default=2,
                     help='LogTransformer base')
-parser.add_argument('--log-trf-sh', type=float, nargs='+',
+parser.add_argument('--log-trf-shift', type=float, nargs='+',
                     help='LogTransformer shift')
 parser.add_argument('--pwr-trf-meth', type=str, nargs='+',
                     choices=['box-cox', 'yeo-johnson'],
@@ -2272,7 +2272,7 @@ for cv_param, cv_param_values in cv_params.copy().items():
                     'sfm_slr_thres', 'sfm_slr_lgr_l1r', 'sfm_slr_rf_e',
                     'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_lr',
                     'sfm_slr_grb_d', 'rna_slr_pv', 'rna_slr_fc', 'rna_slr_pc',
-                    'rlf_slr_n', 'rlf_slr_s', 'log_trf_sh', 'rna_trf_pc',
+                    'rlf_slr_n', 'rlf_slr_s', 'log_trf_shift', 'rna_trf_pc',
                     'rfe_clf_step', 'svc_clf_deg', 'svc_clf_g', 'knn_clf_k',
                     'knn_clf_w', 'rf_clf_e', 'ext_clf_e', 'ada_clf_e',
                     'grb_clf_e', 'grb_clf_lr', 'grb_clf_d', 'mlp_clf_hls',
@@ -2504,7 +2504,7 @@ pipe_config = {
     'LogTransformer': {
         'estimator': LogTransformer(base=args.log_trf_base),
         'param_grid': {
-            'shift': cv_params['log_trf_sh']}},
+            'shift': cv_params['log_trf_shift']}},
     'PowerTransformer': {
         'estimator': PowerTransformer(),
         'param_grid': {

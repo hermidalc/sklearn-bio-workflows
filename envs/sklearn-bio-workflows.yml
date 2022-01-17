@@ -20,7 +20,7 @@ dependencies:
   - matplotlib
   - natsort
   - numpy
-  - openjdk=11.0.8
+  - openjdk
   - pandas
   - pillow
   - python=3.8
@@ -38,7 +38,7 @@ dependencies:
   - r-nloptr
   - r-pamr
   - r-rcpparmadillo
-  - r-rjava=0.9_13
+  - r-rjava
   - r-statmod
   - rpy2=3.1
   - scikit-learn=0.22.2

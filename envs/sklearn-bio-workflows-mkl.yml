@@ -1,4 +1,4 @@
-name: sklearn-bio-workflows-r36
+name: sklearn-bio-workflows
 channels:
   - conda-forge
   - bioconda
@@ -46,6 +46,3 @@ dependencies:
   - scipy
   - seaborn
   - tabulate
-  - python-lsp-server
-  - r-languageserver
-  - ipython

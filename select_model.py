@@ -94,7 +94,7 @@ from sklearn_extensions.model_selection import (
 from sklearn_extensions.pipeline import (ExtendedPipeline,
                                          transform_feature_meta)
 from sklearn_extensions.preprocessing import (
-    DESeq2RLEVST, EdgeRTMMLogCPM, EdgeRTMMLogTPM, LimmaBatchEffectRemover,
+    DESeq2RLEVST, EdgeRTMMCPM, EdgeRTMMTPM, LimmaBatchEffectRemover,
     LogTransformer, NanoStringNormalizer, NanoStringDiffNormalizer)
 from sklearn_extensions.svm import CachedLinearSVC, CachedSVC
 from sklearn_extensions.utils import _determine_key_type
@@ -1731,7 +1731,11 @@ parser.add_argument('--rna-slr-fc', type=float, nargs='+',
 parser.add_argument('--rna-slr-mb', type=str_bool, nargs='+',
                     help='RNA slr model batch')
 parser.add_argument('--rna-slr-sm', type=str, nargs='+',
+                    choices=['pv', 'lfe_pv'],
                     help='RNA slr scoring method')
+parser.add_argument('--rna-slr-tm', type=str, nargs='+',
+                    choices=['cpm', 'rlog', 'tpm', 'vst'],
+                    help='RNA slr transform method')
 parser.add_argument('--rna-slr-ft', type=str, nargs='+',
                     help='RNA slr fit type')
 parser.add_argument('--rna-slr-pc', type=float, nargs='+',
@@ -1965,6 +1969,9 @@ parser.add_argument('--sgd-clf-max-iter', type=int, default=1000,
 parser.add_argument('--deseq2-no-lfc-shrink', default=False,
                     action='store_true',
                     help='deseq2 no lfc shrink')
+parser.add_argument('--edger-no-log', default=False,
+                    action='store_true',
+                    help='edger no log transform')
 parser.add_argument('--limma-robust', default=False, action='store_true',
                     help='limma robust')
 parser.add_argument('--limma-trend', default=False, action='store_true',
@@ -2279,9 +2286,10 @@ for cv_param, cv_param_values in cv_params.copy().items():
                     'mlp_clf_a', 'mlp_clf_lr', 'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
     elif cv_param in ('rna_slr_ft', 'rna_trf_ft', 'rna_slr_mb', 'rna_slr_sm',
-                      'rna_trf_mb', 'nsn_trf_cc', 'nsn_trf_bg', 'nsn_trf_bg_t',
-                      'nsn_trf_sc', 'pwr_trf_meth', 'svc_clf_kern',
-                      'mlp_clf_act', 'mlp_clf_slvr', 'sgd_clf_loss'):
+                      'rna_slr_tm', 'rna_trf_mb', 'nsn_trf_cc', 'nsn_trf_bg',
+                      'nsn_trf_bg_t', 'nsn_trf_sc', 'pwr_trf_meth',
+                      'svc_clf_kern', 'mlp_clf_act', 'mlp_clf_slvr',
+                      'sgd_clf_loss'):
         cv_params[cv_param] = sorted(cv_param_values)
     elif cv_param in ('mui_slr_n_max', 'skb_slr_k_max'):
         cv_param = '_'.join(cv_param.split('_')[:3])
@@ -2427,13 +2435,14 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'EdgeR': {
-        'estimator': EdgeR(memory=memory),
+        'estimator': EdgeR(log=not args.edger_no_log, memory=memory),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
             'fc': cv_params['rna_slr_fc'],
             'scoring_meth': cv_params['rna_slr_sm'],
             'model_batch': cv_params['rna_slr_mb'],
+            'transform_meth': cv_params['rna_slr_tm'],
             'prior_count': cv_params['rna_slr_pc']},
         'param_routing': ['sample_meta']},
     'EdgeRFilterByExpr': {
@@ -2450,16 +2459,18 @@ pipe_config = {
             'fc': cv_params['rna_slr_fc'],
             'scoring_meth': cv_params['rna_slr_sm'],
             'model_batch': cv_params['rna_slr_mb'],
+            'transform_meth': cv_params['rna_slr_tm'],
             'prior_count': cv_params['rna_slr_pc']},
         'param_routing': ['sample_meta']},
     'DreamVoom': {
-        'estimator': DreamVoom(memory=memory),
+        'estimator': DreamVoom(log=not args.edger_no_log, memory=memory),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
             'fc': cv_params['rna_slr_fc'],
             'scoring_meth': cv_params['rna_slr_sm'],
             'model_batch': cv_params['rna_slr_mb'],
+            'transform_meth': cv_params['rna_slr_tm'],
             'prior_count': cv_params['rna_slr_pc']},
         'param_routing': ['sample_meta']},
     'Limma': {
@@ -2521,13 +2532,13 @@ pipe_config = {
             'fit_type': cv_params['rna_trf_ft'],
             'model_batch': cv_params['rna_trf_mb']},
         'param_routing': ['sample_meta']},
-    'EdgeRTMMLogCPM': {
-        'estimator': EdgeRTMMLogCPM(),
+    'EdgeRTMMCPM': {
+        'estimator': EdgeRTMMCPM(log=not args.edger_no_log),
         'param_grid': {
             'prior_count': cv_params['rna_trf_pc']},
         'param_routing': ['sample_meta']},
-    'EdgeRTMMLogTPM': {
-        'estimator': EdgeRTMMLogTPM(),
+    'EdgeRTMMTPM': {
+        'estimator': EdgeRTMMTPM(log=not args.edger_no_log),
         'param_grid': {
             'prior_count': cv_params['rna_trf_pc']},
         'param_routing': ['feature_meta']},
@@ -2727,6 +2738,7 @@ params_lin_xticks = [
     'slr__prior_count',
     'slr__sample_size',
     'trf__prior_count',
+    'trf__shift',
     'clf__n_features_to_select',
     'clf__step',
     'clf__estimator__n_estimators',
@@ -2755,6 +2767,7 @@ params_fixed_xticks = [
     'slr__model_batch',
     'slr__pv',
     'slr__scoring_meth',
+    'slr__transform_meth',
     'slr__sv',
     'slr__threshold',
     'trf',

@@ -857,18 +857,18 @@ def run_model_selection():
     if args.scv_type == 'grid':
         search = ExtendedGridSearchCV(
             pipe, cv=cv_splitter, error_score=args.scv_error_score,
-            max_nbytes=args.max_nbytes, n_jobs=None, param_grid=param_grid,
-            param_routing=search_param_routing, refit=scv_refit,
-            return_train_score=False, scoring=args.scv_scoring,
-            verbose=args.scv_verbose)
+            max_nbytes=args.max_nbytes, n_jobs=args.n_jobs,
+            param_grid=param_grid, param_routing=search_param_routing,
+            refit=scv_refit, return_train_score=False,
+            scoring=args.scv_scoring, verbose=args.scv_verbose)
     elif args.scv_type == 'rand':
         search = ExtendedRandomizedSearchCV(
             pipe, cv=cv_splitter, error_score=args.scv_error_score,
-            max_nbytes=args.max_nbytes, n_iter=args.scv_n_iter, n_jobs=None,
-            param_distributions=param_grid, param_routing=search_param_routing,
-            random_state=args.random_seed, refit=scv_refit,
-            return_train_score=False, scoring=args.scv_scoring,
-            verbose=args.scv_verbose)
+            max_nbytes=args.max_nbytes, n_iter=args.scv_n_iter,
+            n_jobs=args.n_jobs, param_distributions=param_grid,
+            param_routing=search_param_routing, random_state=args.random_seed,
+            refit=scv_refit, return_train_score=False,
+            scoring=args.scv_scoring, verbose=args.scv_verbose)
     if args.verbose > 0:
         print(search.__repr__(N_CHAR_MAX=10000))
         if param_grid_dict:
@@ -917,7 +917,7 @@ def run_model_selection():
         model_name = dataset_name
     # train w/ independent test sets
     if args.test_dataset:
-        with parallel_backend(args.parallel_backend, n_jobs=args.n_jobs,
+        with parallel_backend(args.parallel_backend,
                               inner_max_num_threads=inner_max_num_threads):
             search.fit(X, y, **search_fit_params)
         best_pipe = search.best_estimator_
@@ -1037,7 +1037,7 @@ def run_model_selection():
                 ax_slr.set_xticks(x_axis)
             tf_pipes = Parallel(
                 n_jobs=args.n_jobs, backend=args.parallel_backend,
-                verbose=args.scv_verbose)(
+                max_nbytes=args.max_nbytes, verbose=args.scv_verbose)(
                     delayed(fit_pipeline)(X, y, tf_pipe_steps,
                                           params={'slrc__cols': feature_names},
                                           param_routing=tf_pipe_param_routing,
@@ -1143,9 +1143,11 @@ def run_model_selection():
             random_state = check_random_state(args.random_seed)
             perm_ys, perm_split_idxs = zip(*Parallel(
                 n_jobs=args.n_jobs, backend=args.parallel_backend,
-                verbose=args.perm_verbose)(delayed(get_perm_test_split_data)(
-                    X, shuffle_y(y, groups, random_state), test_splitter,
-                    cv_params=test_split_params) for _ in range(args.n_perms)))
+                max_nbytes=args.max_nbytes, verbose=args.perm_verbose)(
+                    delayed(get_perm_test_split_data)(
+                        X, shuffle_y(y, groups, random_state), test_splitter,
+                        cv_params=test_split_params)
+                    for _ in range(args.n_perms)))
             split_perm_idxs = [*zip(*perm_split_idxs)]
         base_search = clone(search)
         for split_idx, (train_idxs, test_idxs) in enumerate(
@@ -1164,7 +1166,7 @@ def run_model_selection():
             try:
                 search = clone(base_search)
                 with parallel_backend(
-                        args.parallel_backend, n_jobs=args.n_jobs,
+                        args.parallel_backend,
                         inner_max_num_threads=inner_max_num_threads):
                     search.fit(X.iloc[train_idxs], y[train_idxs],
                                **split_search_fit_params)
@@ -1174,7 +1176,7 @@ def run_model_selection():
                     best_params = search.cv_results_['params'][best_index]
                     best_pipe = Parallel(
                         n_jobs=args.n_jobs, backend=args.parallel_backend,
-                        verbose=args.scv_verbose)(
+                        max_nbytes=args.max_nbytes, verbose=args.scv_verbose)(
                             delayed(fit_pipeline)(
                                 X.iloc[train_idxs], y[train_idxs], pipe.steps,
                                 params=pipe_params,
@@ -1209,7 +1211,7 @@ def run_model_selection():
                               .format(args.n_perms))
                     split_perm_scores = Parallel(
                         n_jobs=args.n_jobs, backend=args.parallel_backend,
-                        verbose=args.perm_verbose)(
+                        max_nbytes=args.max_nbytes, verbose=args.perm_verbose)(
                             delayed(fit_and_score)(
                                 unset_pipe_memory(clone(best_pipe)),
                                 X.iloc[perm_train_idxs],

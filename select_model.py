@@ -2453,7 +2453,7 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'LimmaVoom': {
-        'estimator': LimmaVoom(memory=memory,
+        'estimator': LimmaVoom(log=not args.edger_no_log, memory=memory,
                                model_dupcor=args.limma_model_dupcor),
         'param_grid': {
             'k': cv_params['skb_slr_k'],

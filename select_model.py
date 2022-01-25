@@ -261,7 +261,7 @@ def load_dataset(dataset_file):
 
 
 def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
-                              col_trf_grp_idx=0):
+                              col_trf_grp_idx=0, verbose=False):
     pipe_steps = []
     pipe_param_routing = None
     pipe_step_names = []
@@ -362,7 +362,7 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
                     param_grid_dict[uniq_step_name].append(None)
         param_grid.append(params)
     pipe = ExtendedPipeline(pipe_steps, memory=memory,
-                            param_routing=pipe_param_routing)
+                            param_routing=pipe_param_routing, verbose=verbose)
     param_grid_estimators = {}
     for param, param_values in param_grid_dict.items():
         if any(isinstance(v, BaseEstimator) for v in param_values):
@@ -385,8 +385,10 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
         for trf_idx, trf_pipe_steps in enumerate(col_trf_pipe_steps):
             (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
              trf_param_grid_dict, trf_param_grid_estimators) = (
-                 setup_pipe_and_param_grid(
-                     trf_pipe_steps, col_trf_col_grps, col_trf_grp_idx + 1))
+                 setup_pipe_and_param_grid(trf_pipe_steps,
+                                           col_trf_col_grps=col_trf_col_grps,
+                                           col_trf_grp_idx=col_trf_grp_idx + 1,
+                                           verbose=verbose))
             col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
             uniq_trf_name = 'trf{:d}'.format(trf_idx)
             trf_cols = col_trf_col_grps[col_trf_grp_idx][trf_idx]
@@ -457,8 +459,9 @@ def get_param_type(param):
 
 
 def fit_pipeline(X, y, steps, params=None, param_routing=None,
-                 fit_params=None, verbose=0):
-    pipe = ExtendedPipeline(steps, memory=memory, param_routing=param_routing)
+                 fit_params=None, verbose=0, pipe_verbose=False):
+    pipe = ExtendedPipeline(steps, memory=memory, param_routing=param_routing,
+                            verbose=pipe_verbose)
     if params is None:
         params = {}
     pipe.set_params(**params)
@@ -702,7 +705,9 @@ def run_model_selection():
     (dataset_name, X, y, groups, group_weights, sample_weights, sample_meta,
      feature_meta, col_trf_col_grps) = load_dataset(args.train_dataset)
     pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict, _ = (
-        setup_pipe_and_param_grid(args.pipe_steps, col_trf_col_grps))
+        setup_pipe_and_param_grid(args.pipe_steps,
+                                  col_trf_col_grps=col_trf_col_grps,
+                                  verbose=args.pipe_verbose))
     pipe_name = '\n'.join(pipe_step_names)
     if args.sample_meta_cols:
         pipe_has_penalty_factor = False
@@ -1042,7 +1047,8 @@ def run_model_selection():
                                           params={'slrc__cols': feature_names},
                                           param_routing=tf_pipe_param_routing,
                                           fit_params=tf_pipe_fit_params,
-                                          verbose=args.scv_verbose)
+                                          verbose=args.scv_verbose,
+                                          pipe_verbose=args.pipe_verbose)
                     for feature_names in tf_name_sets)
             if args.scv_verbose == 0:
                 print(flush=True)
@@ -1182,7 +1188,8 @@ def run_model_selection():
                                 params=pipe_params,
                                 param_routing=pipe.param_routing,
                                 fit_params=split_pipe_fit_params,
-                                verbose=args.scv_verbose)
+                                verbose=args.scv_verbose,
+                                pipe_verbose=args.pipe_verbose)
                             for pipe_params in [best_params])[0]
                     if args.scv_verbose == 0:
                         print(flush=True)
@@ -2083,6 +2090,9 @@ parser.add_argument('--n-perms', type=int, default=1000,
                     help='permutation test n permutations')
 parser.add_argument('--perm-verbose', type=int,
                     help='permutation test verbosity')
+parser.add_argument('--pipe-verbose', default=False,
+                    action='store_true',
+                    help='Pipeline verbose (for debugging)')
 parser.add_argument('--verbose', type=int, default=1,
                     help='program verbosity')
 parser.add_argument('--load-only', default=False, action='store_true',

@@ -1848,10 +1848,12 @@ parser.add_argument('--nsn-trf-sc', type=str, nargs='+',
                     help='NanoStringNormalizer sample_content')
 parser.add_argument('--rfe-clf-step', type=float, nargs='+',
                     help='RFE step')
-parser.add_argument('--rfe-clf-tune-step-at', type=int,
-                    help='RFE tune step at')
 parser.add_argument('--rfe-clf-reducing-step', default=False,
                     action='store_true', help='RFE reducing step')
+parser.add_argument('--rfe-clf-tune-step-at', type=int,
+                    help='RFE tune step at')
+parser.add_argument('--rfe-clf-tuning-step', type=float, default=1,
+                    help='RFE tuning step')
 parser.add_argument('--rfe-clf-verbose', type=int, default=0,
                     help='RFE verbosity')
 parser.add_argument('--svc-clf-ce', type=int, nargs='+',
@@ -2586,9 +2588,10 @@ pipe_config = {
         'estimator': ExtendedRFE(
             LinearSVC(max_iter=args.lsvc_clf_max_iter,
                       random_state=args.random_seed, tol=args.lsvc_clf_tol),
-            tune_step_at=args.rfe_clf_tune_step_at,
             reducing_step=args.rfe_clf_reducing_step,
-            verbose=args.rfe_clf_verbose, memory=memory),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
+            memory=memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2599,9 +2602,10 @@ pipe_config = {
         'estimator': ExtendedRFE(
             SVC(kernel='linear', cache_size=args.svc_clf_cache,
                 max_iter=args.svc_clf_max_iter, random_state=args.random_seed),
-            tune_step_at=args.rfe_clf_tune_step_at,
             reducing_step=args.rfe_clf_reducing_step,
-            verbose=args.rfe_clf_verbose, memory=memory),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
+            memory=memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2611,9 +2615,10 @@ pipe_config = {
     'RFE-RandomForestClassifier': {
         'estimator': ExtendedRFE(
             RandomForestClassifier(random_state=args.random_seed),
-            tune_step_at=args.rfe_clf_tune_step_at,
             reducing_step=args.rfe_clf_reducing_step,
-            verbose=args.rfe_clf_verbose, memory=memory),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
+            memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['rf_clf_e'],
             'estimator__max_depth': cv_params['rf_clf_d'],
@@ -2625,9 +2630,10 @@ pipe_config = {
     'RFE-ExtraTreesClassifier': {
         'estimator': ExtendedRFE(
             ExtraTreesClassifier(random_state=args.random_seed),
-            tune_step_at=args.rfe_clf_tune_step_at,
             reducing_step=args.rfe_clf_reducing_step,
-            verbose=args.rfe_clf_verbose, memory=memory),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
+            memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['ext_clf_e'],
             'estimator__max_depth': cv_params['ext_clf_d'],
@@ -2639,9 +2645,10 @@ pipe_config = {
     'RFE-GradientBoostingClassifier': {
         'estimator': ExtendedRFE(
             GradientBoostingClassifier(random_state=args.random_seed),
-            tune_step_at=args.rfe_clf_tune_step_at,
             reducing_step=args.rfe_clf_reducing_step,
-            verbose=args.rfe_clf_verbose, memory=memory),
+            tune_step_at=args.rfe_clf_tune_step_at,
+            tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
+            memory=memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['grb_clf_e'],
             'estimator__learning_rate': cv_params['grb_clf_lr'],

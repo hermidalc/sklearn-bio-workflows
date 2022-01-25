@@ -385,10 +385,9 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
         for trf_idx, trf_pipe_steps in enumerate(col_trf_pipe_steps):
             (trf_pipe, trf_pipe_step_names, trf_pipe_props, trf_param_grid,
              trf_param_grid_dict, trf_param_grid_estimators) = (
-                 setup_pipe_and_param_grid(trf_pipe_steps,
-                                           col_trf_col_grps=col_trf_col_grps,
-                                           col_trf_grp_idx=col_trf_grp_idx + 1,
-                                           verbose=verbose))
+                 setup_pipe_and_param_grid(
+                     trf_pipe_steps, col_trf_col_grps=col_trf_col_grps,
+                     col_trf_grp_idx=col_trf_grp_idx + 1, verbose=verbose))
             col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
             uniq_trf_name = 'trf{:d}'.format(trf_idx)
             trf_cols = col_trf_col_grps[col_trf_grp_idx][trf_idx]

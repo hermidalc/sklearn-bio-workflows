@@ -919,6 +919,9 @@ def run_model_selection():
             model_name = '_'.join([dataset_name, args.save_model_code])
     else:
         model_name = dataset_name
+    results_dir = '{}/{}'.format(args.out_dir, model_name)
+    rmtree(results_dir)
+    os.makedirs(results_dir, mode=0o755)
     # train w/ independent test sets
     if args.test_dataset:
         with parallel_backend(args.parallel_backend,
@@ -1133,7 +1136,7 @@ def run_model_selection():
         if args.save_models:
             if args.pipe_memory:
                 best_pipe = unset_pipe_memory(best_pipe)
-            dump(best_pipe, '{}/{}_model.pkl'.format(args.out_dir, model_name))
+            dump(best_pipe, '{}/{}_model.pkl'.format(results_dir, model_name))
     # train-test nested cv
     else:
         if args.verbose > 0:
@@ -1314,12 +1317,12 @@ def run_model_selection():
                 memory.clear(warn=False)
         if args.save_results:
             dump(split_results, '{}/{}_split_results.pkl'
-                 .format(args.out_dir, model_name))
+                 .format(results_dir, model_name))
             dump(param_cv_scores, '{}/{}_param_cv_scores.pkl'
-                 .format(args.out_dir, model_name))
+                 .format(results_dir, model_name))
         if args.save_models:
             dump(split_models, '{}/{}_split_models.pkl'
-                 .format(args.out_dir, model_name))
+                 .format(results_dir, model_name))
         scores = {'cv': {}, 'te': {}}
         num_features = []
         if args.run_perm_test:
@@ -1359,7 +1362,7 @@ def run_model_selection():
                                 'scores': perm_scores,
                                 'pvalue': perm_pvalue}
                 dump(perm_results, '{}/{}_perm_results.pkl'
-                     .format(args.out_dir, model_name))
+                     .format(results_dir, model_name))
         print('Model:', model_name, end=' ')
         for metric in args.scv_scoring:
             print(' Mean {} (CV / Test): {:.4f} / {:.4f}'.format(
@@ -1482,14 +1485,14 @@ def run_model_selection():
                 feature_results_floatfmt.append('.4f')
         if args.save_results:
             dump(feature_results, '{}/{}_feature_results.pkl'
-                 .format(args.out_dir, model_name))
+                 .format(results_dir, model_name))
             r_base.saveRDS(feature_results, '{}/{}_feature_results.rds'
-                           .format(args.out_dir, model_name))
+                           .format(results_dir, model_name))
             if feature_weights is not None:
                 dump(feature_weights, '{}/{}_feature_weights.pkl'
-                     .format(args.out_dir, model_name))
+                     .format(results_dir, model_name))
                 r_base.saveRDS(feature_weights, '{}/{}_feature_weights.rds'
-                               .format(args.out_dir, model_name))
+                               .format(results_dir, model_name))
         if args.verbose > 0:
             print('Overall Feature Ranking:')
             if feature_weights is not None:
@@ -1615,6 +1618,16 @@ def run_model_selection():
             plt.ylabel(args.hist_plot_stat.title(),
                        fontsize=args.axis_font_size)
             plt.tick_params(labelsize=args.axis_font_size)
+    if args.show_figs or args.save_figs:
+        for fig_num in plt.get_fignums():
+            plt.figure(fig_num, constrained_layout=True)
+            if args.save_figs:
+                for fig_fmt in args.fig_format:
+                    plt.savefig('{}/Figure_{:d}.{}'
+                                .format(results_dir, fig_num, fig_fmt),
+                                bbox_inches='tight', format=fig_fmt)
+    if args.show_figs:
+        plt.show()
 
 
 def run_cleanup():
@@ -2814,13 +2827,3 @@ ordinal_encoder_categories = {
     'tumor_stage': ['0', 'i', 'i or ii', 'ii', 'NA', 'iii', 'iv']}
 
 run_model_selection()
-if args.show_figs or args.save_figs:
-    for fig_num in plt.get_fignums():
-        plt.figure(fig_num, constrained_layout=True)
-        if args.save_figs:
-            for fig_fmt in args.fig_format:
-                plt.savefig('{}/Figure_{:d}.{}'.format(args.out_dir, fig_num,
-                                                       fig_fmt),
-                            bbox_inches='tight', format=fig_fmt)
-if args.show_figs:
-    plt.show()

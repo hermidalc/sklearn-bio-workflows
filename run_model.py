@@ -506,13 +506,6 @@ def calculate_test_scores(estimator, X_test, y_test, metrics,
     return scores
 
 
-def get_perm_test_split_data(X, perm_y, cv, cv_params=None):
-    if cv_params is None:
-        cv_params = {}
-    perm_split_idxs = list(cv.split(X, perm_y, **cv_params))
-    return perm_y, perm_split_idxs
-
-
 def fit_and_score(estimator, X_train, y_train, X_test, y_test, scoring,
                   fit_params=None, predict_params=None, score_params=None):
     if fit_params is None:
@@ -1151,14 +1144,12 @@ def run_model():
         if args.run_perm_test:
             if args.perm_verbose > 0:
                 print('Generating permutation test input data')
+            perm_ys, perm_split_idxs = [], []
             random_state = check_random_state(args.random_seed)
-            perm_ys, perm_split_idxs = zip(*Parallel(
-                n_jobs=args.n_jobs, backend=args.parallel_backend,
-                max_nbytes=args.max_nbytes, verbose=args.perm_verbose)(
-                    delayed(get_perm_test_split_data)(
-                        X, shuffle_y(y, groups, random_state), test_splitter,
-                        cv_params=test_split_params)
-                    for _ in range(args.n_perms)))
+            for _ in range(args.n_perms):
+                perm_ys.append(shuffle_y(y, groups, random_state))
+                perm_split_idxs.append(list(
+                    test_splitter.split(X, perm_ys[-1], **test_split_params)))
             split_perm_idxs = [*zip(*perm_split_idxs)]
         base_search = clone(search)
         for split_idx, (train_idxs, test_idxs) in enumerate(

@@ -701,7 +701,7 @@ def unset_pipe_memory(pipe):
     return pipe
 
 
-def run_model_selection():
+def run_model():
     (dataset_name, X, y, groups, group_weights, sample_weights, sample_meta,
      feature_meta, col_trf_col_grps) = load_dataset(args.train_dataset)
     pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict, _ = (
@@ -2844,4 +2844,4 @@ metric_label = {
 ordinal_encoder_categories = {
     'tumor_stage': ['0', 'i', 'i or ii', 'ii', 'NA', 'iii', 'iv']}
 
-run_model_selection()
+run_model()

@@ -261,7 +261,7 @@ def load_dataset(dataset_file):
 
 
 def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
-                              col_trf_grp_idx=0, verbose=False):
+                              col_trf_grp_idx=0, memory=None, verbose=False):
     pipe_steps = []
     pipe_param_routing = None
     pipe_step_names = []
@@ -387,7 +387,8 @@ def setup_pipe_and_param_grid(cmd_pipe_steps, col_trf_col_grps=None,
              trf_param_grid_dict, trf_param_grid_estimators) = (
                  setup_pipe_and_param_grid(
                      trf_pipe_steps, col_trf_col_grps=col_trf_col_grps,
-                     col_trf_grp_idx=col_trf_grp_idx + 1, verbose=verbose))
+                     col_trf_grp_idx=col_trf_grp_idx + 1, memory=memory,
+                     verbose=verbose))
             col_trf_pipe_names.append('->'.join(trf_pipe_step_names))
             uniq_trf_name = 'trf{:d}'.format(trf_idx)
             trf_cols = col_trf_col_grps[col_trf_grp_idx][trf_idx]
@@ -457,8 +458,8 @@ def get_param_type(param):
     return param_type
 
 
-def fit_pipeline(X, y, steps, params=None, param_routing=None,
-                 fit_params=None, verbose=0, pipe_verbose=False):
+def fit_pipeline(X, y, steps, params=None, param_routing=None, fit_params=None,
+                 memory=None, verbose=0, pipe_verbose=False):
     pipe = ExtendedPipeline(steps, memory=memory, param_routing=param_routing,
                             verbose=pipe_verbose)
     if params is None:
@@ -704,9 +705,9 @@ def run_model_selection():
     (dataset_name, X, y, groups, group_weights, sample_weights, sample_meta,
      feature_meta, col_trf_col_grps) = load_dataset(args.train_dataset)
     pipe, pipe_step_names, pipe_props, param_grid, param_grid_dict, _ = (
-        setup_pipe_and_param_grid(args.pipe_steps,
-                                  col_trf_col_grps=col_trf_col_grps,
-                                  verbose=args.pipe_verbose))
+        setup_pipe_and_param_grid(
+            args.pipe_steps, col_trf_col_grps=col_trf_col_grps,
+            memory=pipe_memory, verbose=args.pipe_verbose))
     pipe_name = '\n'.join(pipe_step_names)
     if args.sample_meta_cols:
         pipe_has_penalty_factor = False
@@ -1050,6 +1051,7 @@ def run_model_selection():
                                           params={'slrc__cols': feature_names},
                                           param_routing=tf_pipe_param_routing,
                                           fit_params=tf_pipe_fit_params,
+                                          memory=pipe_memory,
                                           verbose=args.scv_verbose,
                                           pipe_verbose=args.pipe_verbose)
                     for feature_names in tf_name_sets)
@@ -1135,7 +1137,7 @@ def run_model_selection():
                 ax_pre.tick_params(labelsize=args.axis_font_size)
                 ax_pre.grid(False)
         if args.save_models:
-            if args.pipe_memory:
+            if args.cache:
                 best_pipe = unset_pipe_memory(best_pipe)
             dump(best_pipe, '{}/{}_model.pkl'.format(results_dir, model_name))
     # train-test nested cv
@@ -1191,7 +1193,7 @@ def run_model_selection():
                                 params=pipe_params,
                                 param_routing=pipe.param_routing,
                                 fit_params=split_pipe_fit_params,
-                                verbose=args.scv_verbose,
+                                memory=pipe_memory, verbose=args.scv_verbose,
                                 pipe_verbose=args.pipe_verbose)
                             for pipe_params in [best_params])[0]
                     if args.scv_verbose == 0:
@@ -1311,10 +1313,10 @@ def run_model_selection():
                     split_result['perm_scores'] = split_perm_scores
             split_results.append(split_result)
             if args.save_models:
-                if args.pipe_memory and best_pipe is not None:
+                if args.cache and best_pipe is not None:
                     best_pipe = unset_pipe_memory(best_pipe)
                 split_models.append(best_pipe)
-            if args.pipe_memory:
+            if args.cache:
                 memory.clear(warn=False)
         if args.save_results:
             dump(split_results, '{}/{}_split_results.pkl'
@@ -1632,7 +1634,7 @@ def run_model_selection():
 
 
 def run_cleanup():
-    if args.pipe_memory:
+    if args.cache:
         rmtree(cachedir)
     if args.parallel_backend == 'loky':
         for rtmp_dir in glob('{}/Rtmp*/'.format(args.tmp_dir)):
@@ -2082,10 +2084,11 @@ parser.add_argument('--parallel-backend', type=str, default='loky',
                     help='joblib parallel backend')
 parser.add_argument('--max-nbytes', type=str, default='1M',
                     help='joblib parallel max_nbytes')
-parser.add_argument('--pipe-memory', default=False, action='store_true',
-                    help='turn on pipeline memory')
+parser.add_argument('--cache', type=str, nargs='+',
+                    choices=['pipeline', 'estimator'],
+                    help='Turn on joblib caching of specific steps')
 parser.add_argument('--gbytes-limit', type=int,
-                    help='joblib memory cache size limit in GB')
+                    help='Joblib cache size limit in GB')
 parser.add_argument('--out-dir', type=dir_path, default=os.getcwd(),
                     help='output dir')
 parser.add_argument('--tmp-dir', type=dir_path, default=gettempdir(),
@@ -2241,31 +2244,38 @@ robjects.r('options(\'java.parameters\'="-Xmx{:d}m")'
 
 atexit.register(run_cleanup)
 
-if args.pipe_memory:
+if args.cache:
     cachedir = mkdtemp(dir=args.tmp_dir)
     bytes_limit = (args.gbytes_limit * 1024 ** 3
                    if args.gbytes_limit is not None else None)
     memory = Memory(location=cachedir, verbose=0, bytes_limit=bytes_limit)
-    anova_clf_scorer = CachedANOVAFScorerClassification(memory=memory)
-    chi2_scorer = CachedChi2Scorer(memory=memory)
+    pipe_memory = memory if 'pipeline' in args.cache else None
+    estm_memory = memory if 'estimator' in args.cache else None
+else:
+    memory = None
+    pipe_memory = None
+    estm_memory = None
+
+if estm_memory:
+    anova_clf_scorer = CachedANOVAFScorerClassification(memory=estm_memory)
+    chi2_scorer = CachedChi2Scorer(memory=estm_memory)
     mui_clf_scorer = CachedMutualInfoScorerClassification(
-        memory=memory, random_state=args.random_seed)
+        memory=estm_memory, random_state=args.random_seed)
     lsvc_clf = CachedLinearSVC(
-        dual=False, max_iter=args.lsvc_clf_max_iter, memory=memory,
+        dual=False, max_iter=args.lsvc_clf_max_iter, memory=estm_memory,
         penalty='l1', random_state=args.random_seed, tol=args.lsvc_clf_tol)
     lgr_clf = CachedLogisticRegression(
         dual=args.sfm_slr_lgr_dual, max_iter=args.lgr_clf_max_iter,
-        memory=memory, penalty=args.sfm_slr_lgr_penalty,
+        memory=estm_memory, penalty=args.sfm_slr_lgr_penalty,
         random_state=args.random_seed, solver=args.sfm_slr_lgr_solver,
         verbose=args.lgr_clf_verbose)
-    rf_clf = CachedRandomForestClassifier(memory=memory,
+    rf_clf = CachedRandomForestClassifier(memory=estm_memory,
                                           random_state=args.random_seed)
-    ext_clf = CachedExtraTreesClassifier(memory=memory,
+    ext_clf = CachedExtraTreesClassifier(memory=estm_memory,
                                          random_state=args.random_seed)
-    grb_clf = CachedGradientBoostingClassifier(memory=memory,
+    grb_clf = CachedGradientBoostingClassifier(memory=estm_memory,
                                                random_state=args.random_seed)
 else:
-    memory = None
     anova_clf_scorer = ANOVAFScorerClassification()
     chi2_scorer = Chi2Scorer()
     mui_clf_scorer = MutualInfoScorerClassification(
@@ -2451,8 +2461,8 @@ pipe_config = {
             'threshold': cv_params['sfm_slr_thres']},
         'param_routing': ['sample_weight']},
     'DESeq2': {
-        'estimator': DESeq2(memory=memory,
-                            lfc_shrink=not args.deseq2_no_lfc_shrink),
+        'estimator': DESeq2(lfc_shrink=not args.deseq2_no_lfc_shrink,
+                            memory=estm_memory),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
@@ -2462,7 +2472,7 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'EdgeR': {
-        'estimator': EdgeR(log=not args.edger_no_log, memory=memory),
+        'estimator': EdgeR(log=not args.edger_no_log, memory=estm_memory),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
@@ -2478,7 +2488,7 @@ pipe_config = {
             'model_batch': cv_params['rna_slr_mb']},
         'param_routing': ['sample_meta']},
     'LimmaVoom': {
-        'estimator': LimmaVoom(log=not args.edger_no_log, memory=memory,
+        'estimator': LimmaVoom(log=not args.edger_no_log, memory=estm_memory,
                                model_dupcor=args.limma_model_dupcor),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
@@ -2490,7 +2500,7 @@ pipe_config = {
             'prior_count': cv_params['rna_slr_pc']},
         'param_routing': ['sample_meta']},
     'DreamVoom': {
-        'estimator': DreamVoom(log=not args.edger_no_log, memory=memory),
+        'estimator': DreamVoom(log=not args.edger_no_log, memory=estm_memory),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'pv': cv_params['rna_slr_pv'],
@@ -2501,7 +2511,7 @@ pipe_config = {
             'prior_count': cv_params['rna_slr_pc']},
         'param_routing': ['sample_meta']},
     'Limma': {
-        'estimator': Limma(memory=memory, robust=args.limma_robust,
+        'estimator': Limma(memory=estm_memory, robust=args.limma_robust,
                            trend=args.limma_trend),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
@@ -2514,11 +2524,11 @@ pipe_config = {
         'estimator': NanoStringEndogenousSelector(meta_col=args.nano_meta_col),
         'param_routing': ['feature_meta']},
     'FCBF': {
-        'estimator': FCBF(memory=memory),
+        'estimator': FCBF(memory=estm_memory),
         'param_grid': {
             'k': cv_params['skb_slr_k']}},
     'ReliefF': {
-        'estimator': ReliefF(memory=memory),
+        'estimator': ReliefF(memory=estm_memory),
         'param_grid': {
             'k': cv_params['skb_slr_k'],
             'n_neighbors': cv_params['rlf_slr_n'],
@@ -2591,7 +2601,7 @@ pipe_config = {
             reducing_step=args.rfe_clf_reducing_step,
             tune_step_at=args.rfe_clf_tune_step_at,
             tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
-            memory=memory),
+            memory=estm_memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2605,7 +2615,7 @@ pipe_config = {
             reducing_step=args.rfe_clf_reducing_step,
             tune_step_at=args.rfe_clf_tune_step_at,
             tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
-            memory=memory),
+            memory=estm_memory),
         'param_grid': {
             'estimator__C': cv_params['svc_clf_c'],
             'estimator__class_weight': cv_params['svc_clf_cw'],
@@ -2618,7 +2628,7 @@ pipe_config = {
             reducing_step=args.rfe_clf_reducing_step,
             tune_step_at=args.rfe_clf_tune_step_at,
             tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
-            memory=memory),
+            memory=estm_memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['rf_clf_e'],
             'estimator__max_depth': cv_params['rf_clf_d'],
@@ -2633,7 +2643,7 @@ pipe_config = {
             reducing_step=args.rfe_clf_reducing_step,
             tune_step_at=args.rfe_clf_tune_step_at,
             tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
-            memory=memory),
+            memory=estm_memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['ext_clf_e'],
             'estimator__max_depth': cv_params['ext_clf_d'],
@@ -2648,7 +2658,7 @@ pipe_config = {
             reducing_step=args.rfe_clf_reducing_step,
             tune_step_at=args.rfe_clf_tune_step_at,
             tuning_step=args.rfe_clf_tuning_step, verbose=args.rfe_clf_verbose,
-            memory=memory),
+            memory=estm_memory),
         'param_grid': {
             'estimator__n_estimators': cv_params['grb_clf_e'],
             'estimator__learning_rate': cv_params['grb_clf_lr'],

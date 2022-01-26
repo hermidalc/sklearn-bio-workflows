@@ -1144,8 +1144,8 @@ def run_model():
         if args.run_perm_test:
             if args.perm_verbose > 0:
                 print('Generating permutation test input data')
-            perm_ys, perm_split_idxs = [], []
             random_state = check_random_state(args.random_seed)
+            perm_ys, perm_split_idxs = [], []
             for _ in range(args.n_perms):
                 perm_ys.append(shuffle_y(y, groups, random_state))
                 perm_split_idxs.append(list(

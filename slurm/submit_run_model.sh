@@ -11,12 +11,12 @@ RUN_MODEL_OPTS=()
 while [[ $i -le $# ]]; do
     if [[ ${!i} == "--n-jobs="* ]]; then
         N_JOBS=${!i#*=}
-        RUN_MODEL_OPTS+=("--n-jobs=$(($N_JOBS - 1))")
+        RUN_MODEL_OPTS+=(${!i})
     elif [[ ${!i} == "--n-jobs" ]]; then
         RUN_MODEL_OPTS+=(${!i})
         i=$((i + 1))
         N_JOBS=${!i}
-        RUN_MODEL_OPTS+=($(($N_JOBS - 1)))
+        RUN_MODEL_OPTS+=($N_JOBS)
     elif [[ ${!i} == "--sbatch-opts="* ]]; then
         SBATCH_OPTS=${!i#*=}
     elif [[ ${!i} == "--sbatch-opts" ]]; then
@@ -29,9 +29,9 @@ while [[ $i -le $# ]]; do
 done
 
 if [[ ! -v N_JOBS ]]; then
-    # most Biowulf nodes have 56 CPUs
+    # most common Biowulf node has 56 CPUs
     N_JOBS=56
-    RUN_MODEL_OPTS+=("--n-jobs" "$(($N_JOBS - 1))")
+    RUN_MODEL_OPTS+=("--n-jobs $N_JOBS")
 fi
 
 SCRIPT_DIR=$(dirname $(realpath -s $0))

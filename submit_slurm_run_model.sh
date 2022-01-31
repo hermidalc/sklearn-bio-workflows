@@ -35,12 +35,11 @@ if [[ ! -v N_JOBS ]]; then
 fi
 
 SCRIPT_DIR=$(dirname $(realpath -s $0))
-PROJECT_DIR=$(realpath $SCRIPT_DIR/../)
 
 SBATCH_CMD="sbatch \
---chdir=$PROJECT_DIR \
+--chdir=$(realpath $SCRIPT_DIR) \
 --cpus-per-task=$N_JOBS \
 $SBATCH_OPTS \
-$PROJECT_DIR/run_model.sh ${RUN_MODEL_OPTS[@]}"
+$SCRIPT_DIR/run_model.sh ${RUN_MODEL_OPTS[@]}"
 echo $SBATCH_CMD
 $SBATCH_CMD

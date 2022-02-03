@@ -915,9 +915,13 @@ def run_model():
     else:
         model_name = dataset_name
     results_dir = '{}/{}'.format(args.out_dir, model_name)
-    if os.path.exists(results_dir) and os.path.isdir(results_dir):
-        rmtree(results_dir)
-    os.makedirs(results_dir, mode=0o755)
+    if os.path.isdir(results_dir):
+        for dirpath, dirnames, filenames in os.walk(results_dir):
+            for filename in filenames:
+                os.remove(os.path.join(dirpath, filename))
+            for dirname in dirnames:
+                rmtree(os.path.join(dirpath, dirname))
+    os.makedirs(results_dir, mode=0o755, exist_ok=True)
     # train w/ independent test sets
     if args.test_dataset:
         with parallel_backend(args.parallel_backend,

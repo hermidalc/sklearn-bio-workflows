@@ -915,12 +915,8 @@ def run_model():
     else:
         model_name = dataset_name
     results_dir = '{}/{}'.format(args.out_dir, model_name)
-    if os.path.isdir(results_dir):
-        for dirpath, dirnames, filenames in os.walk(results_dir):
-            for filename in filenames:
-                os.remove(os.path.join(dirpath, filename))
-            for dirname in dirnames:
-                rmtree(os.path.join(dirpath, dirname))
+    if args.clean_results_dir and os.path.isdir(results_dir):
+        rmtree(results_dir)
     os.makedirs(results_dir, mode=0o755, exist_ok=True)
     # train w/ independent test sets
     if args.test_dataset:
@@ -2090,6 +2086,8 @@ parser.add_argument('--out-dir', type=dir_path, default=os.getcwd(),
                     help='output dir')
 parser.add_argument('--tmp-dir', type=dir_path, default=gettempdir(),
                     help='tmp dir')
+parser.add_argument('--clean-results-dir', default=False, action='store_true',
+                    help='clean results dir')
 parser.add_argument('--random-seed', type=int, default=777,
                     help='random state seed')
 parser.add_argument('--jvm-heap-size', type=int, default=500,

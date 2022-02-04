@@ -226,8 +226,8 @@ def load_dataset(dataset_file):
                 new_feature_meta[feature_meta_col] = False
         new_feature_meta[args.penalty_factor_meta_col] = (
             1 if args.penalize_sample_meta_cols else 0)
-        feature_meta = feature_meta.append(new_feature_meta,
-                                           verify_integrity=True)
+        feature_meta = pd.concat([feature_meta, new_feature_meta],
+                                 verify_integrity=True)
     col_trf_col_grps = None
     if num_col_trfs > 0:
         X_ct = X.copy()
@@ -1387,15 +1387,15 @@ def run_model():
                 if feature_annots is None:
                     feature_annots = split_feature_meta[feature_meta.columns]
                 else:
-                    feature_annots = pd.concat(
-                        [feature_annots,
-                         split_feature_meta[feature_meta.columns]], axis=0)
+                    feature_annots = pd.concat([
+                        feature_annots,
+                        split_feature_meta[feature_meta.columns]])
             elif feature_annots is None:
                 feature_annots = pd.DataFrame(index=split_feature_meta.index)
             else:
-                feature_annots = pd.concat(
-                    [feature_annots,
-                     pd.DataFrame(index=split_feature_meta.index)], axis=0)
+                feature_annots = pd.concat([
+                    feature_annots,
+                    pd.DataFrame(index=split_feature_meta.index)])
             if 'Weight' in split_feature_meta.columns:
                 if feature_weights is None:
                     feature_weights = split_feature_meta[['Weight']].copy()

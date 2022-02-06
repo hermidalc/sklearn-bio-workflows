@@ -80,11 +80,11 @@ from sklearn_extensions.ensemble import (
 from sklearn_extensions.feature_selection import (
     ANOVAFScorerClassification, CachedANOVAFScorerClassification,
     CachedChi2Scorer, CachedMutualInfoScorerClassification, CFS, Chi2Scorer,
-    ColumnSelector, ConfidenceThreshold, DESeq2, DreamVoom, EdgeR,
-    EdgeRFilterByExpr, FCBF, Limma, LimmaVoom, MeanThreshold, MedianThreshold,
-    MutualInfoScorerClassification, NanoStringEndogenousSelector, ReliefF,
-    ExtendedRFE, SelectFromModel, SelectFromUnivariateModel, SelectKBest,
-    VarianceThreshold)
+    ColumnSelector, ConfidenceThreshold, CorrelationThreshold, DESeq2,
+    DreamVoom, EdgeR, EdgeRFilterByExpr, FCBF, Limma, LimmaVoom, MeanThreshold,
+    MedianThreshold, MutualInfoScorerClassification,
+    NanoStringEndogenousSelector, ReliefF, ExtendedRFE, SelectFromModel,
+    SelectFromUnivariateModel, SelectKBest, VarianceThreshold)
 from sklearn_extensions.linear_model import CachedLogisticRegression
 from sklearn_extensions.model_selection import (
     ExtendedGridSearchCV, ExtendedRandomizedSearchCV, StratifiedGroupKFold,
@@ -1716,6 +1716,11 @@ parser.add_argument('--cft-slr-thres', type=float, nargs='+',
 parser.add_argument('--cft-slr-meta-col', type=str,
                     default='Confidence Score',
                     help='ConfidenceThreshold feature metadata column name')
+parser.add_argument('--crt-slr-thres', type=float, nargs='+',
+                    help='CorrelationThreshold threshold')
+parser.add_argument('--crt-slr-meta-col', type=str,
+                    default='Correlation Score',
+                    help='CorrelationThreshold feature metadata column name')
 parser.add_argument('--mnt-slr-thres', type=float, nargs='+',
                     help='MeanThreshold threshold')
 parser.add_argument('--mdt-slr-thres', type=float, nargs='+',
@@ -2304,16 +2309,17 @@ for cv_param, cv_param_values in cv_params.copy().items():
                         'lgr_clf_ce', 'ada_clf_lgr_ce', 'sgd_clf_ae'):
             cv_params[cv_param[:-1]] = None
         continue
-    if cv_param in ('col_slr_cols', 'cft_slr_thres', 'mnt_slr_thres',
-                    'mdt_slr_thres', 'vrt_slr_thres', 'mui_slr_n', 'skb_slr_k',
-                    'sfm_slr_thres', 'sfm_slr_lgr_l1r', 'sfm_slr_rf_e',
-                    'sfm_slr_ext_e', 'sfm_slr_grb_e', 'sfm_slr_grb_lr',
-                    'sfm_slr_grb_d', 'rna_slr_pv', 'rna_slr_fc', 'rna_slr_pc',
-                    'rlf_slr_n', 'rlf_slr_s', 'log_trf_shift', 'rna_trf_pc',
-                    'rfe_clf_step', 'svc_clf_deg', 'svc_clf_g', 'knn_clf_k',
-                    'knn_clf_w', 'rf_clf_e', 'ext_clf_e', 'ada_clf_e',
-                    'grb_clf_e', 'grb_clf_lr', 'grb_clf_d', 'mlp_clf_hls',
-                    'mlp_clf_a', 'mlp_clf_lr', 'sgd_clf_l1r'):
+    if cv_param in ('col_slr_cols', 'cft_slr_thres', 'crt_slr_thres',
+                    'mnt_slr_thres', 'mdt_slr_thres', 'vrt_slr_thres',
+                    'mui_slr_n', 'skb_slr_k', 'sfm_slr_thres',
+                    'sfm_slr_lgr_l1r', 'sfm_slr_rf_e', 'sfm_slr_ext_e',
+                    'sfm_slr_grb_e', 'sfm_slr_grb_lr', 'sfm_slr_grb_d',
+                    'rna_slr_pv', 'rna_slr_fc', 'rna_slr_pc', 'rlf_slr_n',
+                    'rlf_slr_s', 'log_trf_shift', 'rna_trf_pc', 'rfe_clf_step',
+                    'svc_clf_deg', 'svc_clf_g', 'knn_clf_k', 'knn_clf_w',
+                    'rf_clf_e', 'ext_clf_e', 'ada_clf_e', 'grb_clf_e',
+                    'grb_clf_lr', 'grb_clf_d', 'mlp_clf_hls', 'mlp_clf_a',
+                    'mlp_clf_lr', 'sgd_clf_l1r'):
         cv_params[cv_param] = np.sort(cv_param_values, kind='mergesort')
     elif cv_param in ('rna_slr_ft', 'rna_trf_ft', 'rna_slr_mb', 'rna_slr_sm',
                       'rna_slr_tm', 'rna_trf_mb', 'nsn_trf_cc', 'nsn_trf_bg',
@@ -2380,6 +2386,11 @@ pipe_config = {
         'estimator': ConfidenceThreshold(meta_col=args.cft_slr_meta_col),
         'param_grid': {
             'threshold': cv_params['cft_slr_thres']},
+        'param_routing': ['feature_meta']},
+    'CorrelationThreshold': {
+        'estimator': CorrelationThreshold(meta_col=args.crt_slr_meta_col),
+        'param_grid': {
+            'threshold': cv_params['crt_slr_thres']},
         'param_routing': ['feature_meta']},
     'MeanThreshold': {
         'estimator': MeanThreshold(),

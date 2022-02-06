@@ -2568,18 +2568,20 @@ pipe_config = {
     'StandardScaler': {
         'estimator': StandardScaler()},
     'DESeq2RLEVST': {
-        'estimator': DESeq2RLEVST(),
+        'estimator': DESeq2RLEVST(memory=estm_memory),
         'param_grid': {
             'fit_type': cv_params['rna_trf_ft'],
             'model_batch': cv_params['rna_trf_mb']},
         'param_routing': ['sample_meta']},
     'EdgeRTMMCPM': {
-        'estimator': EdgeRTMMCPM(log=not args.edger_no_log),
+        'estimator': EdgeRTMMCPM(log=not args.edger_no_log,
+                                 memory=estm_memory),
         'param_grid': {
             'prior_count': cv_params['rna_trf_pc']},
         'param_routing': ['sample_meta']},
     'EdgeRTMMTPM': {
-        'estimator': EdgeRTMMTPM(log=not args.edger_no_log),
+        'estimator': EdgeRTMMTPM(log=not args.edger_no_log,
+                                 memory=estm_memory),
         'param_grid': {
             'prior_count': cv_params['rna_trf_pc']},
         'param_routing': ['feature_meta']},

@@ -24,9 +24,9 @@ dependencies:
   - openjdk
   - pandas
   - pillow
-  - python=3.8
+  - python
   - r-argparse
-  - r-base=3.6
+  - r-base
   - r-corpcor
   - r-devtools
   - r-essentials
@@ -41,8 +41,8 @@ dependencies:
   - r-rcpparmadillo
   - r-rjava
   - r-statmod
-  - rpy2=3.1
-  - scikit-learn=0.22.2
+  - rpy2
+  - scikit-learn
   - scipy
   - seaborn
   - tabulate

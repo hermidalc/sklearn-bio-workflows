@@ -7,9 +7,8 @@ Install and set up [Mambaforge](https://github.com/conda-forge/miniforge#mambafo
 Clone git repository and submodules:
 
 ```bash
-git clone git@github.com:hermidalc/sklearn-bio-workflows.git
+git clone --recurse-submodules git@github.com:hermidalc/sklearn-bio-workflows.git
 cd sklearn-bio-workflows
-git submodule update --init --recursive
 ```
 
 To install conda environment on Intel architecture hardware:

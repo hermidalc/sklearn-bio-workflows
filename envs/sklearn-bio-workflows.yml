@@ -40,7 +40,7 @@ dependencies:
   - r-rcpparmadillo
   - r-rjava
   - r-statmod
-  - rpy2
+  - rpy2=3.4
   - scikit-learn
   - scipy
   - seaborn

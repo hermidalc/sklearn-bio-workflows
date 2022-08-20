@@ -16,7 +16,7 @@ dependencies:
   - bioconductor-variancepartition
   - eli5
   - joblib
-  - libblas=*=*mkl
+  - libblas=*[build=*mkl]
   - libopenblas
   - matplotlib
   - natsort

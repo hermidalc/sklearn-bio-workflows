@@ -39,7 +39,6 @@ from matplotlib.offsetbox import AnchoredText
 from natsort import natsorted
 from pandas.api.types import (
     is_bool_dtype,
-    is_categorical_dtype,
     is_integer_dtype,
     is_float_dtype,
     is_object_dtype,
@@ -242,7 +241,7 @@ def load_dataset(dataset_file):
                     "{} column already exists in X".format(sample_meta_col)
                 )
             is_category = (
-                is_categorical_dtype(sample_meta[sample_meta_col])
+                isinstance(sample_meta[sample_meta_col], pd.CategoricalDtype)
                 or is_object_dtype(sample_meta[sample_meta_col])
                 or is_string_dtype(sample_meta[sample_meta_col])
             )
@@ -308,7 +307,7 @@ def load_dataset(dataset_file):
         new_feature_meta = pd.DataFrame(index=new_feature_names)
         for feature_meta_col in feature_meta.columns:
             if (
-                is_categorical_dtype(feature_meta[feature_meta_col])
+                isinstance(feature_meta[feature_meta_col], pd.CategoricalDtype)
                 or is_object_dtype(feature_meta[feature_meta_col])
                 or is_string_dtype(feature_meta[feature_meta_col])
             ):
@@ -349,7 +348,7 @@ def load_dataset(dataset_file):
                             X_ct.dtypes.apply(
                                 lambda d: (
                                     is_bool_dtype(d)
-                                    or is_categorical_dtype(d)
+                                    or isinstance(d, pd.CategoricalDtype)
                                     or is_object_dtype(d)
                                     or is_string_dtype(d)
                                 )
@@ -4084,7 +4083,7 @@ if __name__ == "__main__":
     }
 
     ordinal_encoder_categories = {
-        "tumor_stage": ["0", "i", "i or ii", "ii", "NA", "iii", "iv"]
+        "tumor_stage": ["0", "i", "i or ii", "ii", None, "iii", "iv"]
     }
 
     run_model()

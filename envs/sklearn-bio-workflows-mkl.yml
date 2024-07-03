@@ -22,7 +22,7 @@ dependencies:
   - natsort
   - numpy
   - openjdk
-  - pandas
+  - pandas=1.5
   - pillow
   - python=3.10
   - r-argparse

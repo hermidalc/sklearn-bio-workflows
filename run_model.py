@@ -20,6 +20,9 @@ warnings.filterwarnings(
     "ignore", category=FutureWarning, module="sklearn.utils.deprecation"
 )
 warnings.filterwarnings(
+    "ignore", category=FutureWarning, module="sklearn.utils.metaestimators"
+)
+warnings.filterwarnings(
     "ignore", category=FutureWarning, module="rpy2.robjects.pandas2ri"
 )
 
@@ -3097,6 +3100,9 @@ if __name__ == "__main__":
         )
         python_warnings.append(
             ":".join(["ignore", "", "FutureWarning", "sklearn.utils.deprecation"])
+        )
+        python_warnings.append(
+            ":".join(["ignore", "", "FutureWarning", "sklearn.utils.metaestimators"])
         )
         python_warnings.append(
             ":".join(["ignore", "", "FutureWarning", "rpy2.robjects.pandas2ri"])

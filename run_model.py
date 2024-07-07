@@ -1100,7 +1100,9 @@ def run_model():
             n_splits=args.test_splits, random_state=args.random_seed, shuffle=True
         )
         test_split_params["weights"] = group_weights
-    scv_n_jobs = args.n_jobs if args.scv_use_n_jobs else args.n_jobs - 1
+    scv_n_jobs = (
+        args.n_jobs if args.scv_use_n_jobs or args.n_jobs == 1 else args.n_jobs - 1
+    )
     scv_refit = (
         args.scv_refit if args.test_dataset or not pipe_props["uses_rjava"] else False
     )

@@ -8,9 +8,9 @@ export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export VECLIB_MAXIMUM_THREADS=1
 
-export MPLBACKEND=agg
 if [ -d "/lscratch/$SLURM_JOB_ID" ]; then
     export TMPDIR=/lscratch/$SLURM_JOB_ID
+    export MPLBACKEND=agg
 else
     mkdir -p ~/tmp
     export TMPDIR=~/tmp

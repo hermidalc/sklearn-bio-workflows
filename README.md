@@ -2,7 +2,7 @@
 
 ## Installation
 
-Install and set up [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge)
+Install and set up [Miniforge3](https://github.com/conda-forge/miniforge#download)
 
 Clone git repository and submodules:
 

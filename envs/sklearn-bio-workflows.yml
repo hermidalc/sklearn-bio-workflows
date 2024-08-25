@@ -9,11 +9,13 @@ dependencies:
   - bioconductor-biobase
   - bioconductor-deseq2
   - bioconductor-edger
+  - bioconductor-genefilter
   - bioconductor-limma
   - bioconductor-nanostringdiff
   - bioconductor-ruvseq
   - bioconductor-sva
   - bioconductor-variancepartition
+  - bioconductor-zinbwave
   - eli5
   - joblib
   - libopenblas

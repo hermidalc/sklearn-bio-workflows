@@ -116,8 +116,10 @@ from sklearn_extensions.feature_selection import (
     ConfidenceThreshold,
     CorrelationThreshold,
     DESeq2,
+    DESeq2ZINBWaVE,
     DreamVoom,
     EdgeR,
+    EdgeRZINBWaVE,
     EdgeRFilterByExpr,
     FCBF,
     Limma,
@@ -148,7 +150,7 @@ from sklearn_extensions.model_selection import (
 )
 from sklearn_extensions.pipeline import ExtendedPipeline, transform_feature_meta
 from sklearn_extensions.preprocessing import (
-    DESeq2RLEVST,
+    DESeq2NormVST,
     EdgeRTMMCPM,
     EdgeRTMMTPM,
     LimmaBatchEffectRemover,
@@ -2422,31 +2424,36 @@ if __name__ == "__main__":
         help="SelectKBest k sample limit",
     )
     parser.add_argument(
-        "--rna-slr-pv", type=float, nargs="+", help="RNA slr adj p-value"
+        "--rna-slr-pv", type=float, nargs="+", help="RNA-seq slr adj p-value"
     )
     parser.add_argument(
-        "--rna-slr-fc", type=float, nargs="+", help="RNA slr fold change"
+        "--rna-slr-fc", type=float, nargs="+", help="RNA-seq slr fold change"
     )
     parser.add_argument(
-        "--rna-slr-mb", type=str_bool, nargs="+", help="RNA slr model batch"
+        "--rna-slr-eps", type=float, nargs="+", help="RNA-seq slr epsilon"
+    )
+    parser.add_argument(
+        "--rna-slr-mb", type=str_bool, nargs="+", help="RNA-seq slr model batch"
     )
     parser.add_argument(
         "--rna-slr-sm",
         type=str,
         nargs="+",
         choices=["pv", "lfe_pv"],
-        help="RNA slr scoring method",
+        help="RNA-seq slr scoring method",
     )
     parser.add_argument(
         "--rna-slr-tm",
         type=str,
         nargs="+",
         choices=["cpm", "rlog", "tpm", "vst"],
-        help="RNA slr transform method",
+        help="RNA-seq slr transform method",
     )
-    parser.add_argument("--rna-slr-ft", type=str, nargs="+", help="RNA slr fit type")
     parser.add_argument(
-        "--rna-slr-pc", type=float, nargs="+", help="RNA slr prior count"
+        "--rna-slr-ft", type=str, nargs="+", help="RNA-seq slr fit type"
+    )
+    parser.add_argument(
+        "--rna-slr-pc", type=float, nargs="+", help="RNA-seq slr prior count"
     )
     parser.add_argument(
         "--sfm-slr-thres", type=float, nargs="+", help="SelectFromModel threshold"
@@ -2587,12 +2594,17 @@ if __name__ == "__main__":
         choices=["box-cox", "yeo-johnson"],
         help="PowerTransformer meth",
     )
-    parser.add_argument("--rna-trf-ft", type=str, nargs="+", help="RNA trf fit type")
     parser.add_argument(
-        "--rna-trf-mb", type=str_bool, nargs="+", help="RNA trf model batch"
+        "--rna-trf-nt", type=str, nargs="+", help="RNA-seq trf norm type"
     )
     parser.add_argument(
-        "--rna-trf-pc", type=float, nargs="+", help="RNA trf prior count"
+        "--rna-trf-ft", type=str, nargs="+", help="RNA-seq trf fit type"
+    )
+    parser.add_argument(
+        "--rna-trf-mb", type=str_bool, nargs="+", help="RNA-seq trf model batch"
+    )
+    parser.add_argument(
+        "--rna-trf-pc", type=float, nargs="+", help="RNA-seq trf prior count"
     )
     parser.add_argument(
         "--nsn-trf-cc", type=str, nargs="+", help="NanoStringNormalizer code_count"
@@ -2862,6 +2874,21 @@ if __name__ == "__main__":
         default=False,
         action="store_true",
         help="deseq2 no lfc shrink",
+    )
+    parser.add_argument(
+        "--edger-min-count", type=int, nargs="+", help="EdgeRFilterByExpr min count"
+    )
+    parser.add_argument(
+        "--edger-min-total-count",
+        type=int,
+        nargs="+",
+        help="EdgeRFilterByExpr min total count",
+    )
+    parser.add_argument(
+        "--edger-large-n", type=int, nargs="+", help="EdgeRFilterByExpr large n"
+    )
+    parser.add_argument(
+        "--edger-min-prop", type=int, nargs="+", help="EdgeRFilterByExpr min prop"
     )
     parser.add_argument(
         "--edger-no-log",
@@ -3382,6 +3409,7 @@ if __name__ == "__main__":
             "sfm_slr_grb_d",
             "rna_slr_pv",
             "rna_slr_fc",
+            "rna_slr_eps",
             "rna_slr_pc",
             "rlf_slr_n",
             "rlf_slr_s",
@@ -3406,6 +3434,7 @@ if __name__ == "__main__":
             cv_params[cv_param] = np.sort(cv_param_values, kind="mergesort")
         elif cv_param in (
             "rna_slr_ft",
+            "rna_trf_nt",
             "rna_trf_ft",
             "rna_slr_mb",
             "rna_slr_sm",
@@ -3638,6 +3667,22 @@ if __name__ == "__main__":
             },
             "param_routing": ["sample_meta"],
         },
+        "DESeq2ZINBWaVE": {
+            "estimator": DESeq2ZINBWaVE(
+                lfc_shrink=not args.deseq2_no_lfc_shrink, memory=estm_memory
+            ),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "fc": cv_params["rna_slr_fc"],
+                "scoring_meth": cv_params["rna_slr_sm"],
+                "epsilon": cv_params["rna_slr_eps"],
+                "norm_type": cv_params["rna_slr_nt"],
+                "fit_type": cv_params["rna_slr_ft"],
+                "model_batch": cv_params["rna_slr_mb"],
+            },
+            "param_routing": ["sample_meta"],
+        },
         "EdgeR": {
             "estimator": EdgeR(log=not args.edger_no_log, memory=estm_memory),
             "param_grid": {
@@ -3651,8 +3696,26 @@ if __name__ == "__main__":
             },
             "param_routing": ["sample_meta"],
         },
+        "EdgeRZINBWaVE": {
+            "estimator": EdgeRZINBWaVE(log=not args.edger_no_log, memory=estm_memory),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "scoring_meth": cv_params["rna_slr_sm"],
+                "epsilon": cv_params["rna_slr_eps"],
+                "model_batch": cv_params["rna_slr_mb"],
+                "transform_meth": cv_params["rna_slr_tm"],
+                "prior_count": cv_params["rna_slr_pc"],
+            },
+            "param_routing": ["sample_meta"],
+        },
         "EdgeRFilterByExpr": {
-            "estimator": EdgeRFilterByExpr(),
+            "estimator": EdgeRFilterByExpr(
+                min_count=args.edger_min_count,
+                min_total_count=args.edger_min_total_count,
+                large_n=args.edger_large_n,
+                min_prop=args.edger_min_prop,
+            ),
             "param_grid": {"model_batch": cv_params["rna_slr_mb"]},
             "param_routing": ["sample_meta"],
         },
@@ -3748,9 +3811,10 @@ if __name__ == "__main__":
         },
         "RobustScaler": {"estimator": RobustScaler()},
         "StandardScaler": {"estimator": StandardScaler()},
-        "DESeq2RLEVST": {
-            "estimator": DESeq2RLEVST(memory=estm_memory),
+        "DESeq2NormVST": {
+            "estimator": DESeq2NormVST(memory=estm_memory),
             "param_grid": {
+                "norm_type": cv_params["rna_trf_nt"],
                 "fit_type": cv_params["rna_trf_ft"],
                 "model_batch": cv_params["rna_trf_mb"],
             },

@@ -19,9 +19,6 @@ fi
 export PYTHONUNBUFFERED=1
 
 python_warnings=(
-    'ignore::FutureWarning:sklearn.utils.deprecation'
-    'ignore::FutureWarning:sklearn.utils.metaestimators'
-    'ignore::FutureWarning:rpy2.robjects.pandas2ri'
     'ignore:Optimization did not converge:UserWarning'
     'ignore:Optimization terminated early:UserWarning'
     'ignore:Persisting input arguments took:UserWarning'

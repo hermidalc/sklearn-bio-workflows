@@ -16,16 +16,6 @@ from tempfile import mkdtemp, gettempdir
 from traceback import format_exception_only
 from uuid import uuid4
 
-warnings.filterwarnings(
-    "ignore", category=FutureWarning, module="sklearn.utils.deprecation"
-)
-warnings.filterwarnings(
-    "ignore", category=FutureWarning, module="sklearn.utils.metaestimators"
-)
-warnings.filterwarnings(
-    "ignore", category=FutureWarning, module="rpy2.robjects.pandas2ri"
-)
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -33,7 +23,7 @@ import rpy2.rinterface_lib.embedded as r_embedded
 
 r_embedded.set_initoptions(("rpy2", "--quiet", "--no-save", "--max-ppsize=500000"))
 
-import rpy2.robjects as robjects
+import rpy2.robjects as ro
 import seaborn as sns
 from eli5 import explain_weights_df
 from joblib import Memory, Parallel, delayed, dump, load, parallel_backend
@@ -96,9 +86,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils import check_random_state
 from tabulate import tabulate
 
-numpy2ri.activate()
-pandas2ri.activate()
-
 from sklearn_extensions.compose import ExtendedColumnTransformer
 from sklearn_extensions.ensemble import (
     CachedExtraTreesClassifier,
@@ -145,7 +132,6 @@ from sklearn_extensions.model_selection import (
     RepeatedStratifiedSampleFromGroupKFold,
     StratifiedGroupShuffleSplit,
     StratifiedSampleFromGroupShuffleSplit,
-    permutation_test_score,
     shuffle_y,
 )
 from sklearn_extensions.pipeline import ExtendedPipeline, transform_feature_meta
@@ -190,15 +176,16 @@ def load_dataset(dataset_file):
         raise IOError("File does not exist/invalid: {}".format(dataset_file))
     if file_extension in (".Rda", ".rda", ".RData", ".Rdata"):
         r_base.load(dataset_file)
-        eset = robjects.globalenv[dataset_name]
+        eset = ro.globalenv[dataset_name]
     else:
         eset = r_base.readRDS(dataset_file)
-    X = pd.DataFrame(
-        r_base.t(r_biobase.exprs(eset)),
-        columns=r_biobase.featureNames(eset),
-        index=r_biobase.sampleNames(eset),
-    )
-    sample_meta = r_biobase.pData(eset)
+    with (ro.default_converter + numpy2ri.converter + pandas2ri.converter).context():
+        X = pd.DataFrame(
+            r_base.t(r_biobase.exprs(eset)),
+            columns=r_biobase.featureNames(eset),
+            index=r_biobase.sampleNames(eset),
+        )
+        sample_meta = r_biobase.pData(eset)
     y = np.array(sample_meta["Class"], dtype=int)
     if "Group" in sample_meta.columns:
         groups = np.array(sample_meta["Group"], dtype=int)
@@ -218,7 +205,8 @@ def load_dataset(dataset_file):
         group_weights = None
         sample_weights = None
     try:
-        feature_meta = r_biobase.fData(eset)
+        with (ro.default_converter + pandas2ri.converter).context():
+            feature_meta = r_biobase.fData(eset)
         feature_meta_category_cols = feature_meta.select_dtypes(
             include="category"
         ).columns
@@ -226,7 +214,8 @@ def load_dataset(dataset_file):
             feature_meta_category_cols
         ].astype(str)
     except ValueError:
-        feature_meta = pd.DataFrame(index=r_biobase.featureNames(eset))
+        with (ro.default_converter + pandas2ri.converter).context():
+            feature_meta = pd.DataFrame(index=r_biobase.featureNames(eset))
     if args.sample_meta_cols:
         new_feature_names = []
         if args.penalty_factor_meta_col in feature_meta.columns:
@@ -1987,19 +1976,21 @@ def run_model():
                 feature_results,
                 "{}/{}_feature_results.pkl".format(results_dir, model_name),
             )
-            r_base.saveRDS(
-                feature_results,
-                "{}/{}_feature_results.rds".format(results_dir, model_name),
-            )
+            with (ro.default_converter + pandas2ri.converter).context():
+                r_base.saveRDS(
+                    feature_results,
+                    "{}/{}_feature_results.rds".format(results_dir, model_name),
+                )
             if feature_weights is not None:
                 dump(
                     feature_weights,
                     "{}/{}_feature_weights.pkl".format(results_dir, model_name),
                 )
-                r_base.saveRDS(
-                    feature_weights,
-                    "{}/{}_feature_weights.rds".format(results_dir, model_name),
-                )
+                with (ro.default_converter + pandas2ri.converter).context():
+                    r_base.saveRDS(
+                        feature_weights,
+                        "{}/{}_feature_weights.rds".format(results_dir, model_name),
+                    )
         if args.verbose > 0:
             print("Overall Feature Ranking:")
             if feature_weights is not None:
@@ -2430,7 +2421,13 @@ if __name__ == "__main__":
         "--rna-slr-fc", type=float, nargs="+", help="RNA-seq slr fold change"
     )
     parser.add_argument(
-        "--rna-slr-eps", type=float, nargs="+", help="RNA-seq slr epsilon"
+        "--rna-slr-epse", type=float, nargs="+", help="RNA-seq slr epsilon exp"
+    )
+    parser.add_argument(
+        "--rna-slr-epse-min", type=int, help="RNA-seq slr epsilon exp min"
+    )
+    parser.add_argument(
+        "--rna-slr-epse-max", type=int, help="RNA-seq slr epsilon exp max"
     )
     parser.add_argument(
         "--rna-slr-mb", type=str_bool, nargs="+", help="RNA-seq slr model batch"
@@ -2450,10 +2447,10 @@ if __name__ == "__main__":
         help="RNA-seq slr transform method",
     )
     parser.add_argument(
-        "--rna-slr-ft", type=str, nargs="+", help="RNA-seq slr fit type"
+        "--rna-slr-nt", type=str, nargs="+", help="RNA-seq slr norm type"
     )
     parser.add_argument(
-        "--rna-slr-pc", type=float, nargs="+", help="RNA-seq slr prior count"
+        "--rna-slr-ft", type=str, nargs="+", help="RNA-seq slr fit type"
     )
     parser.add_argument(
         "--sfm-slr-thres", type=float, nargs="+", help="SelectFromModel threshold"
@@ -2602,9 +2599,6 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--rna-trf-mb", type=str_bool, nargs="+", help="RNA-seq trf model batch"
-    )
-    parser.add_argument(
-        "--rna-trf-pc", type=float, nargs="+", help="RNA-seq trf prior count"
     )
     parser.add_argument(
         "--nsn-trf-cc", type=str, nargs="+", help="NanoStringNormalizer code_count"
@@ -2876,26 +2870,27 @@ if __name__ == "__main__":
         help="deseq2 no lfc shrink",
     )
     parser.add_argument(
-        "--edger-min-count", type=int, nargs="+", help="EdgeRFilterByExpr min count"
+        "--edger-min-count", type=int, help="EdgeRFilterByExpr min count"
     )
     parser.add_argument(
-        "--edger-min-total-count",
-        type=int,
-        nargs="+",
-        help="EdgeRFilterByExpr min total count",
+        "--edger-min-total-count", type=int, help="EdgeRFilterByExpr min total count"
     )
-    parser.add_argument(
-        "--edger-large-n", type=int, nargs="+", help="EdgeRFilterByExpr large n"
-    )
-    parser.add_argument(
-        "--edger-min-prop", type=int, nargs="+", help="EdgeRFilterByExpr min prop"
-    )
+    parser.add_argument("--edger-large-n", type=int, help="EdgeRFilterByExpr large n")
+    parser.add_argument("--edger-min-prop", type=int, help="EdgeRFilterByExpr min prop")
     parser.add_argument(
         "--edger-no-log",
         default=False,
         action="store_true",
-        help="edger no log transform",
+        help="EdgeR no log transform",
     )
+    parser.add_argument("--edger-prior-count", type=float, help="edger prior count")
+    parser.add_argument(
+        "--limma-no-log",
+        default=False,
+        action="store_true",
+        help="limma no log transform",
+    )
+    parser.add_argument("--limma-prior-count", type=float, help="limma prior count")
     parser.add_argument(
         "--limma-robust", default=False, action="store_true", help="limma robust"
     )
@@ -3127,15 +3122,6 @@ if __name__ == "__main__":
         python_warnings = (
             [os.environ["PYTHONWARNINGS"]] if "PYTHONWARNINGS" in os.environ else []
         )
-        python_warnings.append(
-            ":".join(["ignore", "", "FutureWarning", "sklearn.utils.deprecation"])
-        )
-        python_warnings.append(
-            ":".join(["ignore", "", "FutureWarning", "sklearn.utils.metaestimators"])
-        )
-        python_warnings.append(
-            ":".join(["ignore", "", "FutureWarning", "rpy2.robjects.pandas2ri"])
-        )
         os.environ["PYTHONWARNINGS"] = ",".join(python_warnings)
     if args.filter_warnings:
         if args.parallel_backend == "multiprocessing":
@@ -3287,11 +3273,12 @@ if __name__ == "__main__":
     # suppress linux conda qt5 wayland warning
     if sys.platform.startswith("linux"):
         os.environ["XDG_SESSION_TYPE"] = "x11"
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
 
     r_base = importr("base")
     r_biobase = importr("Biobase")
-    robjects.r("set.seed({:d})".format(args.random_seed))
-    robjects.r("options('java.parameters'=\"-Xmx{:d}m\")".format(args.jvm_heap_size))
+    ro.r("set.seed({:d})".format(args.random_seed))
+    ro.r("options('java.parameters'=\"-Xmx{:d}m\")".format(args.jvm_heap_size))
 
     atexit.register(run_cleanup)
 
@@ -3388,6 +3375,7 @@ if __name__ == "__main__":
                 "lgr_clf_ce",
                 "ada_clf_lgr_ce",
                 "sgd_clf_ae",
+                "rna_slr_epse",
             ):
                 cv_params[cv_param[:-1]] = None
             continue
@@ -3410,11 +3398,9 @@ if __name__ == "__main__":
             "rna_slr_pv",
             "rna_slr_fc",
             "rna_slr_eps",
-            "rna_slr_pc",
             "rlf_slr_n",
             "rlf_slr_s",
             "log_trf_shift",
-            "rna_trf_pc",
             "rfe_clf_step",
             "svc_clf_deg",
             "svc_clf_g",
@@ -3433,6 +3419,7 @@ if __name__ == "__main__":
         ):
             cv_params[cv_param] = np.sort(cv_param_values, kind="mergesort")
         elif cv_param in (
+            "rna_slr_nt",
             "rna_slr_ft",
             "rna_trf_nt",
             "rna_trf_ft",
@@ -3484,6 +3471,7 @@ if __name__ == "__main__":
             "lgr_clf_ce",
             "ada_clf_lgr_ce",
             "sgd_clf_ae",
+            "rna_slr_epse",
         ):
             cv_params[cv_param[:-1]] = 10.0 ** np.asarray(cv_param_values)
         elif cv_param in (
@@ -3493,6 +3481,7 @@ if __name__ == "__main__":
             "lgr_clf_ce_max",
             "ada_clf_lgr_ce_max",
             "sgd_clf_ae_max",
+            "rna_slr_epse_max",
         ):
             cv_param = "_".join(cv_param.split("_")[:-1])
             cv_param_v_min = cv_params["{}_min".format(cv_param)]
@@ -3668,9 +3657,7 @@ if __name__ == "__main__":
             "param_routing": ["sample_meta"],
         },
         "DESeq2ZINBWaVE": {
-            "estimator": DESeq2ZINBWaVE(
-                lfc_shrink=not args.deseq2_no_lfc_shrink, memory=estm_memory
-            ),
+            "estimator": DESeq2ZINBWaVE(memory=estm_memory),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
@@ -3684,7 +3671,11 @@ if __name__ == "__main__":
             "param_routing": ["sample_meta"],
         },
         "EdgeR": {
-            "estimator": EdgeR(log=not args.edger_no_log, memory=estm_memory),
+            "estimator": EdgeR(
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
@@ -3692,12 +3683,15 @@ if __name__ == "__main__":
                 "scoring_meth": cv_params["rna_slr_sm"],
                 "model_batch": cv_params["rna_slr_mb"],
                 "transform_meth": cv_params["rna_slr_tm"],
-                "prior_count": cv_params["rna_slr_pc"],
             },
             "param_routing": ["sample_meta"],
         },
         "EdgeRZINBWaVE": {
-            "estimator": EdgeRZINBWaVE(log=not args.edger_no_log, memory=estm_memory),
+            "estimator": EdgeRZINBWaVE(
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
@@ -3705,7 +3699,6 @@ if __name__ == "__main__":
                 "epsilon": cv_params["rna_slr_eps"],
                 "model_batch": cv_params["rna_slr_mb"],
                 "transform_meth": cv_params["rna_slr_tm"],
-                "prior_count": cv_params["rna_slr_pc"],
             },
             "param_routing": ["sample_meta"],
         },
@@ -3721,7 +3714,8 @@ if __name__ == "__main__":
         },
         "LimmaVoom": {
             "estimator": LimmaVoom(
-                log=not args.edger_no_log,
+                log=not args.limma_no_log,
+                prior_count=args.limma_prior_count,
                 memory=estm_memory,
                 model_dupcor=args.limma_model_dupcor,
             ),
@@ -3732,12 +3726,15 @@ if __name__ == "__main__":
                 "scoring_meth": cv_params["rna_slr_sm"],
                 "model_batch": cv_params["rna_slr_mb"],
                 "transform_meth": cv_params["rna_slr_tm"],
-                "prior_count": cv_params["rna_slr_pc"],
             },
             "param_routing": ["sample_meta"],
         },
         "DreamVoom": {
-            "estimator": DreamVoom(log=not args.edger_no_log, memory=estm_memory),
+            "estimator": DreamVoom(
+                log=not args.limma_no_log,
+                prior_count=args.limma_prior_count,
+                memory=estm_memory,
+            ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
@@ -3745,7 +3742,6 @@ if __name__ == "__main__":
                 "scoring_meth": cv_params["rna_slr_sm"],
                 "model_batch": cv_params["rna_slr_mb"],
                 "transform_meth": cv_params["rna_slr_tm"],
-                "prior_count": cv_params["rna_slr_pc"],
             },
             "param_routing": ["sample_meta"],
         },
@@ -3821,13 +3817,19 @@ if __name__ == "__main__":
             "param_routing": ["sample_meta"],
         },
         "EdgeRTMMCPM": {
-            "estimator": EdgeRTMMCPM(log=not args.edger_no_log, memory=estm_memory),
-            "param_grid": {"prior_count": cv_params["rna_trf_pc"]},
+            "estimator": EdgeRTMMCPM(
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
             "param_routing": ["sample_meta"],
         },
         "EdgeRTMMTPM": {
-            "estimator": EdgeRTMMTPM(log=not args.edger_no_log, memory=estm_memory),
-            "param_grid": {"prior_count": cv_params["rna_trf_pc"]},
+            "estimator": EdgeRTMMTPM(
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
             "param_routing": ["feature_meta"],
         },
         "LimmaBatchEffectRemover": {

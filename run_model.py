@@ -4107,6 +4107,7 @@ if __name__ == "__main__":
     ]
 
     params_log_xticks = [
+        "slr__epsilon",
         "slr__estimator__C",
         "slr__estimator__learning_rate",
         "clf__alpha",
@@ -4124,6 +4125,7 @@ if __name__ == "__main__":
         "slr__estimator__max_depth",
         "slr__estimator__max_features",
         "slr__fc",
+        "slr__fit_type",
         "slr__model_batch",
         "slr__pv",
         "slr__scoring_meth",
@@ -4135,6 +4137,7 @@ if __name__ == "__main__":
         "trf__model_batch",
         "trf__code_count",
         "trf__background",
+        "trf__fit_type",
         "trf__sample_content",
         "clf",
         "clf__class_weight",
@@ -4163,7 +4166,7 @@ if __name__ == "__main__":
     }
 
     ordinal_encoder_categories = {
-        "tumor_stage": ["0", "i", "i or ii", "ii", None, "iii", "iv"]
+        "tumor_stage": ["i", "ii", "iii", "iv"],
     }
 
     run_model()

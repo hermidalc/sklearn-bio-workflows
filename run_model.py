@@ -2511,7 +2511,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sfm-slr-lgr-solver",
         type=str,
-        choices=["newton-cg", "libfgs", "liblinear", "sag", "saga"],
+        choices=["newton-cg", "lbfgs", "liblinear", "sag", "saga"],
         default="lbfgs",
         help="SelectFromModel LogisticRegression solver",
     )
@@ -2690,7 +2690,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lgr-clf-solver",
         type=str,
-        choices=["newton-cg", "libfgs", "liblinear", "sag", "saga"],
+        choices=["newton-cg", "lbfgs", "liblinear", "sag", "saga"],
         default="lbfgs",
         help="LogisticRegression solver",
     )

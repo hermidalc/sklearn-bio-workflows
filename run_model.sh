@@ -23,6 +23,7 @@ python_warnings=(
     'ignore:Optimization terminated early:UserWarning'
     'ignore:Persisting input arguments took:UserWarning'
     'ignore:Estimator fit failed:RuntimeWarning'
+    'ignore:Some fits failed:RuntimeWarning:sklearn_extensions.model_selection._validation'
     'ignore:Solver terminated early:UserWarning:sklearn.svm._base'
     'ignore:The max_iter was reached which means the coef_ did not converge:UserWarning:sklearn.linear_model._sag'
     'ignore:No features were selected:UserWarning:sklearn_extensions.feature_selection._base'

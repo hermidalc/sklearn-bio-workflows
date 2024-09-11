@@ -3167,7 +3167,15 @@ if __name__ == "__main__":
                 )
             if any(w in args.filter_warnings for w in ("fitfailed", "slr")):
                 warnings.filterwarnings(
-                    "ignore", category=FitFailedWarning, message="^Estimator fit failed"
+                    "ignore",
+                    category=FitFailedWarning,
+                    message="^Estimator fit failed",
+                )
+                warnings.filterwarnings(
+                    "ignore",
+                    category=FitFailedWarning,
+                    message="^Some fits failed",
+                    module="sklearn_extensions.model_selection._validation",
                 )
             if "slr" in args.filter_warnings:
                 warnings.filterwarnings(
@@ -3241,6 +3249,16 @@ if __name__ == "__main__":
             if any(w in args.filter_warnings for w in ("fitfailed", "slr")):
                 python_warnings.append(
                     ":".join(["ignore", "Estimator fit failed", "RuntimeWarning"])
+                )
+                python_warnings.append(
+                    ":".join(
+                        [
+                            "ignore",
+                            "Some fits failed",
+                            "RuntimeWarning",
+                            "sklearn_extensions.model_selection._validation",
+                        ]
+                    )
                 )
             if "slr" in args.filter_warnings:
                 python_warnings.append(

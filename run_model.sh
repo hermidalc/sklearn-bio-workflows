@@ -22,6 +22,7 @@ python_warnings=(
     'ignore:Optimization did not converge:UserWarning'
     'ignore:Optimization terminated early:UserWarning'
     'ignore:Persisting input arguments took:UserWarning'
+    'ignore:Possible name collisions between functions:UserWarning'
     'ignore:Estimator fit failed:RuntimeWarning'
     'ignore:Some fits failed:RuntimeWarning:sklearn_extensions.model_selection._validation'
     'ignore:Solver terminated early:UserWarning:sklearn.svm._base'

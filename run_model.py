@@ -27,6 +27,7 @@ import rpy2.robjects as ro
 import seaborn as sns
 from eli5 import explain_weights_df
 from joblib import Memory, Parallel, delayed, dump, load, parallel_backend
+from joblib.memory import JobLibCollisionWarning
 from joblib._memmapping_reducer import TemporaryResourcesManager
 from matplotlib.offsetbox import AnchoredText
 from natsort import natsorted
@@ -3165,6 +3166,12 @@ if __name__ == "__main__":
                     category=UserWarning,
                     message="^Persisting input arguments took",
                 )
+                # filter joblib #1060 issue
+                warnings.filterwarnings(
+                    "ignore",
+                    category=JobLibCollisionWarning,
+                    message="^Possible name collisions between functions",
+                )
             if any(w in args.filter_warnings for w in ("fitfailed", "slr")):
                 warnings.filterwarnings(
                     "ignore",
@@ -3244,6 +3251,15 @@ if __name__ == "__main__":
                 python_warnings.append(
                     ":".join(
                         ["ignore", "Persisting input arguments took", "UserWarning"]
+                    )
+                )
+                python_warnings.append(
+                    ":".join(
+                        [
+                            "ignore",
+                            "Possible name collisions between functions",
+                            "UserWarning",
+                        ]
                     )
                 )
             if any(w in args.filter_warnings for w in ("fitfailed", "slr")):

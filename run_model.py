@@ -1202,7 +1202,8 @@ def run_model():
     results_dir = "{}/{}".format(args.out_dir, model_name)
     if args.clean_results_dir and os.path.isdir(results_dir):
         rmtree(results_dir)
-    os.makedirs(results_dir, mode=0o755, exist_ok=True)
+    if args.save_results:
+        os.makedirs(results_dir, mode=0o755, exist_ok=True)
     # train w/ independent test sets
     if args.test_dataset:
         with parallel_backend(

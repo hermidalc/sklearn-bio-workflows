@@ -2616,18 +2616,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--nsn-trf-sc", type=str, nargs="+", help="NanoStringNormalizer sample_content"
     )
-    parser.add_argument("--rfe-clf-step", type=float, nargs="+", help="RFE step")
+    parser.add_argument("--rfe-slr-step", type=float, nargs="+", help="RFE step")
     parser.add_argument(
-        "--rfe-clf-reducing-step",
+        "--rfe-slr-reducing-step",
         default=False,
         action="store_true",
         help="RFE reducing step",
     )
-    parser.add_argument("--rfe-clf-tune-step-at", type=int, help="RFE tune step at")
+    parser.add_argument("--rfe-slr-tune-step-at", type=int, help="RFE tune step at")
     parser.add_argument(
-        "--rfe-clf-tuning-step", type=float, default=1, help="RFE tuning step"
+        "--rfe-slr-tuning-step", type=float, default=1, help="RFE tuning step"
     )
-    parser.add_argument("--rfe-clf-verbose", type=int, default=0, help="RFE verbosity")
+    parser.add_argument("--rfe-slr-verbose", type=int, default=0, help="RFE verbosity")
     parser.add_argument("--svc-clf-ce", type=int, nargs="+", help="SVC/LinearSVC C exp")
     parser.add_argument("--svc-clf-ce-min", type=int, help="SVC/LinearSVC C exp min")
     parser.add_argument("--svc-clf-ce-max", type=int, help="SVC/LinearSVC C exp max")
@@ -3435,7 +3435,7 @@ if __name__ == "__main__":
             "rlf_slr_n",
             "rlf_slr_s",
             "log_trf_shift",
-            "rfe_clf_step",
+            "rfe_slr_step",
             "svc_clf_deg",
             "svc_clf_g",
             "knn_clf_k",
@@ -3892,16 +3892,16 @@ if __name__ == "__main__":
                     random_state=args.random_seed,
                     tol=args.lsvc_clf_tol,
                 ),
-                reducing_step=args.rfe_clf_reducing_step,
-                tune_step_at=args.rfe_clf_tune_step_at,
-                tuning_step=args.rfe_clf_tuning_step,
-                verbose=args.rfe_clf_verbose,
+                reducing_step=args.rfe_slr_reducing_step,
+                tune_step_at=args.rfe_slr_tune_step_at,
+                tuning_step=args.rfe_slr_tuning_step,
+                verbose=args.rfe_slr_verbose,
                 memory=estm_memory,
             ),
             "param_grid": {
                 "estimator__C": cv_params["svc_clf_c"],
                 "estimator__class_weight": cv_params["svc_clf_cw"],
-                "step": cv_params["rfe_clf_step"],
+                "step": cv_params["rfe_slr_step"],
                 "n_features_to_select": cv_params["skb_slr_k"],
             },
             "param_routing": ["feature_meta", "sample_weight"],
@@ -3914,16 +3914,16 @@ if __name__ == "__main__":
                     max_iter=args.svc_clf_max_iter,
                     random_state=args.random_seed,
                 ),
-                reducing_step=args.rfe_clf_reducing_step,
-                tune_step_at=args.rfe_clf_tune_step_at,
-                tuning_step=args.rfe_clf_tuning_step,
-                verbose=args.rfe_clf_verbose,
+                reducing_step=args.rfe_slr_reducing_step,
+                tune_step_at=args.rfe_slr_tune_step_at,
+                tuning_step=args.rfe_slr_tuning_step,
+                verbose=args.rfe_slr_verbose,
                 memory=estm_memory,
             ),
             "param_grid": {
                 "estimator__C": cv_params["svc_clf_c"],
                 "estimator__class_weight": cv_params["svc_clf_cw"],
-                "step": cv_params["rfe_clf_step"],
+                "step": cv_params["rfe_slr_step"],
                 "n_features_to_select": cv_params["skb_slr_k"],
             },
             "param_routing": ["feature_meta", "sample_weight"],
@@ -3931,10 +3931,10 @@ if __name__ == "__main__":
         "RFE-RandomForestClassifier": {
             "estimator": ExtendedRFE(
                 RandomForestClassifier(random_state=args.random_seed),
-                reducing_step=args.rfe_clf_reducing_step,
-                tune_step_at=args.rfe_clf_tune_step_at,
-                tuning_step=args.rfe_clf_tuning_step,
-                verbose=args.rfe_clf_verbose,
+                reducing_step=args.rfe_slr_reducing_step,
+                tune_step_at=args.rfe_slr_tune_step_at,
+                tuning_step=args.rfe_slr_tuning_step,
+                verbose=args.rfe_slr_verbose,
                 memory=estm_memory,
             ),
             "param_grid": {
@@ -3942,7 +3942,7 @@ if __name__ == "__main__":
                 "estimator__max_depth": cv_params["rf_clf_d"],
                 "estimator__max_features": cv_params["rf_clf_f"],
                 "estimator__class_weight": cv_params["rf_clf_cw"],
-                "step": cv_params["rfe_clf_step"],
+                "step": cv_params["rfe_slr_step"],
                 "n_features_to_select": cv_params["skb_slr_k"],
             },
             "param_routing": ["feature_meta", "sample_weight"],
@@ -3950,10 +3950,10 @@ if __name__ == "__main__":
         "RFE-ExtraTreesClassifier": {
             "estimator": ExtendedRFE(
                 ExtraTreesClassifier(random_state=args.random_seed),
-                reducing_step=args.rfe_clf_reducing_step,
-                tune_step_at=args.rfe_clf_tune_step_at,
-                tuning_step=args.rfe_clf_tuning_step,
-                verbose=args.rfe_clf_verbose,
+                reducing_step=args.rfe_slr_reducing_step,
+                tune_step_at=args.rfe_slr_tune_step_at,
+                tuning_step=args.rfe_slr_tuning_step,
+                verbose=args.rfe_slr_verbose,
                 memory=estm_memory,
             ),
             "param_grid": {
@@ -3961,7 +3961,7 @@ if __name__ == "__main__":
                 "estimator__max_depth": cv_params["ext_clf_d"],
                 "estimator__max_features": cv_params["ext_clf_f"],
                 "estimator__class_weight": cv_params["ext_clf_cw"],
-                "step": cv_params["rfe_clf_step"],
+                "step": cv_params["rfe_slr_step"],
                 "n_features_to_select": cv_params["skb_slr_k"],
             },
             "param_routing": ["sample_weight"],
@@ -3969,10 +3969,10 @@ if __name__ == "__main__":
         "RFE-GradientBoostingClassifier": {
             "estimator": ExtendedRFE(
                 GradientBoostingClassifier(random_state=args.random_seed),
-                reducing_step=args.rfe_clf_reducing_step,
-                tune_step_at=args.rfe_clf_tune_step_at,
-                tuning_step=args.rfe_clf_tuning_step,
-                verbose=args.rfe_clf_verbose,
+                reducing_step=args.rfe_slr_reducing_step,
+                tune_step_at=args.rfe_slr_tune_step_at,
+                tuning_step=args.rfe_slr_tuning_step,
+                verbose=args.rfe_slr_verbose,
                 memory=estm_memory,
             ),
             "param_grid": {
@@ -3980,7 +3980,7 @@ if __name__ == "__main__":
                 "estimator__learning_rate": cv_params["grb_clf_lr"],
                 "estimator__max_depth": cv_params["grb_clf_d"],
                 "estimator__max_features": cv_params["grb_clf_f"],
-                "step": cv_params["rfe_clf_step"],
+                "step": cv_params["rfe_slr_step"],
                 "n_features_to_select": cv_params["skb_slr_k"],
             },
             "param_routing": ["feature_meta", "sample_weight"],

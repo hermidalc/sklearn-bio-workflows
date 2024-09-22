@@ -4130,6 +4130,7 @@ if __name__ == "__main__":
         "slr__n_neighbors",
         "slr__prior_count",
         "slr__sample_size",
+        "slr__step",
         "trf__prior_count",
         "trf__shift",
         "clf__n_features_to_select",

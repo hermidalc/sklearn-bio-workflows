@@ -23,6 +23,7 @@ python_warnings=(
     'ignore:Optimization terminated early:UserWarning'
     'ignore:Persisting input arguments took:UserWarning'
     'ignore:Possible name collisions between functions:UserWarning'
+    'ignore:A worker stopped while some jobs were given to the executor:UserWarning'
     'ignore:Estimator fit failed:RuntimeWarning'
     'ignore:Some fits failed:RuntimeWarning:sklearn_extensions.model_selection._validation'
     'ignore:Solver terminated early:UserWarning:sklearn.svm._base'
@@ -39,7 +40,7 @@ source $CONDA_BASE/etc/profile.d/conda.sh
 while [[ -v CONDA_DEFAULT_ENV ]]; do
     conda deactivate
 done
-conda activate sklearn-bio-workflows
+conda activate sklearn-bio-workflows-r43
 
 if [[ -v SLURM_SUBMIT_DIR ]]; then
     SCRIPT_DIR="$SLURM_SUBMIT_DIR"

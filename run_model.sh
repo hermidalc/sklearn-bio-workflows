@@ -40,7 +40,7 @@ source $CONDA_BASE/etc/profile.d/conda.sh
 while [[ -v CONDA_DEFAULT_ENV ]]; do
     conda deactivate
 done
-conda activate sklearn-bio-workflows-r43
+conda activate sklearn-bio-workflows
 
 if [[ -v SLURM_SUBMIT_DIR ]]; then
     SCRIPT_DIR="$SLURM_SUBMIT_DIR"

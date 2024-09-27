@@ -16,6 +16,7 @@ dependencies:
   - bioconductor-ruvseq
   - bioconductor-sva
   - bioconductor-variancepartition
+  - bioconductor-wrench
   - bioconductor-zinbwave
   - eli5
   - joblib

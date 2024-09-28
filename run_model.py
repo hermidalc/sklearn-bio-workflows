@@ -144,6 +144,7 @@ from sklearn_extensions.preprocessing import (
     LogTransformer,
     NanoStringNormalizer,
     NanoStringDiffNormalizer,
+    WrenchCPM,
 )
 from sklearn_extensions.svm import CachedLinearSVC, CachedSVC
 from sklearn_extensions.utils import _determine_key_type
@@ -2883,16 +2884,41 @@ if __name__ == "__main__":
         "--edger-no-log",
         default=False,
         action="store_true",
-        help="EdgeR no log transform",
+        help="edgeR no log transform",
     )
-    parser.add_argument("--edger-prior-count", type=float, help="edger prior count")
+    parser.add_argument(
+        "--edger-prior-count", type=float, default=2, help="edgeR prior count"
+    )
+    parser.add_argument(
+        "--wrench-est-type",
+        type=str,
+        default="w.marg.mean",
+        help="Wrench estimator type",
+    )
+    parser.add_argument(
+        "--wrench-ref-type",
+        type=str,
+        default="sw.means",
+        help="Wrench reference vector type",
+    )
+    parser.add_argument(
+        "--wrench-no-log",
+        default=False,
+        action="store_true",
+        help="Wrench no log transform",
+    )
+    parser.add_argument(
+        "--wrench-prior-count", type=float, default=1, help="Wrench prior count"
+    )
     parser.add_argument(
         "--limma-no-log",
         default=False,
         action="store_true",
         help="limma no log transform",
     )
-    parser.add_argument("--limma-prior-count", type=float, help="limma prior count")
+    parser.add_argument(
+        "--limma-prior-count", type=float, default=2, help="limma prior count"
+    )
     parser.add_argument(
         "--limma-robust", default=False, action="store_true", help="limma robust"
     )
@@ -3881,6 +3907,16 @@ if __name__ == "__main__":
                 memory=estm_memory,
             ),
             "param_routing": ["feature_meta"],
+        },
+        "WrenchCPM": {
+            "estimator": WrenchCPM(
+                est_type=args.wrench_est_type,
+                ref_type=args.wrench_ref_type,
+                log=not args.wrench_no_log,
+                prior_count=args.wrench_prior_count,
+                memory=estm_memory,
+            ),
+            "param_routing": ["sample_meta"],
         },
         "LimmaBatchEffectRemover": {
             "estimator": LimmaBatchEffectRemover(preserve_design=True),

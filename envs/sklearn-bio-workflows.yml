@@ -34,6 +34,7 @@ dependencies:
   - r-corpcor
   - r-devtools
   - r-essentials
+  - r-fastglm
   - r-fnn
   - r-fselector
   - r-jade

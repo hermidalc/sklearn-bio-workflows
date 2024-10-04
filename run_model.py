@@ -103,15 +103,21 @@ from sklearn_extensions.feature_selection import (
     ColumnSelector,
     ConfidenceThreshold,
     CorrelationThreshold,
+    CountThreshold,
     DESeq2Selector,
+    DESeq2WrenchSelector,
     DESeq2ZINBWaVESelector,
+    DESeq2WrenchZINBWaVESelector,
     DreamVoomSelector,
-    EdgeRSelector,
-    EdgeRZINBWaVESelector,
     EdgeRFilterByExpr,
+    EdgeRSelector,
+    EdgeRWrenchSelector,
+    EdgeRZINBWaVESelector,
+    EdgeRWrenchZINBWaVESelector,
     FCBF,
     LimmaSelector,
     LimmaVoomSelector,
+    LimmaVoomWrenchSelector,
     MeanThreshold,
     MedianThreshold,
     MutualInfoScorerClassification,
@@ -138,12 +144,13 @@ from sklearn_extensions.model_selection import (
 from sklearn_extensions.pipeline import ExtendedPipeline, transform_feature_meta
 from sklearn_extensions.preprocessing import (
     DESeq2Normalizer,
+    DESeq2WrenchNormalizer,
     EdgeRNormalizer,
+    EdgeRWrenchNormalizer,
     LimmaBatchEffectRemover,
     LogTransformer,
     NanoStringNormalizer,
     NanoStringDiffNormalizer,
-    WrenchNormalizer,
 )
 from sklearn_extensions.svm import CachedLinearSVC, CachedSVC
 from sklearn_extensions.utils import _determine_key_type
@@ -2379,6 +2386,12 @@ if __name__ == "__main__":
         help="CorrelationThreshold feature metadata column name",
     )
     parser.add_argument(
+        "--ctr-min-count", type=int, default=1, help="CountThreshold min count"
+    )
+    parser.add_argument(
+        "--ctr-min-samples", type=int, default=1, help="CountThreshold min samples"
+    )
+    parser.add_argument(
         "--mnt-slr-thres", type=float, nargs="+", help="MeanThreshold threshold"
     )
     parser.add_argument(
@@ -2430,29 +2443,6 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--rna-slr-epse-max", type=int, help="RNA-seq slr epsilon exp max"
-    )
-    parser.add_argument(
-        "--rna-slr-nt", type=str, nargs="+", help="RNA-seq slr norm type"
-    )
-    parser.add_argument(
-        "--rna-slr-ft", type=str, nargs="+", help="RNA-seq slr fit type"
-    )
-    parser.add_argument(
-        "--rna-slr-st",
-        type=str,
-        nargs="+",
-        choices=["pv", "lfe_pv"],
-        help="RNA-seq slr scoring type",
-    )
-    parser.add_argument(
-        "--rna-slr-tt",
-        type=str,
-        nargs="+",
-        choices=["cpm", "rlog", "tpm", "vst"],
-        help="RNA-seq slr trans type",
-    )
-    parser.add_argument(
-        "--rna-slr-mb", type=str_bool, nargs="+", help="RNA-seq slr model batch"
     )
     parser.add_argument(
         "--sfm-slr-thres", type=float, nargs="+", help="SelectFromModel threshold"
@@ -2592,22 +2582,6 @@ if __name__ == "__main__":
         nargs="+",
         choices=["box-cox", "yeo-johnson"],
         help="PowerTransformer meth",
-    )
-    parser.add_argument(
-        "--rna-trf-nt", type=str, nargs="+", help="RNA-seq trf norm type"
-    )
-    parser.add_argument(
-        "--rna-trf-ft", type=str, nargs="+", help="RNA-seq trf fit type"
-    )
-    parser.add_argument(
-        "--rna-trf-tt",
-        type=str,
-        nargs="+",
-        choices=["cpm", "rlog", "tpm", "vst"],
-        help="RNA-seq trf trans type",
-    )
-    parser.add_argument(
-        "--rna-trf-mb", type=str_bool, nargs="+", help="RNA-seq trf model batch"
     )
     parser.add_argument(
         "--nsn-trf-cc", type=str, nargs="+", help="NanoStringNormalizer code_count"
@@ -2873,10 +2847,28 @@ if __name__ == "__main__":
         "--sgd-clf-max-iter", type=int, default=1000, help="SGDClassifier max_iter"
     )
     parser.add_argument(
+        "--deseq2-norm-type", type=str, default="ratio", help="DESeq2 norm type"
+    )
+    parser.add_argument(
+        "--deseq2-fit-type", type=str, default="parametric", help="DESeq2 fit type"
+    )
+    parser.add_argument(
+        "--deseq2-score-type", type=str, default="pv", help="DESeq2 score type"
+    )
+    parser.add_argument(
+        "--deseq2-trans-type", type=str, default="vst", help="DESeq2 trans type"
+    )
+    parser.add_argument(
         "--deseq2-no-lfc-shrink",
         default=False,
         action="store_true",
-        help="deseq2 no lfc shrink",
+        help="DESeq2 no lfc shrink",
+    )
+    parser.add_argument(
+        "--deseq2-model-batch",
+        default=False,
+        action="store_true",
+        help="DESeq2 model batch",
     )
     parser.add_argument(
         "--edger-min-count", type=int, help="EdgeRFilterByExpr min count"
@@ -2886,6 +2878,21 @@ if __name__ == "__main__":
     )
     parser.add_argument("--edger-large-n", type=int, help="EdgeRFilterByExpr large n")
     parser.add_argument("--edger-min-prop", type=int, help="EdgeRFilterByExpr min prop")
+    parser.add_argument(
+        "--edger-norm-type", type=str, default="TMM", help="edgeR norm type"
+    )
+    parser.add_argument(
+        "--edger-score-type", type=str, default="pv", help="edgeR score type"
+    )
+    parser.add_argument(
+        "--edger-trans-type", type=str, default="cpm", help="edgeR trans type"
+    )
+    parser.add_argument(
+        "--edger-model-batch",
+        default=False,
+        action="store_true",
+        help="edgeR model batch",
+    )
     parser.add_argument(
         "--edger-no-log",
         default=False,
@@ -2914,13 +2921,13 @@ if __name__ == "__main__":
         help="Wrench z adj",
     )
     parser.add_argument(
-        "--wrench-no-log",
-        default=False,
-        action="store_true",
-        help="Wrench no log transform",
+        "--limmar-norm-type", type=str, default="TMM", help="limma norm type"
     )
     parser.add_argument(
-        "--wrench-prior-count", type=float, default=1, help="Wrench prior count"
+        "--limma-score-type", type=str, default="pv", help="limma score type"
+    )
+    parser.add_argument(
+        "--limma-trans-type", type=str, default="cpm", help="limma trans type"
     )
     parser.add_argument(
         "--limma-no-log",
@@ -2936,6 +2943,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--limma-trend", default=False, action="store_true", help="limma trend"
+    )
+    parser.add_argument(
+        "--limma-model-batch",
+        default=False,
+        action="store_true",
+        help="limma model batch",
     )
     parser.add_argument(
         "--limma-model-dupcor",
@@ -3507,15 +3520,6 @@ if __name__ == "__main__":
         ):
             cv_params[cv_param] = np.sort(cv_param_values, kind="mergesort")
         elif cv_param in (
-            "rna_slr_nt",
-            "rna_slr_ft",
-            "rna_slr_st",
-            "rna_slr_tt",
-            "rna_slr_mb",
-            "rna_trf_nt",
-            "rna_trf_ft",
-            "rna_trf_tt",
-            "rna_trf_mb",
             "nsn_trf_cc",
             "nsn_trf_bg",
             "nsn_trf_bg_t",
@@ -3647,6 +3651,11 @@ if __name__ == "__main__":
             "param_grid": {"threshold": cv_params["crt_slr_thres"]},
             "param_routing": ["feature_meta"],
         },
+        "CountThreshold": {
+            "estimator": CountThreshold(
+                min_count=args.ctr_min_count, min_samples=args.ctr_min_samples
+            )
+        },
         "MeanThreshold": {
             "estimator": MeanThreshold(),
             "param_grid": {"threshold": cv_params["mnt_slr_thres"]},
@@ -3733,66 +3742,73 @@ if __name__ == "__main__":
         },
         "DESeq2Selector": {
             "estimator": DESeq2Selector(
-                lfc_shrink=not args.deseq2_no_lfc_shrink, memory=estm_memory
+                norm_type=args.deseq2_norm_type,
+                fit_type=args.deseq2_fit_type,
+                score_type=args.deseq2_score_type,
+                trans_type=args.deseq2_trans_type,
+                lfc_shrink=not args.deseq2_no_lfc_shrink,
+                model_batch=args.deseq2_model_batch,
+                memory=estm_memory,
             ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
                 "fc": cv_params["rna_slr_fc"],
-                "norm_type": cv_params["rna_slr_nt"],
-                "fit_type": cv_params["rna_slr_ft"],
-                "scoring_type": cv_params["rna_slr_st"],
-                "trans_type": cv_params["rna_slr_tt"],
-                "model_batch": cv_params["rna_slr_mb"],
+            },
+            "param_routing": ["sample_meta"],
+        },
+        "DESeq2WrenchSelector": {
+            "estimator": DESeq2WrenchSelector(
+                est_type=args.wrench_est_type,
+                ref_type=args.wrench_ref_type,
+                z_adj=args.wrench_z_adj,
+                fit_type=args.deseq2_fit_type,
+                score_type=args.deseq2_score_type,
+                trans_type=args.deseq2_trans_type,
+                lfc_shrink=not args.deseq2_no_lfc_shrink,
+                memory=estm_memory,
+            ),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "fc": cv_params["rna_slr_fc"],
             },
             "param_routing": ["sample_meta"],
         },
         "DESeq2ZINBWaVESelector": {
-            "estimator": DESeq2ZINBWaVESelector(memory=estm_memory),
-            "param_grid": {
-                "k": cv_params["skb_slr_k"],
-                "pv": cv_params["rna_slr_pv"],
-                "fc": cv_params["rna_slr_fc"],
-                "epsilon": cv_params["rna_slr_eps"],
-                "norm_type": cv_params["rna_slr_nt"],
-                "fit_type": cv_params["rna_slr_ft"],
-                "scoring_type": cv_params["rna_slr_st"],
-                "trans_type": cv_params["rna_slr_tt"],
-                "model_batch": cv_params["rna_slr_mb"],
-            },
-            "param_routing": ["sample_meta"],
-        },
-        "EdgeRSelector": {
-            "estimator": EdgeRSelector(
-                log=not args.edger_no_log,
-                prior_count=args.edger_prior_count,
+            "estimator": DESeq2ZINBWaVESelector(
+                norm_type=args.deseq2_norm_type,
+                fit_type=args.deseq2_fit_type,
+                score_type=args.deseq2_score_type,
+                trans_type=args.deseq2_trans_type,
+                lfc_shrink=not args.deseq2_no_lfc_shrink,
+                model_batch=args.deseq2_model_batch,
                 memory=estm_memory,
             ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
                 "fc": cv_params["rna_slr_fc"],
-                "norm_type": cv_params["rna_slr_nt"],
-                "scoring_type": cv_params["rna_slr_st"],
-                "trans_type": cv_params["rna_slr_tt"],
-                "model_batch": cv_params["rna_slr_mb"],
+                "epsilon": cv_params["rna_slr_eps"],
             },
             "param_routing": ["sample_meta"],
         },
-        "EdgeRZINBWaVESelector": {
-            "estimator": EdgeRZINBWaVESelector(
-                log=not args.edger_no_log,
-                prior_count=args.edger_prior_count,
+        "DESeq2WrenchZINBWaVESelector": {
+            "estimator": DESeq2WrenchZINBWaVESelector(
+                est_type=args.wrench_est_type,
+                ref_type=args.wrench_ref_type,
+                z_adj=args.wrench_z_adj,
+                fit_type=args.deseq2_fit_type,
+                score_type=args.deseq2_score_type,
+                trans_type=args.deseq2_trans_type,
+                lfc_shrink=not args.deseq2_no_lfc_shrink,
                 memory=estm_memory,
             ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
+                "fc": cv_params["rna_slr_fc"],
                 "epsilon": cv_params["rna_slr_eps"],
-                "norm_type": cv_params["rna_slr_nt"],
-                "scoring_type": cv_params["rna_slr_st"],
-                "trans_type": cv_params["rna_slr_tt"],
-                "model_batch": cv_params["rna_slr_mb"],
             },
             "param_routing": ["sample_meta"],
         },
@@ -3802,30 +3818,123 @@ if __name__ == "__main__":
                 min_total_count=args.edger_min_total_count,
                 large_n=args.edger_large_n,
                 min_prop=args.edger_min_prop,
+                is_classif=True,
+                model_batch=args.edger_model_batch,
             ),
-            "param_grid": {"model_batch": cv_params["rna_slr_mb"]},
             "param_routing": ["sample_meta"],
+        },
+        "EdgeRSelector": {
+            "estimator": EdgeRSelector(
+                norm_type=args.edger_norm_type,
+                score_type=args.edger_score_type,
+                trans_type=args.edger_trans_type,
+                model_batch=args.edger_model_batch,
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "fc": cv_params["rna_slr_fc"],
+            },
+            "param_routing": ["sample_meta", "feature_meta"],
+        },
+        "EdgeRWrenchSelector": {
+            "estimator": EdgeRWrenchSelector(
+                est_type=args.wrench_est_type,
+                ref_type=args.wrench_ref_type,
+                z_adj=args.wrench_z_adj,
+                score_type=args.edger_score_type,
+                trans_type=args.edger_trans_type,
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "fc": cv_params["rna_slr_fc"],
+            },
+            "param_routing": ["sample_meta", "feature_meta"],
+        },
+        "EdgeRZINBWaVESelector": {
+            "estimator": EdgeRZINBWaVESelector(
+                norm_type=args.edger_norm_type,
+                score_type=args.edger_score_type,
+                trans_type=args.edger_trans_type,
+                model_batch=args.edger_model_batch,
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "epsilon": cv_params["rna_slr_eps"],
+            },
+            "param_routing": ["sample_meta", "feature_meta"],
+        },
+        "EdgeRWrenchZINBWaVESelector": {
+            "estimator": EdgeRWrenchZINBWaVESelector(
+                est_type=args.wrench_est_type,
+                ref_type=args.wrench_ref_type,
+                z_adj=args.wrench_z_adj,
+                score_type=args.edger_score_type,
+                trans_type=args.edger_trans_type,
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
+                memory=estm_memory,
+            ),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "epsilon": cv_params["rna_slr_eps"],
+            },
+            "param_routing": ["sample_meta", "feature_meta"],
         },
         "LimmaVoomSelector": {
             "estimator": LimmaVoomSelector(
+                norm_type=args.limma_norm_type,
+                score_type=args.limma_score_type,
+                trans_type=args.limma_trans_type,
+                model_batch=args.limma_model_batch,
+                model_dupcor=args.limma_model_dupcor,
                 log=not args.limma_no_log,
                 prior_count=args.limma_prior_count,
                 memory=estm_memory,
-                model_dupcor=args.limma_model_dupcor,
             ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
                 "fc": cv_params["rna_slr_fc"],
-                "norm_type": cv_params["rna_slr_nt"],
-                "scoring_type": cv_params["rna_slr_st"],
-                "trans_type": cv_params["rna_slr_tt"],
-                "model_batch": cv_params["rna_slr_mb"],
             },
-            "param_routing": ["sample_meta"],
+            "param_routing": ["sample_meta", "feature_meta"],
+        },
+        "LimmaVoomWrenchSelector": {
+            "estimator": LimmaVoomWrenchSelector(
+                est_type=args.wrench_est_type,
+                ref_type=args.wrench_ref_type,
+                z_adj=args.wrench_z_adj,
+                score_type=args.limma_score_type,
+                trans_type=args.limma_trans_type,
+                log=not args.limma_no_log,
+                prior_count=args.limma_prior_count,
+                memory=estm_memory,
+            ),
+            "param_grid": {
+                "k": cv_params["skb_slr_k"],
+                "pv": cv_params["rna_slr_pv"],
+                "fc": cv_params["rna_slr_fc"],
+            },
+            "param_routing": ["sample_meta", "feature_meta"],
         },
         "DreamVoomSelector": {
             "estimator": DreamVoomSelector(
+                norm_type=args.limma_norm_type,
+                score_type=args.limma_score_type,
+                trans_type=args.limma_trans_type,
+                model_batch=args.limma_model_batch,
                 log=not args.limma_no_log,
                 prior_count=args.limma_prior_count,
                 memory=estm_memory,
@@ -3834,23 +3943,21 @@ if __name__ == "__main__":
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
                 "fc": cv_params["rna_slr_fc"],
-                "norm_type": cv_params["rna_slr_nt"],
-                "scoring_type": cv_params["rna_slr_st"],
-                "trans_type": cv_params["rna_slr_tt"],
-                "model_batch": cv_params["rna_slr_mb"],
             },
-            "param_routing": ["sample_meta"],
+            "param_routing": ["sample_meta", "feature_meta"],
         },
         "LimmaSelector": {
             "estimator": LimmaSelector(
-                memory=estm_memory, robust=args.limma_robust, trend=args.limma_trend
+                score_type=args.limma_score_type,
+                robust=args.limma_robust,
+                trend=args.limma_trend,
+                model_batch=args.limma_model_batch,
+                memory=estm_memory,
             ),
             "param_grid": {
                 "k": cv_params["skb_slr_k"],
                 "pv": cv_params["rna_slr_pv"],
                 "fc": cv_params["rna_slr_fc"],
-                "scoring_type": cv_params["rna_slr_st"],
-                "model_batch": cv_params["rna_slr_mb"],
             },
             "param_routing": ["sample_meta"],
         },
@@ -3904,40 +4011,48 @@ if __name__ == "__main__":
         "RobustScaler": {"estimator": RobustScaler()},
         "StandardScaler": {"estimator": StandardScaler()},
         "DESeq2Normalizer": {
-            "estimator": DESeq2Normalizer(memory=estm_memory),
-            "param_grid": {
-                "norm_type": cv_params["rna_trf_nt"],
-                "fit_type": cv_params["rna_trf_ft"],
-                "trans_type": cv_params["rna_trf_tt"],
-                "model_batch": cv_params["rna_trf_mb"],
-            },
+            "estimator": DESeq2Normalizer(
+                norm_type=args.deseq2_norm_type,
+                fit_type=args.deseq2_fit_type,
+                trans_type=args.deseq2_trans_type,
+                is_classif=False,
+                model_batch=args.deseq2_model_batch,
+                memory=estm_memory,
+            ),
+            "param_routing": ["sample_meta"],
+        },
+        "DESeq2WrenchNormalizer": {
+            "estimator": DESeq2WrenchNormalizer(
+                est_type=args.wrench_est_type,
+                ref_type=args.wrench_ref_type,
+                z_adj=args.wrench_z_adj,
+                fit_type=args.deseq2_fit_type,
+                trans_type=args.deseq2_trans_type,
+                memory=estm_memory,
+            ),
             "param_routing": ["sample_meta"],
         },
         "EdgeRNormalizer": {
             "estimator": EdgeRNormalizer(
+                norm_type=args.edger_norm_type,
+                trans_type=args.edger_trans_type,
                 log=not args.edger_no_log,
                 prior_count=args.edger_prior_count,
                 memory=estm_memory,
             ),
-            "param_grid": {
-                "norm_type": cv_params["rna_trf_nt"],
-                "trans_type": cv_params["rna_trf_tt"],
-            },
-            "param_routing": ["sample_meta"],
+            "param_routing": ["feature_meta"],
         },
-        "WrenchNormalizer": {
-            "estimator": WrenchNormalizer(
+        "EdgeRWrenchNormalizer": {
+            "estimator": EdgeRWrenchNormalizer(
                 est_type=args.wrench_est_type,
                 ref_type=args.wrench_ref_type,
                 z_adj=args.wrench_z_adj,
-                log=not args.wrench_no_log,
-                prior_count=args.wrench_prior_count,
+                trans_type=args.edger_trans_type,
+                log=not args.edger_no_log,
+                prior_count=args.edger_prior_count,
                 memory=estm_memory,
             ),
-            "param_grid": {
-                "trans_type": cv_params["rna_trf_tt"],
-            },
-            "param_routing": ["sample_meta"],
+            "param_routing": ["sample_meta", "feature_meta"],
         },
         "LimmaBatchEffectRemover": {
             "estimator": LimmaBatchEffectRemover(preserve_design=True),
@@ -4235,7 +4350,7 @@ if __name__ == "__main__":
         "slr__fc",
         "slr__fit_type",
         "slr__norm_type",
-        "slr__scoring_type",
+        "slr__score_type",
         "slr__trans_type",
         "slr__model_batch",
         "slr__pv",

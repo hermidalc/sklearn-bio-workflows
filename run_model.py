@@ -2921,7 +2921,7 @@ if __name__ == "__main__":
         help="Wrench z adj",
     )
     parser.add_argument(
-        "--limmar-norm-type", type=str, default="TMM", help="limma norm type"
+        "--limma-norm-type", type=str, default="TMM", help="limma norm type"
     )
     parser.add_argument(
         "--limma-score-type", type=str, default="pv", help="limma score type"

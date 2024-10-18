@@ -714,11 +714,13 @@ def get_final_feature_meta(pipe, feature_meta):
         feature_meta = transform_feature_meta(estimator, feature_meta)
     final_estimator = pipe[-1]
     feature_weights = explain_weights_df(
-        final_estimator, feature_names=feature_meta.index.values
+        final_estimator, feature_names=feature_meta.index.values, top=None
     )
     if feature_weights is None and hasattr(final_estimator, "estimator_"):
         feature_weights = explain_weights_df(
-            final_estimator.estimator_, feature_names=feature_meta.index.values
+            final_estimator.estimator_,
+            feature_names=feature_meta.index.values,
+            top=None,
         )
     if feature_weights is not None:
         feature_weights.set_index("feature", inplace=True, verify_integrity=True)
